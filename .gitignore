@@ -10,4 +10,4 @@ dist/
 deploy-gh-page.sh
 local-build/
 tiny-vgg/data/
-tiny-vgg/_MACOSX/
+tiny-vgg/__MACOSX/
