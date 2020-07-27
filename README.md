@@ -2,6 +2,9 @@
 
 An interactive visualization application designed to help non-experts learn about Recurrent Neural Networks (RNNs)
 
+todo: edit README.md 
+Notes: Use 'yarn' instead of 'npm' in parkage management.
+
 [![Build Status](https://travis-ci.com/poloclub/cnn-explainer.svg?branch=master)](https://travis-ci.com/poloclub/cnn-explainer)
 [![arxiv badge](https://img.shields.io/badge/arXiv-2004.15004-red)](http://arxiv.org/abs/2004.15004)
 
