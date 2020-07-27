@@ -5,9 +5,12 @@ package-lock.json
 public/assets/js/bundle.*
 public/assets/css/bundle.*
 *.swp
-yarn.lock
 dist/
 deploy-gh-page.sh
 local-build/
 tiny-vgg/data/
 tiny-vgg/__MACOSX/
+imdb/resources/
+public/resources/
+tiny-vgg/localModel/
+.vscode/
