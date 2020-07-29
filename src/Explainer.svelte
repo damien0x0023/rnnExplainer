@@ -2,6 +2,8 @@
   import Overview from './overview/Overview.svelte';
   import { cnnStore } from './stores.js';
 
+  export let nn;
+
   // Enum to control the displaying view
   const View = {
     OVERVIEW: 'overview',
@@ -29,5 +31,9 @@
 </style>
 
 <div id='explainer'>
+  {#if nn==="CNN"}
     <Overview />
+  {:else if nn==="RNN"}
+    <p>RNN</p>
+  {/if}
 </div>

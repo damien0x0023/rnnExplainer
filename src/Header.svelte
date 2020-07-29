@@ -1,4 +1,20 @@
 <script>
+	// let NNs= [
+	// 	{id: 1, name: `Convolutional Neural Network`, alis: `CNN`},
+	// 	{id: 2, name: `Recurrent Neural Network`, alis: `RNN`}
+	// ];
+
+	// export  let defaultNN;
+	// let selected = defaultNN && defaultNN==='rnn'?NNs[1]: NNs[0];
+
+	// function handleChanged(){
+	// 	alert(`answer question ${selected.id} (${selected.alis}) with "${selected.name}"`);
+	// }
+
+	export let NNs;
+	export let selectedNN;
+	
+
 </script>
 
 <style>
@@ -30,6 +46,12 @@
 		font-family: 'Neucha';
 	}
 
+	.NNselector {
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+	}
+
 	.icons {
 		display: flex;
 		justify-content: flex-start;
@@ -55,10 +77,20 @@
 </style>
 
 <div id="header">
+  <select bind:value={selectedNN} class="NNselector">
+  		{#each NNs as NN}
+			<option value={NN}>
+				{NN.alis}
+			</option>
+		{/each}
+  </select>
+
+  <!-- <p>{selectedNN.alis}</p> -->
+
 
   <div id="logo">
     <div id="logo-text">
-      RNN Explainer
+	{selectedNN.alis} Explainer
     </div>
 
 		<svg width="510px" height="50px">
@@ -75,7 +107,7 @@
 
 			<g filter="url(#chalk-texture)" transform="translate(0, 35)">
 				<text id="svg-logo-tagline">
-					Learn Recurrent Neural Network (RNN) in your browser! 
+					Learn {selectedNN.name} ({selectedNN.alis}) in your browser!
 				</text>
 			</g>
 		</svg>
@@ -100,6 +132,5 @@
 				<img src="PUBLIC_URL/assets/img/github.png" alt="github icon"/>
 			</a>
 		</div>
-
 	</div>
 </div>
