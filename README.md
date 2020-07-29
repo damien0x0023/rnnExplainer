@@ -26,27 +26,35 @@ For a live demo, visit: http://poloclub.github.io/cnn-explainer/
 Clone or download this repository:
 
 ```
-git clone git@github.com:poloclub/cnn-explainer.git
+git clone git@github.com:damien0x0023/rnnExplainer.git
 
 # use degit if you don't want to download commit histories
-degit poloclub/cnn-explainer
+degit damien0x0023/rnnExplainer
 ```
 
 Install the dependencies:
 
 ```
-npm install
+npm install 
+```
+or
+```
+yarn
 ```
 
-Then run CNN Explainer:
+Then run RNN Explainer:
 
 ```
 npm run dev
 ```
+or
+```
+yarn dev
+```
 
-Navigate to [localhost:5000](https://localhost:5000). You should see CNN Explainer running in your broswer :)
+Navigate to [localhost:5000](https://localhost:5000). You should see RNN Explainer running in your broswer :)
 
-To see how we trained the CNN, visit the directory [`./tiny-vgg/`](tiny-vgg).
+To see how we trained the RNN, visit the directory [`./imdb/`](imdb).
 
 ## Credits
 

@@ -1,7 +1,6 @@
 .DS_Store
 node_modules
 public/bundle.*
-package-lock.json
 public/assets/js/bundle.*
 public/assets/css/bundle.*
 *.swp
@@ -11,6 +10,7 @@ local-build/
 tiny-vgg/data/
 tiny-vgg/__MACOSX/
 imdb/resources/
+imdb/backup/
 public/resources/
 tiny-vgg/localModel/
 .vscode/
