@@ -34,6 +34,6 @@
   {#if nn==="CNN"}
     <Overview />
   {:else if nn==="RNN"}
-    <p>RNN</p>
+    <rnnOverview/>
   {/if}
 </div>

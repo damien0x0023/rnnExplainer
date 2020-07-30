@@ -26,9 +26,4 @@
 <div id="app-page">
 	<Header bind:selectedNN={selected} NNs={NNlist}/> 
 	<Explainer nn={selected.alis}/>
-	<!-- {#if nn==='cnn'}
-	<Explainer />
-	{:else if nn==='rnn'}
-	<RNNExplainer />
-	{/if} -->
 </div>
