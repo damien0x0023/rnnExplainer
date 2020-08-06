@@ -33,23 +33,28 @@
 	}
 
 	#logo-text {
-		font-size: 30px;
+		font-size: 25px;
 		color: var(--light-gray);
 		font-family: 'A Love of Thunder';
 		margin-right: 10px;
 	}
 
 	#svg-logo-tagline {
-		font-size: 23px;
+		font-size: 20px;
 		fill: rgb(255, 255, 255);
 		dominant-baseline: baseline;
 		font-family: 'Neucha';
 	}
 
 	.NNselector {
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
+		/* display: flex; */
+		/* justify-content: flex-start; */
+		/* align-items: center; */
+	    display: flex;
+		position: relative;
+		flex-direction: column;
+		justify-content: space-between;
+		align-items: flex-start;
 	}
 
 	.icons {
