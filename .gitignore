@@ -11,6 +11,5 @@ tiny-vgg/data/
 tiny-vgg/__MACOSX/
 imdb/resources/
 imdb/backup/
-public/resources/
 tiny-vgg/localModel/
 .vscode/
