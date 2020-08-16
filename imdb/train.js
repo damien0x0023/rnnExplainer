@@ -129,7 +129,7 @@ function parseArguments() {
   });
   parser.addArgument('--modelSaveDir', {
     type: 'string',
-    defaultValue: 'imdb/resources',
+    defaultValue: 'public/resources',
     help: 'Optional path for model saving.'
   });
   parser.addArgument('--embeddingFilesPrefix', {
