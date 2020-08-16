@@ -1043,6 +1043,7 @@
       */
     }
   }
+  
   let logits = [-4.28, 2.96, -0.38, 5.24, -7.56, -3.43, 8.63, 2.63, 6.30, 0.68];
   let selectedI = 4;
 
@@ -1122,6 +1123,8 @@
     let flatten = cnn[cnn.length - 2];
     cnn.splice(cnn.length - 2, 1);
     cnn.flatten = flatten;
+
+    console.log('cnn is: ');
     console.log(cnn);
 
     updateCNNLayerRanges();

@@ -82,6 +82,7 @@
 </style>
 
 <div id="header">
+<div id="NN-select">
   <select bind:value={selectedNN} class="NNselector">
   		{#each NNs as NN}
 			<option value={NN}>
@@ -89,6 +90,8 @@
 			</option>
 		{/each}
   </select>
+</div>
+
 
   <!-- <p>{selectedNN.alis}</p> -->
 

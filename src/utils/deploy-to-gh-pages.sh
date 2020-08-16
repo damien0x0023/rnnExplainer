@@ -2,15 +2,15 @@
 set -o errexit
 
 # config
-git config --global user.email "xiao.hk1997@gmail.com"
-git config --global user.name "xiaohk"
+git config --global user.email "jyh91517@gmail.com"
+git config --global user.name "damien0x0023"
 
 # build
-git clone git@github.com:poloclub/cnn-explainer.git
-cd cnn-explainer
+git clone git@github.com:damien0x0023/rnnExplainer.git
+cd rnnExplainer
 
-npm install
-npm run build
+yarn
+yarn build
 
 mkdir dist
 copy -r ./public/* ./dist

@@ -242,28 +242,35 @@ export const constructCNN = async (inputImageFile, model) => {
 
   // Need to feed the model with a batch
   let inputImageTensorBatch = tf.stack([inputImageTensor]);
-
+  // console.log(inputImageTensorBatch);
   // To get intermediate layer outputs, we will iterate through all layers in
   // the model, and sequencially apply transformations.
   let preTensor = inputImageTensorBatch;
   let outputs = [];
-
+  
   // Iterate through all layers, and build one model with that layer as output
   for (let l = 0; l < model.layers.length; l++) {
     let curTensor = model.layers[l].apply(preTensor);
-
+    console.log('current layer name is: ',model.layers[l].name);
     // Record the output tensor
     // Because there is only one element in the batch, we use squeeze()
     // We also want to use CHW order here
     let output = curTensor.squeeze();
     if (output.shape.length === 3) {
+      // console.log('before transpose:'+ output)
+      console.log(output.shape);
       output = output.transpose([2, 0, 1]);
+      // console.log('after transpose:'+ output)
+      console.log(output.shape);
     }
     outputs.push(output);
 
     // Update preTensor for next nesting iteration
     preTensor = curTensor;
   }
+  console.log('final cnn outputs is ' )
+  console.log(outputs);
+  console.log('cnn result is ' + outputs[11])
 
   let cnn = constructCNNFromOutputs(outputs, model, inputImageTensor);
   return cnn;
