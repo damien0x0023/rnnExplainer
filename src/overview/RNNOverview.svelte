@@ -622,91 +622,91 @@ const HOSTED_URLS = {
   }
 
   onMount(async () => {
-    // Create CNN SVG
-    wholeSvg_cnn = d3.select(overviewComponent)
-      .select('#cnn-svg');
-    svg_cnn = wholeSvg_cnn.append('g')
-      .attr('class','main-svg')
-      .attr('transform',`translate(${svgPaddings.left}, 0)`);
+    // // Create CNN SVG
+    // wholeSvg_cnn = d3.select(overviewComponent)
+    //   .select('#cnn-svg');
+    // svg_cnn = wholeSvg_cnn.append('g')
+    //   .attr('class','main-svg')
+    //   .attr('transform',`translate(${svgPaddings.left}, 0)`);
 
-    svgStore.set(svg_cnn);
+    // svgStore.set(svg_cnn);
 
-    width = Number(wholeSvg_cnn.style('width').replace('px', '')) -
-      svgPaddings.left - svgPaddings.right;
-    height = Number(wholeSvg_cnn.style('height').replace('px', '')) -
-      svgPaddings.top - svgPaddings.bottom;
+    // width = Number(wholeSvg_cnn.style('width').replace('px', '')) -
+    //   svgPaddings.left - svgPaddings.right;
+    // height = Number(wholeSvg_cnn.style('height').replace('px', '')) -
+    //   svgPaddings.top - svgPaddings.bottom;
     
-    let cnnGroup = svg_cnn.append('g')
-      .attr('class', 'cnn-group');
+    // let cnnGroup = svg_cnn.append('g')
+    //   .attr('class', 'cnn-group');
     
-    let underGroup = svg_cnn.append('g')
-      .attr('class', 'underneath');
+    // let underGroup = svg_cnn.append('g')
+    //   .attr('class', 'underneath');
 
-    let svgYMid = +wholeSvg_cnn.style('height').replace('px','') / 2;
+    // let svgYMid = +wholeSvg_cnn.style('height').replace('px','') / 2;
 
-    detailedViewAbsCoords = {
-      1 : [600, 100 + svgYMid - 220 / 2, 490, 290],
-      2: [500, 100 + svgYMid - 220 / 2, 490, 290],
-      3 : [700, 100 + svgYMid - 220 / 2, 490, 290],
-      4: [600, 100 + svgYMid - 220 / 2, 490, 290],
-      5: [650, 100 + svgYMid - 220 / 2, 490, 290],
-      6 : [850, 100 + svgYMid - 220 / 2, 490, 290],
-      7 : [100, 100 + svgYMid - 220 / 2, 490, 290],
-      8 : [60, 100 + svgYMid - 220 / 2, 490, 290],
-      9 : [200, 100 + svgYMid - 220 / 2, 490, 290],
-      10 : [300, 100 + svgYMid - 220 / 2, 490, 290],
-    }
+    // detailedViewAbsCoords = {
+    //   1 : [600, 100 + svgYMid - 220 / 2, 490, 290],
+    //   2: [500, 100 + svgYMid - 220 / 2, 490, 290],
+    //   3 : [700, 100 + svgYMid - 220 / 2, 490, 290],
+    //   4: [600, 100 + svgYMid - 220 / 2, 490, 290],
+    //   5: [650, 100 + svgYMid - 220 / 2, 490, 290],
+    //   6 : [850, 100 + svgYMid - 220 / 2, 490, 290],
+    //   7 : [100, 100 + svgYMid - 220 / 2, 490, 290],
+    //   8 : [60, 100 + svgYMid - 220 / 2, 490, 290],
+    //   9 : [200, 100 + svgYMid - 220 / 2, 490, 290],
+    //   10 : [300, 100 + svgYMid - 220 / 2, 490, 290],
+    // }
 
-    // Define global arrow marker end
-    svg_cnn.append("defs")
-      .append("marker")
-      .attr("id", 'marker')
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 6)
-      .attr("refY", 0)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto")
-      .append("path")
-      .style('stroke-width', 1.2)
-      .style('fill', 'gray')
-      .style('stroke', 'gray')
-      .attr("d", "M0,-5L10,0L0,5");
+    // // Define global arrow marker end
+    // svg_cnn.append("defs")
+    //   .append("marker")
+    //   .attr("id", 'marker')
+    //   .attr("viewBox", "0 -5 10 10")
+    //   .attr("refX", 6)
+    //   .attr("refY", 0)
+    //   .attr("markerWidth", 6)
+    //   .attr("markerHeight", 6)
+    //   .attr("orient", "auto")
+    //   .append("path")
+    //   .style('stroke-width', 1.2)
+    //   .style('fill', 'gray')
+    //   .style('stroke', 'gray')
+    //   .attr("d", "M0,-5L10,0L0,5");
 
-    // Alternative arrow head style for non-interactive annotation
-    svg_cnn.append("defs")
-      .append("marker")
-      .attr("id", 'marker-alt')
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 6)
-      .attr("refY", 0)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto")
-      .append("path")
-      .style('fill', 'none')
-      .style('stroke', 'gray')
-      .style('stroke-width', 2)
-      .attr("d", "M-5,-10L10,0L-5,10");
+    // // Alternative arrow head style for non-interactive annotation
+    // svg_cnn.append("defs")
+    //   .append("marker")
+    //   .attr("id", 'marker-alt')
+    //   .attr("viewBox", "0 -5 10 10")
+    //   .attr("refX", 6)
+    //   .attr("refY", 0)
+    //   .attr("markerWidth", 6)
+    //   .attr("markerHeight", 6)
+    //   .attr("orient", "auto")
+    //   .append("path")
+    //   .style('fill', 'none')
+    //   .style('stroke', 'gray')
+    //   .style('stroke-width', 2)
+    //   .attr("d", "M-5,-10L10,0L-5,10");
     
-    console.time('Construct cnn');
-    model = await loadTrainedModel('PUBLIC_URL/assets/data/model.json');
-    console.log(model);
-    cnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
-    console.timeEnd('Construct cnn');
-    cnnStore.set(cnn);
+    // console.time('Construct cnn');
+    // model = await loadTrainedModel('PUBLIC_URL/assets/data/model.json');
+    // console.log(model);
+    // cnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
+    // console.timeEnd('Construct cnn');
+    // cnnStore.set(cnn);
 
-    // Ignore the flatten layer for now
-    let flatten = cnn[cnn.length - 2];
-    cnn.splice(cnn.length - 2, 1);
-    cnn.flatten = flatten;
-    console.log(cnn);
+    // // Ignore the flatten layer for now
+    // let flatten = cnn[cnn.length - 2];
+    // cnn.splice(cnn.length - 2, 1);
+    // cnn.flatten = flatten;
+    // console.log(cnn);
 
-    updateCNNLayerRanges();
+    // updateCNNLayerRanges();
 
-    // Create and draw the CNN view
-    drawCNN(width, height, cnnGroup, nodeMouseOverHandler,
-      nodeMouseLeaveHandler, nodeClickHandler);
+    // // Create and draw the CNN view
+    // drawCNN(width, height, cnnGroup, nodeMouseOverHandler,
+    //   nodeMouseLeaveHandler, nodeClickHandler);
 
 
     // Create RNN

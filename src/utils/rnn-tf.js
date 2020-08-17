@@ -112,7 +112,7 @@ const getInputTextArray = (inputReview) => {
 
   // Perform truncation and padding.
   let paddedSequence = padSequences([sequence], maxLen);
-  console.log('paddedSequence is: ',paddedSequence);
+  // console.log('paddedSequence is: ',paddedSequence);
   let tensor = tf.tensor2d(paddedSequence, [1,maxLen]);
   return tensor;
 }
@@ -368,7 +368,7 @@ export const constructRNN = async (inputMovieReview, metadataFile, model) => {
   let inputTextTensor = await getInputTextArray(inputMovieReview);
 
   // let inputTextTensorBatch = tf.stack([inputTextTensor]);
-  console.log('input text tensor is: ' + inputTextTensor);
+  console.log('input text tensor is: ', inputTextTensor);
 
   let preTensor = inputTextTensor; 
   let outputs = [];
@@ -381,8 +381,8 @@ export const constructRNN = async (inputMovieReview, metadataFile, model) => {
     if (output.shape.length === 2 ) {
       console.log(output.shape);
       output = output.transpose([1, 0]);
-      console.log(output.shape);
     }
+    console.log(output.shape);
     outputs.push(output);
 
     preTensor = curTensor;

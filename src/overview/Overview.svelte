@@ -1115,6 +1115,7 @@
     
     console.time('Construct cnn');
     model = await loadTrainedModel('PUBLIC_URL/assets/data/model.json');
+    console.log(model);
     cnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
     console.timeEnd('Construct cnn');
     cnnStore.set(cnn);

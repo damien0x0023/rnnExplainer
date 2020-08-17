@@ -239,10 +239,11 @@ const constructCNNFromOutputs = (allOutputs, model, inputImageTensor) => {
 export const constructCNN = async (inputImageFile, model) => {
   // Load the image file
   let inputImageTensor = await getInputImageArray(inputImageFile, true);
-
+  console.log('input image tensor is: ', inputImageTensor);
+  
   // Need to feed the model with a batch
   let inputImageTensorBatch = tf.stack([inputImageTensor]);
-  // console.log(inputImageTensorBatch);
+  console.log(inputImageTensorBatch);
   // To get intermediate layer outputs, we will iterate through all layers in
   // the model, and sequencially apply transformations.
   let preTensor = inputImageTensorBatch;
@@ -261,8 +262,8 @@ export const constructCNN = async (inputImageFile, model) => {
       console.log(output.shape);
       output = output.transpose([2, 0, 1]);
       // console.log('after transpose:'+ output)
-      console.log(output.shape);
     }
+    console.log(output.shape);
     outputs.push(output);
 
     // Update preTensor for next nesting iteration
