@@ -80,7 +80,7 @@ async function loadMetadata(url) {
     vocabularySize = metadata['vocabulary_size'];
     console.log('indexFrom = ' , indexFrom);
     console.log('maxLen = ' , maxLen);
-    // console.log('wordIndex = ' , wordIndex);
+    console.log('wordIndex = ' , wordIndex);
     console.log('vocabularySize = ', vocabularySize);
 
     return metadata;
@@ -112,7 +112,7 @@ const getInputTextArray = (inputReview) => {
 
   // Perform truncation and padding.
   let paddedSequence = padSequences([sequence], maxLen);
-  // console.log('paddedSequence is: ',paddedSequence);
+  console.log('paddedSequence is: ',paddedSequence);
   let tensor = tf.tensor2d(paddedSequence, [1,maxLen]);
   return tensor;
 }
@@ -318,6 +318,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
           // One-to-multiple links
           for (let j = 0; j < rnn[curLayerIndex -1].length; j++){
             let preNode = rnn[curLayerIndex -1][j];
+            // todo: double check j and the values of weights
             let curLink = new Link(preNode, node, weights[i][j]);
             preNode.outputLinks.push(curLink);
             node.inputLinks.push(curLink);

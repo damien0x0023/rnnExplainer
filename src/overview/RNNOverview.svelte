@@ -58,8 +58,7 @@ const HOSTED_URLS = {
 
   let selectedReview;
   const exampleReviews = {
-  // 'empty':
-  //     'Waiting for the review... ',
+  'empty': 'Waiting for the review... ',
   'positive':
       `die hard mario fan and i loved this game br br this game starts slightly boring but trust me it\'s worth it as soon as you start your hooked the levels are fun and exiting they will hook you OOV your mind turns to mush i\'m not kidding this game is also orchestrated and is beautifully done br br to keep this spoiler free i have to keep my mouth shut about details but please try this game it\'ll be worth it br br story 9 9 action 10 1 it\'s that good OOV 10 attention OOV 10 average 10`,
   'negative':
@@ -81,21 +80,21 @@ const HOSTED_URLS = {
   $: selectedScaleLevel, selectedScaleLevelChanged();
 
   // Configs
-  const layerColorScales = overviewConfig.layerColorScales;
-  const nodeLength = overviewConfig.nodeLength;
-  const plusSymbolRadius = overviewConfig.plusSymbolRadius;
-  const numLayers = overviewConfig.numLayers;
-  const edgeOpacity = overviewConfig.edgeOpacity;
-  const edgeInitColor = overviewConfig.edgeInitColor;
-  const edgeHoverColor = overviewConfig.edgeHoverColor;
-  const edgeHoverOuting = overviewConfig.edgeHoverOuting;
-  const edgeStrokeWidth = overviewConfig.edgeStrokeWidth;
-  const intermediateColor = overviewConfig.intermediateColor;
-  const kernelRectLength = overviewConfig.kernelRectLength;
-  const svgPaddings = overviewConfig.svgPaddings;
-  const gapRatio = overviewConfig.gapRatio;
-  const overlayRectOffset = overviewConfig.overlayRectOffset;
-  const classLists = overviewConfig.classLists;
+  const layerColorScales = rnnOverviewConfig.layerColorScales;
+  const nodeLength = rnnOverviewConfig.nodeLength;
+  const plusSymbolRadius = rnnOverviewConfig.plusSymbolRadius;
+  const numLayers = rnnOverviewConfig.numLayers;
+  const edgeOpacity = rnnOverviewConfig.edgeOpacity;
+  const edgeInitColor = rnnOverviewConfig.edgeInitColor;
+  const edgeHoverColor = rnnOverviewConfig.edgeHoverColor;
+  const edgeHoverOuting = rnnOverviewConfig.edgeHoverOuting;
+  const edgeStrokeWidth = rnnOverviewConfig.edgeStrokeWidth;
+  const intermediateColor = rnnOverviewConfig.intermediateColor;
+  const kernelRectLength = rnnOverviewConfig.kernelRectLength;
+  const svgPaddings = rnnOverviewConfig.svgPaddings;
+  const gapRatio = rnnOverviewConfig.gapRatio;
+  const overlayRectOffset = rnnOverviewConfig.overlayRectOffset;
+  const classLists = rnnOverviewConfig.classLists;
 
   // Shared properties
   let needRedraw = [undefined, undefined];
@@ -772,6 +771,9 @@ const HOSTED_URLS = {
     rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
       LOCAL_URLS.metadata, model_lstm);
     console.timeEnd('Construct rnn');
+    rnnStore.set(rnn);
+
+    console.log('rnn is: ', rnn);
 
     let ui = d3.select(overviewComponent)
       .select('#ui')
@@ -782,6 +784,10 @@ const HOSTED_URLS = {
       .text('test');
 
     });
+
+    updateRNNLayerRanges();
+
+    // drawRNN(width, height, rnnGroup, null, null, null)
 
 </script>
 
@@ -1074,7 +1080,7 @@ const HOSTED_URLS = {
       </button>
 
       <select bind:value={selectedReview} id="test-example-select" class="form-control">
-        <!-- <option value="empty"> Please choose one example</option> -->
+        <option value="empty"> Please choose one example</option>
         <option value="positive">Positive example</option>
         <option value="negative">Negative example</option>
       </select>
@@ -1124,9 +1130,9 @@ const HOSTED_URLS = {
     <svg id="rnn-svg"></svg>
   </div>
 
-  <div class="cnn">
+  <!-- <div class="cnn">
     <svg id="cnn-svg"></svg>
-  </div>
+  </div> -->
 
 </div>
 

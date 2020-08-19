@@ -8,18 +8,18 @@ import {
 import {
   getExtent, getLinkData
 } from './draw-utils.js';
-import { overviewConfig } from '../config.js';
+import { rnnOverviewConfig, overviewConfig } from '../config.js';
 
 // Configs
-const layerColorScales = overviewConfig.layerColorScales;
-const nodeLength = overviewConfig.nodeLength;
-const numLayers = overviewConfig.numLayers;
-const edgeOpacity = overviewConfig.edgeOpacity;
-const edgeInitColor = overviewConfig.edgeInitColor;
-const edgeStrokeWidth = overviewConfig.edgeStrokeWidth;
-const svgPaddings = overviewConfig.svgPaddings;
-const gapRatio = overviewConfig.gapRatio;
-const classLists = overviewConfig.classLists;
+const layerColorScales = rnnOverviewConfig.layerColorScales;
+const nodeLength = rnnOverviewConfig.nodeLength;
+const numLayers = rnnOverviewConfig.numLayers;
+const edgeOpacity = rnnOverviewConfig.edgeOpacity;
+const edgeInitColor = rnnOverviewConfig.edgeInitColor;
+const edgeStrokeWidth = rnnOverviewConfig.edgeStrokeWidth;
+const svgPaddings = rnnOverviewConfig.svgPaddings;
+const gapRatio = rnnOverviewConfig.gapRatio;
+const classLists = rnnOverviewConfig.classLists;
 const formater = d3.format('.4f');
 
 // Shared variables
@@ -891,7 +891,7 @@ export const updateRNNLayerRanges = () => {
   rnnLayerRanges.local = rnnLayerRangesLocal;
   rnnLayerRanges.module = rnnLayerRangesComponent;
   rnnLayerRanges.global = rnnLayerRangesGlobal;
-  rnnLayerRanges.output = [0, d3.max(rnn[rnn.length - 1].map(d => d.output))];
+  // rnnLayerRanges.output = [0, d3.max(rnn[rnn.length - 1].map(d => d.output))];
 
   rnnLayerRangesStore.set(rnnLayerRanges);
   rnnLayerMinMaxStore.set(rnnLayerMinMax);

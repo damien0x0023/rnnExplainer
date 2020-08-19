@@ -1125,8 +1125,7 @@
     cnn.splice(cnn.length - 2, 1);
     cnn.flatten = flatten;
 
-    console.log('cnn is: ');
-    console.log(cnn);
+    console.log('cnn is: ',cnn);
 
     updateCNNLayerRanges();
 
