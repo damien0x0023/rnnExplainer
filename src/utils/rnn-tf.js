@@ -1,6 +1,7 @@
 /* global tf */
 
 import {OOV_INDEX, padSequences} from '../../imdb/sequence_utils';
+import {Node, Link} from './class';
 
 // Network input image size
 const networkInputSize = 64;
@@ -23,45 +24,6 @@ const nodeType = {
   DENSE: 'dense',
 };
 
-class Node {
-  /**
-   * Class structure for each neuron node.
-   * 
-   * @param {string} layerName Name of the node's layer.
-   * @param {int} index Index of this node in its layer.
-   * @param {string} type Node type {input, embedding, lstm, fc}. 
-   * @param {number} bias The bias assocated to this node.
-   * @param {number[]} output Output of this node.
-   */
-  constructor(layerName, index, type, bias, output) {
-    this.layerName = layerName;
-    this.index = index;
-    this.type = type;
-    this.bias = bias;
-    this.output = output;
-
-    // Weights are stored in the links
-    this.inputLinks = [];
-    this.outputLinks = [];
-  }
-}
-
-class Link {
-  /**
-   * Class structure for each link between two nodes.
-   * 
-   * @param {Node} source Source node.
-   * @param {Node} dest Target node.
-   * @param {number} weight Weight associated to this link. It can be a number,
-   *  1D array, or 2D array.
-   */
-  constructor(source, dest, weight) {
-    this.source = source;
-    this.dest = dest;
-    this.weight = weight;
-  }
-}
-
 /**
  * Load metadata file.
  *
@@ -80,7 +42,7 @@ async function loadMetadata(url) {
     vocabularySize = metadata['vocabulary_size'];
     console.log('indexFrom = ' , indexFrom);
     console.log('maxLen = ' , maxLen);
-    console.log('wordIndex = ' , wordIndex);
+    // console.log('wordIndex = ' , wordIndex);
     console.log('vocabularySize = ', vocabularySize);
 
     return metadata;
@@ -112,7 +74,7 @@ const getInputTextArray = (inputReview) => {
 
   // Perform truncation and padding.
   let paddedSequence = padSequences([sequence], maxLen);
-  console.log('paddedSequence is: ',paddedSequence);
+  // console.log('paddedSequence is: ',paddedSequence);
   let tensor = tf.tensor2d(paddedSequence, [1,maxLen]);
   return tensor;
 }
