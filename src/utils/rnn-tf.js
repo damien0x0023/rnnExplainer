@@ -377,7 +377,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
           node.logit = curLogit;
           curLayerNodes.push(node);
         }
-        
+
         // Sort flatten layer based on the node TF index
         rnn[curLayerIndex - 1].sort((a, b) => a.realIndex - b.realIndex);
 
