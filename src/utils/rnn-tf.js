@@ -109,7 +109,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
   // Add the first layer (input layer)
   let inputLayer = [];
   let inputShape = model.layers[0].batchInputShape.slice(1);
-  let inputTextArray = inputTextTensor.arraySync();
+  let inputTextArray = inputTextTensor.transpose([1,0]).arraySync();
 
   // First layer's 100 nodes' outputs are the words of inputImageArray?
   for (let i = 0; i < inputShape[0]; i++) {
@@ -122,8 +122,13 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
 
   for (let l = 0; l < model.layers.length; l++) {
     let layer = model.layers[l];
-    // Get the current output
-    let outputs = allOutputs[l].squeeze();
+    let outputs = null;
+    // Get the current output, squeeze again if the tensor has more than two dims
+    if (allOutputs[l].shape.length > 1) {
+      outputs = allOutputs[l].squeeze();
+    } else {
+      outputs = allOutputs[l];
+    }
     outputs = outputs.arraySync();
 
     let curLayerNodes = [];
@@ -379,14 +384,20 @@ export const constructRNN = async (inputMovieReview, metadataFile, model) => {
   let outputs = [];
 
   for (let l = 0; l< model.layers.length; l++) {
-    let curTensor = model.layers[l].apply(preTensor);
     console.log('current layer name is: ', model.layers[l].name);
+    let curTensor = model.layers[l].apply(preTensor);
+    console.log(curTensor);
 
-    let output = curTensor.squeeze();
-    if (output.shape.length === 2 ) {
+    // Set the squeeze dim is 0 to unpack the batch otherwise it will 
+    // ignore the final outcome if there is only one value.
+    let output = curTensor.squeeze([0]);
+    // let output = curTensor.squeeze();
+
+
+    if (output.shape.length === 2) {
       console.log(output.shape);
       output = output.transpose([1, 0]);
-    }
+    } 
     console.log(output.shape);
     outputs.push(output);
 
