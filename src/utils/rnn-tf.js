@@ -330,7 +330,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
         break;
       }
       case nodeType.LSTM: {
-        let biases = layer.cell.bias.arraySync();
+        let biases = layer.cell.bias.val.arraySync();
         // New order is [output_depth, input_depth]
         let weights = layer.cell.kernel.val.transpose([1, 0]).arraySync();
         
@@ -339,21 +339,47 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
           let node = new Node(layer.name, i, curLayerType, 
             biases[i], outputs[i]);
 
-        // Connect this node to all previous nodes (create links)
-        // LSTM layers have weights in links. Links are one-to-multiple.
-        for (let j=0; j < rnn[curLayerIndex -1].length; j++) {
-            let preNode = rnn[curLayerIndex-1][j];
-            let curLink = new Link(preNode, node, weights[i][j]);
-            preNode.outputLinks.push(curLink);
-            node.inputLinks.push(curLink);
-          }
-        curLayerNodes.push(node);
+          // Connect this node to all previous nodes (create links)
+          // LSTM layers have weights in links. Links are one-to-multiple.
+          for (let j=0; j < rnn[curLayerIndex -1].length; j++) {
+              let preNode = rnn[curLayerIndex-1][j];
+              let curLink = new Link(preNode, node, weights[i][j]);
+              preNode.outputLinks.push(curLink);
+              node.inputLinks.push(curLink);
+            }
+          curLayerNodes.push(node);
         }
         break;
       }
       case nodeType.DENSE: {
-        let bias = 0;
-        let weight = null;
+        let biases = layer.bias.val.arraySync();
+        let weights = layer.kernel.val.transpose([1,0]).arraySync();
+
+        // add nodes into this layer
+        for (let i =0; i < outputs.length; i++) {
+          let node = new Node(layer.name, i, curLayerType,
+            biases[i], outputs[i]);
+
+          // Connect this node to all previous nodes (create links)
+          // FC layers have weights in links. Links are one-to-multiple.
+
+          // Since we are visualizing the logit values, we need to track
+          // the raw value before ...
+          let curLogit = 0;
+          for (let j = 0; j < rnn[curLayerIndex - 1].length; j++) {
+            let preNode = rnn[curLayerIndex - 1][j];
+            let curLink = new Link(preNode, node, weights[i][j]);
+            preNode.outputLinks.push(curLink);
+            node.inputLinks.push(curLink);
+            curLogit += preNode.output * weights[i][j];              
+            }
+          curLogit += biases[i];
+          node.logit = curLogit;
+          curLayerNodes.push(node);
+        }
+        
+        // Sort flatten layer based on the node TF index
+        rnn[curLayerIndex - 1].sort((a, b) => a.realIndex - b.realIndex);
 
         break;
       }
