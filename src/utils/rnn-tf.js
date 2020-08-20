@@ -330,9 +330,25 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
         break;
       }
       case nodeType.LSTM: {
-        let bias = 0;
-        let weight = null;
+        let biases = layer.cell.bias.arraySync();
+        // New order is [output_depth, input_depth]
+        let weights = layer.cell.kernel.val.transpose([1, 0]).arraySync();
+        
+        //add nodes into this layer
+        for (let i=0; i < outputs.length; i++){
+          let node = new Node(layer.name, i, curLayerType, 
+            biases[i], outputs[i]);
 
+        // Connect this node to all previous nodes (create links)
+        // LSTM layers have weights in links. Links are one-to-multiple.
+        for (let j=0; j < rnn[curLayerIndex -1].length; j++) {
+            let preNode = rnn[curLayerIndex-1][j];
+            let curLink = new Link(preNode, node, weights[i][j]);
+            preNode.outputLinks.push(curLink);
+            node.inputLinks.push(curLink);
+          }
+        curLayerNodes.push(node);
+        }
         break;
       }
       case nodeType.DENSE: {
