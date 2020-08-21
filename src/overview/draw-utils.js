@@ -12,19 +12,20 @@ export  const getExtent = (array) => {
   let max = -Infinity;
 
   // Scalar
-  if (array.length === undefined) {
+  if (array.length === undefined || array.length === 1 ) {
     return [array, array];
   }
 
   // 1D array
   if (array[0].length === undefined) {
-    for (let i = 0; i < array[0].length; i++) {
+    for (let i = 0; i < array.length; i++) {
       if (array[i] < min) {
         min = array[i];
       } else if (array[i] > max) {
         max = array[i];
       }
     }
+    console.log('deal with 1d array');
     return [min, max];
   }
 
