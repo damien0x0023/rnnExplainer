@@ -3,12 +3,18 @@
   import { onMount } from 'svelte';
   import { 
     cnnStore, cnnLayerMinMaxStore, cnnLayerRangesStore,
-    rnnStore, rnnLayerMinMaxStore, rnnLayerRangesStore, svgStore_rnn,
     svgStore, vSpaceAroundGapStore, hSpaceAroundGapStore,
     nodeCoordinateStore, selectedScaleLevelStore, needRedrawStore, 
     detailedModeStore, shouldIntermediateAnimateStore, isInSoftmaxStore, 
     softmaxDetailViewStore, hoverInfoStore, allowsSoftmaxAnimationStore, 
-    modalStore, intermediateLayerPositionStore
+    modalStore, intermediateLayerPositionStore,
+
+    rnnStore, rnnLayerMinMaxStore, rnnLayerRangesStore, 
+    svgStore_rnn, vSpaceAroundGapStore_rnn, hSpaceAroundGapStore_rnn,
+    nodeCoordinateStore_rnn, selectedScaleLevelStore_rnn, needRedrawStore_rnn,
+    detailedModeStore_rnn, shouldIntermediateAnimateStore_rnn, isInSoftmaxStore_rnn, 
+    softmaxDetailViewStore_rnn, hoverInfoStore_rnn, allowsSoftmaxAnimationStore_rnn, 
+    modalStore_rnn, intermediateLayerPositionStore_rnn
   } from '../stores.js';
 
   // Svelte views
@@ -66,16 +72,16 @@ const HOSTED_URLS = {
 };
 
   // View bindings
-  let overviewComponent;
+  let rnnOverviewComponent;
   let scaleLevelSet = new Set(['local', 'module', 'global']);
   let selectedScaleLevel = 'local';
-  selectedScaleLevelStore.set(selectedScaleLevel);
+  selectedScaleLevelStore_rnn.set(selectedScaleLevel);
   let previousSelectedScaleLevel = selectedScaleLevel;
   let wholeSvg_rnn = undefined;
   let svg_rnn = undefined;
 
-  let wholeSvg_cnn = undefined;
-  let svg_cnn = undefined;
+  // let wholeSvg_cnn = undefined;
+  // let svg_cnn = undefined;
 
   $: selectedScaleLevel, selectedScaleLevelChanged();
 
@@ -97,17 +103,55 @@ const HOSTED_URLS = {
   const classLists = rnnOverviewConfig.classLists;
 
   // Shared properties
-  let needRedraw = [undefined, undefined];
-  needRedrawStore.subscribe( value => {needRedraw = value;} );
+  // let needRedraw = [undefined, undefined];
+  // needRedrawStore.subscribe( value => {needRedraw = value;} );
 
-  let nodeCoordinate = undefined;
-  nodeCoordinateStore.subscribe( value => {nodeCoordinate = value;} )
+  // let nodeCoordinate = undefined;
+  // nodeCoordinateStore.subscribe( value => {nodeCoordinate = value;} )
 
-  let cnnLayerRanges = undefined;
-  cnnLayerRangesStore.subscribe( value => {cnnLayerRanges = value;} )
+  // let cnnLayerRanges = undefined;
+  // cnnLayerRangesStore.subscribe( value => {cnnLayerRanges = value;} )
 
-  let cnnLayerMinMax = undefined;
-  cnnLayerMinMaxStore.subscribe( value => {cnnLayerMinMax = value;} )
+  // let cnnLayerMinMax = undefined;
+  // cnnLayerMinMaxStore.subscribe( value => {cnnLayerMinMax = value;} )
+
+  // let detailedMode = undefined;
+  // detailedModeStore.subscribe( value => {detailedMode = value;} )
+
+  // let shouldIntermediateAnimate = undefined;
+  // shouldIntermediateAnimateStore.subscribe(value => {
+  //   shouldIntermediateAnimate = value;
+  // })
+
+  // let vSpaceAroundGap = undefined;
+  // vSpaceAroundGapStore.subscribe( value => {vSpaceAroundGap = value;} )
+
+  // let hSpaceAroundGap = undefined;
+  // hSpaceAroundGapStore.subscribe( value => {hSpaceAroundGap = value;} )
+
+  // let isInSoftmax = undefined;
+  // isInSoftmaxStore.subscribe( value => {isInSoftmax = value;} )
+
+  // let softmaxDetailViewInfo = undefined;
+  // softmaxDetailViewStore.subscribe( value => {
+  //   softmaxDetailViewInfo = value;
+  // } )
+
+  // let modalInfo = undefined;
+  // modalStore.subscribe( value => {modalInfo = value;} )
+
+  // let hoverInfo = undefined;
+  // hoverInfoStore.subscribe( value => {hoverInfo = value;} )
+
+  // let intermediateLayerPosition = undefined;
+  // intermediateLayerPositionStore.subscribe ( value => {intermediateLayerPosition = value;} )
+
+  // for rnn
+  let needRedraw_rnn = [undefined, undefined];
+  needRedrawStore_rnn.subscribe( value => {needRedraw_rnn = value;} );
+
+  let nodeCoordinate_rnn = undefined;
+  nodeCoordinateStore_rnn.subscribe( value => {nodeCoordinate_rnn = value;} )
 
   let rnnLayerRanges = undefined;
   rnnLayerRangesStore.subscribe( value => {rnnLayerRanges = value;} )
@@ -115,36 +159,29 @@ const HOSTED_URLS = {
   let rnnLayerMinMax = undefined;
   rnnLayerMinMaxStore.subscribe( value => {rnnLayerMinMax = value;} )
 
-  let detailedMode = undefined;
-  detailedModeStore.subscribe( value => {detailedMode = value;} )
+  let detailedMode_rnn = undefined;
+  detailedModeStore_rnn.subscribe( value => {detailedMode_rnn = value;} )
 
-  let shouldIntermediateAnimate = undefined;
-  shouldIntermediateAnimateStore.subscribe(value => {
-    shouldIntermediateAnimate = value;
+  let shouldIntermediateAnimate_rnn = undefined;
+  shouldIntermediateAnimateStore_rnn.subscribe(value => {
+    shouldIntermediateAnimate_rnn = value;
   })
 
-  let vSpaceAroundGap = undefined;
-  vSpaceAroundGapStore.subscribe( value => {vSpaceAroundGap = value;} )
+  let vSpaceAroundGap_rnn = undefined;
+  vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap_rnn = value;} )
 
-  let hSpaceAroundGap = undefined;
-  hSpaceAroundGapStore.subscribe( value => {hSpaceAroundGap = value;} )
+  let hSpaceAroundGap_rnn = undefined;
+  hSpaceAroundGapStore_rnn.subscribe( value => {hSpaceAroundGap_rnn = value;} )
 
-  let isInSoftmax = undefined;
-  isInSoftmaxStore.subscribe( value => {isInSoftmax = value;} )
+  let modalInfo_rnn = undefined;
+  modalStore_rnn.subscribe( value => {modalInfo_rnn = value;} )
 
-  let softmaxDetailViewInfo = undefined;
-  softmaxDetailViewStore.subscribe( value => {
-    softmaxDetailViewInfo = value;
-  } )
+  let hoverInfo_rnn = undefined;
+  hoverInfoStore_rnn.subscribe( value => {hoverInfo_rnn = value;} )
 
-  let modalInfo = undefined;
-  modalStore.subscribe( value => {modalInfo = value;} )
-
-  let hoverInfo = undefined;
-  hoverInfoStore.subscribe( value => {hoverInfo = value;} )
-
-  let intermediateLayerPosition = undefined;
-  intermediateLayerPositionStore.subscribe ( value => {intermediateLayerPosition = value;} )
+  let intermediateLayerPosition_rnn = undefined;
+  intermediateLayerPositionStore_rnn.subscribe ( value => {
+    intermediateLayerPosition_rnn = value;} )
 
   let width = undefined;
   let height = undefined;
@@ -160,7 +197,7 @@ const HOSTED_URLS = {
   let disableControl = false;
 
   // Wait to load
-  let cnn = undefined;
+  // let cnn = undefined;
   let rnn = undefined;
 
   let detailedViewAbsCoords = {
@@ -188,7 +225,7 @@ const HOSTED_URLS = {
     'conv_2_2': 8,
     'relu_2_2': 9,
     'max_pool_2': 10,
-    'output': 11
+    'dense_Dense1': 11
   }
 
   const layerLegendDict = {
@@ -228,7 +265,7 @@ const HOSTED_URLS = {
 
     // Helper functions
   const selectedScaleLevelChanged = () => {
-    if (svg_cnn !== undefined) {
+    if (svg_rnn !== undefined) {
       if (!scaleLevelSet.add(selectedScaleLevel)) {
         console.error('Encounter unknown scale level!');
       }
@@ -256,23 +293,23 @@ const HOSTED_URLS = {
           previousSelectedScaleLevel][selectedScaleLevel];
 
         updatingLayerIndex.forEach(l => {
-          let range = cnnLayerRanges[selectedScaleLevel][l];
-          svg_cnn.select(`#cnn-layer-group-${l}`)
+          let range = rnnLayerRanges[selectedScaleLevel][l];
+          svg_rnn.select(`#rnn-layer-group-${l}`)
             .selectAll('.node-image')
             .each((d, i, g) => drawOutput(d, i, g, range));
         });
 
  
         // Hide previous legend
-        svg_cnn.selectAll(`.${previousSelectedScaleLevel}-legend`)
+        svg_rnn.selectAll(`.${previousSelectedScaleLevel}-legend`)
           .classed('hidden', true);
 
         // Show selected legends
-        svg_cnn.selectAll(`.${selectedScaleLevel}-legend`)
-          .classed('hidden', !detailedMode);
+        svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+          .classed('hidden', !detailedMode_rnn);
       }
       previousSelectedScaleLevel = selectedScaleLevel;
-      selectedScaleLevelStore.set(selectedScaleLevel);
+      selectedScaleLevelStore_rnn.set(selectedScaleLevel);
     }
   }
 
@@ -283,13 +320,14 @@ const HOSTED_URLS = {
       selectedImage = newImageName;
 
       // Re-compute the CNN using the new input image
-      cnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
-
+      // rnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
+      rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
+        LOCAL_URLS.metadata, model_lstm);
       // Ignore the flatten layer for now
-      let flatten = cnn[cnn.length - 2];
-      cnn.splice(cnn.length - 2, 1);
-      cnn.flatten = flatten;
-      cnnStore.set(cnn);
+      // let flatten = cnn[cnn.length - 2];
+      // cnn.splice(cnn.length - 2, 1);
+      // cnn.flatten = flatten;
+      rnnStore.set(rnn);
 
       // Update all scales used in the CNN view
       updateCNNLayerRanges();
@@ -301,9 +339,9 @@ const HOSTED_URLS = {
 
     // Case 1: there is no custom image -> show the modal to get user input
     if (customImageURL === null) {
-      modalInfo.show = true;
-      modalInfo.preImage = selectedImage;
-      modalStore.set(modalInfo);
+      modalInfo_rnn.show = true;
+      modalInfo_rnn.preImage = selectedImage;
+      modalStore_rnn.set(modalInfo_rnn);
     }
 
     // Case 2: there is an existing custom image, not the focus -> switch to this image
@@ -315,9 +353,9 @@ const HOSTED_URLS = {
     // Case 3: there is an existing custom image, and its the focus -> let user
     // upload a new image
     else {
-      modalInfo.show = true;
-      modalInfo.preImage = selectedImage;
-      modalStore.set(modalInfo);
+      modalInfo_rnn.show = true;
+      modalInfo_rnn.preImage = selectedImage;
+      modalStore_rnn.set(modalInfo_rnn);
     }
 
     if (selectedImage !== 'custom') {
@@ -337,18 +375,19 @@ const HOSTED_URLS = {
     customImageURL = event.detail.url;
 
     // Re-compute the CNN using the new input image
-    cnn = await constructCNN(customImageURL, model);
-
+    // rnn = await constructCNN(customImageURL, model);
+    rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
+        LOCAL_URLS.metadata, model_lstm);
     // Ignore the flatten layer for now
-    let flatten = cnn[cnn.length - 2];
-    cnn.splice(cnn.length - 2, 1);
-    cnn.flatten = flatten;
-    cnnStore.set(cnn);
+    // let flatten = cnn[cnn.length - 2];
+    // cnn.splice(cnn.length - 2, 1);
+    // cnn.flatten = flatten;
+    rnnStore.set(rnn);
 
     // Update the UI
-    let customImageSlot = d3.select(overviewComponent)
+    let customImageSlot = d3.select(rnnOverviewComponent)
       .select('.custom-image').node();
-    drawCustomImage(customImageSlot, cnn[0]);
+    drawCustomImage(customImageSlot, rnn[0]);
 
     // Update all scales used in the CNN view
     updateCNNLayerRanges();
@@ -356,24 +395,24 @@ const HOSTED_URLS = {
   }
 
   const detailedButtonClicked = () => {
-    detailedMode = !detailedMode;
-    detailedModeStore.set(detailedMode);
+    detailedMode_rnn = !detailedMode_rnn;
+    detailedModeStore_rnn.set(detailedMode_rnn);
 
     if (!isInIntermediateView){
       // Show the legend
-      svg_cnn.selectAll(`.${selectedScaleLevel}-legend`)
-        .classed('hidden', !detailedMode);
+      svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+        .classed('hidden', !detailedMode_rnn);
       
-      svg_cnn.selectAll('.input-legend').classed('hidden', !detailedMode);
-      svg_cnn.selectAll('.output-legend').classed('hidden', !detailedMode);
+      svg_rnn.selectAll('.input-legend').classed('hidden', !detailedMode_rnn);
+      svg_rnn.selectAll('.output-legend').classed('hidden', !detailedMode_rnn);
     }
     
     // Switch the layer name
-    svg_cnn.selectAll('.layer-detailed-label')
-      .classed('hidden', !detailedMode);
+    svg_rnn.selectAll('.layer-detailed-label')
+      .classed('hidden', !detailedMode_rnn);
     
-    svg_cnn.selectAll('.layer-label')
-      .classed('hidden', detailedMode);
+    svg_rnn.selectAll('.layer-label')
+      .classed('hidden', detailedMode_rnn);
   }
 
   const nodeClickHandler = (d, i, g) => {
@@ -398,7 +437,7 @@ const HOSTED_URLS = {
         })
       }
       let curLayerIndex = layerIndexDict[d.layerName];
-      data.colorRange = cnnLayerRanges[selectedScaleLevel][curLayerIndex];
+      data.colorRange = rnnLayerRanges[selectedScaleLevel][curLayerIndex];
       data.isInputInputLayer = curLayerIndex <= 1;
       nodeData = data;
     }
@@ -418,15 +457,15 @@ const HOSTED_URLS = {
           // Switch the detail view input to the new clicked pair
 
           // Remove the previous selection effect
-          svg_cnn.select(`g#layer-${curLayerIndex}-node-${actPoolDetailViewNodeIndex}`)
+          svg_rnn.select(`g#layer-${curLayerIndex}-node-${actPoolDetailViewNodeIndex}`)
             .select('rect.bounding')
             .classed('hidden', true);
 
-          svg_cnn.select(`g#layer-${curLayerIndex - 1}-node-${actPoolDetailViewNodeIndex}`)
+          svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${actPoolDetailViewNodeIndex}`)
             .select('rect.bounding')
             .classed('hidden', true);
           
-          let edgeGroup = svg_cnn.select('g.cnn-group').select('g.edge-group');
+          let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
       
           edgeGroup.selectAll(`path.edge-${curLayerIndex}-${actPoolDetailViewNodeIndex}`)
             .transition()
@@ -436,16 +475,16 @@ const HOSTED_URLS = {
             .style('stroke-width', edgeStrokeWidth)
             .style('opacity', edgeOpacity);
           
-          let underGroup = svg_cnn.select('g.underneath');
+          let underGroup = svg_rnn.select('g.underneath');
           underGroup.select(`#underneath-gateway-${actPoolDetailViewNodeIndex}`)
             .style('opacity', 0);
         
           // Add selection effect on the new selected pair
-          svg_cnn.select(`g#layer-${curLayerIndex}-node-${nodeIndex}`)
+          svg_rnn.select(`g#layer-${curLayerIndex}-node-${nodeIndex}`)
             .select('rect.bounding')
             .classed('hidden', false);
 
-          svg_cnn.select(`g#layer-${curLayerIndex - 1}-node-${nodeIndex}`)
+          svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${nodeIndex}`)
             .select('rect.bounding')
             .classed('hidden', false);
 
@@ -467,7 +506,7 @@ const HOSTED_URLS = {
     }
 
     // Enter the second view (layer-view) when user clicks a conv node
-    if ((d.type === 'conv' || d.layerName === 'output') && !isInIntermediateView) {
+    if ((d.type === 'conv' || d.layerName === 'dense_Dense1') && !isInIntermediateView) {
       prepareToEnterIntermediateView(d, g, nodeIndex, curLayerIndex);
 
       if (d.layerName === 'conv_1_1') {
@@ -494,12 +533,12 @@ const HOSTED_URLS = {
           intermediateNodeClicked);
       }
     
-      else if (d.layerName === 'output') {
+      else if (d.layerName === 'dense_Dense1') {
         drawFlatten(curLayerIndex, d, nodeIndex, width, height);
       }
     }
     // Quit the layerview
-    else if ((d.type === 'conv' || d.layerName === 'output') && isInIntermediateView) {
+    else if ((d.type === 'conv' || d.layerName === 'dense_Dense1') && isInIntermediateView) {
       quitIntermediateView(curLayerIndex, g, i);
     }
   }
@@ -508,10 +547,10 @@ const HOSTED_URLS = {
     // if (isInIntermediateView || isInActPoolDetailView) { return; }
     if (isInIntermediateView) { return; }
 
-    // Highlight the edges
+    // Highlight the edgesr
     let layerIndex = layerIndexDict[d.layerName];
     let nodeIndex = d.index;
-    let edgeGroup = svg_cnn.select('g.cnn-group').select('g.edge-group');
+    let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
     
     edgeGroup.selectAll(`path.edge-${layerIndex}-${nodeIndex}`)
       .raise()
@@ -531,18 +570,18 @@ const HOSTED_URLS = {
       let link = d.inputLinks[0];
       let layerIndex = layerIndexDict[link.source.layerName];
       let nodeIndex = link.source.index;
-      svg_cnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+      svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
         .select('rect.bounding')
         .classed('hidden', false);
     } else {
-      svg_cnn.select(`g#cnn-layer-group-${layerIndex - 1}`)
+      svg_rnn.select(`g#rnn-layer-group-${layerIndex - 1}`)
         .selectAll('g.node-group')
         .selectAll('rect.bounding')
         .classed('hidden', false);
     }
 
     // Highlight the output text
-    if (d.layerName === 'output') {
+    if (d.layerName === '"dense_Dense1"') {
       d3.select(g[i])
         .select('.output-text')
         .style('opacity', 0.8)
@@ -553,7 +592,7 @@ const HOSTED_URLS = {
     d.inputLinks.forEach(link => {
       let layerIndex = layerIndexDict[link.source.layerName];
       let nodeIndex = link.source.index;
-      svg_cnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+      svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
         .select('rect.bounding')
         .classed('hidden', false);
     });
@@ -572,7 +611,7 @@ const HOSTED_URLS = {
       d.index !== selectedNode.index)){
       let layerIndex = layerIndexDict[d.layerName];
       let nodeIndex = d.index;
-      let edgeGroup = svg_cnn.select('g.cnn-group').select('g.edge-group');
+      let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
       
       edgeGroup.selectAll(`path.edge-${layerIndex}-${nodeIndex}`)
         .transition()
@@ -588,11 +627,11 @@ const HOSTED_URLS = {
         let link = d.inputLinks[0];
         let layerIndex = layerIndexDict[link.source.layerName];
         let nodeIndex = link.source.index;
-        svg_cnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+        svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
           .select('rect.bounding')
           .classed('hidden', true);
       } else {
-        svg_cnn.select(`g#cnn-layer-group-${layerIndex - 1}`)
+        svg_rnn.select(`g#rnn-layer-group-${layerIndex - 1}`)
           .selectAll('g.node-group')
           .selectAll('rect.bounding')
           .classed('hidden', d => d.layerName !== selectedNode.layerName ||
@@ -600,7 +639,7 @@ const HOSTED_URLS = {
       }
 
       // Dehighlight the output text
-      if (d.layerName === 'output') {
+      if (d.layerName === 'dense_Dense1') {
         d3.select(g[i])
           .select('.output-text')
           .style('fill', 'black')
@@ -612,7 +651,7 @@ const HOSTED_URLS = {
       d.inputLinks.forEach(link => {
         let layerIndex = layerIndexDict[link.source.layerName];
         let nodeIndex = link.source.index;
-        svg_cnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+        hoverInfoStore_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
           .select('rect.bounding')
           .classed('hidden', true);
       });
@@ -621,102 +660,15 @@ const HOSTED_URLS = {
   }
 
   onMount(async () => {
-    // // Create CNN SVG
-    // wholeSvg_cnn = d3.select(overviewComponent)
-    //   .select('#cnn-svg');
-    // svg_cnn = wholeSvg_cnn.append('g')
-    //   .attr('class','main-svg')
-    //   .attr('transform',`translate(${svgPaddings.left}, 0)`);
-
-    // svgStore.set(svg_cnn);
-
-    // width = Number(wholeSvg_cnn.style('width').replace('px', '')) -
-    //   svgPaddings.left - svgPaddings.right;
-    // height = Number(wholeSvg_cnn.style('height').replace('px', '')) -
-    //   svgPaddings.top - svgPaddings.bottom;
-    
-    // let cnnGroup = svg_cnn.append('g')
-    //   .attr('class', 'cnn-group');
-    
-    // let underGroup = svg_cnn.append('g')
-    //   .attr('class', 'underneath');
-
-    // let svgYMid = +wholeSvg_cnn.style('height').replace('px','') / 2;
-
-    // detailedViewAbsCoords = {
-    //   1 : [600, 100 + svgYMid - 220 / 2, 490, 290],
-    //   2: [500, 100 + svgYMid - 220 / 2, 490, 290],
-    //   3 : [700, 100 + svgYMid - 220 / 2, 490, 290],
-    //   4: [600, 100 + svgYMid - 220 / 2, 490, 290],
-    //   5: [650, 100 + svgYMid - 220 / 2, 490, 290],
-    //   6 : [850, 100 + svgYMid - 220 / 2, 490, 290],
-    //   7 : [100, 100 + svgYMid - 220 / 2, 490, 290],
-    //   8 : [60, 100 + svgYMid - 220 / 2, 490, 290],
-    //   9 : [200, 100 + svgYMid - 220 / 2, 490, 290],
-    //   10 : [300, 100 + svgYMid - 220 / 2, 490, 290],
-    // }
-
-    // // Define global arrow marker end
-    // svg_cnn.append("defs")
-    //   .append("marker")
-    //   .attr("id", 'marker')
-    //   .attr("viewBox", "0 -5 10 10")
-    //   .attr("refX", 6)
-    //   .attr("refY", 0)
-    //   .attr("markerWidth", 6)
-    //   .attr("markerHeight", 6)
-    //   .attr("orient", "auto")
-    //   .append("path")
-    //   .style('stroke-width', 1.2)
-    //   .style('fill', 'gray')
-    //   .style('stroke', 'gray')
-    //   .attr("d", "M0,-5L10,0L0,5");
-
-    // // Alternative arrow head style for non-interactive annotation
-    // svg_cnn.append("defs")
-    //   .append("marker")
-    //   .attr("id", 'marker-alt')
-    //   .attr("viewBox", "0 -5 10 10")
-    //   .attr("refX", 6)
-    //   .attr("refY", 0)
-    //   .attr("markerWidth", 6)
-    //   .attr("markerHeight", 6)
-    //   .attr("orient", "auto")
-    //   .append("path")
-    //   .style('fill', 'none')
-    //   .style('stroke', 'gray')
-    //   .style('stroke-width', 2)
-    //   .attr("d", "M-5,-10L10,0L-5,10");
-    
-    // console.time('Construct cnn');
-    // model = await loadTrainedModel('PUBLIC_URL/assets/data/model.json');
-    // console.log(model);
-    // cnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
-    // console.timeEnd('Construct cnn');
-    // cnnStore.set(cnn);
-
-    // // Ignore the flatten layer for now
-    // let flatten = cnn[cnn.length - 2];
-    // cnn.splice(cnn.length - 2, 1);
-    // cnn.flatten = flatten;
-    // console.log(cnn);
-
-    // updateCNNLayerRanges();
-
-    // // Create and draw the CNN view
-    // drawCNN(width, height, cnnGroup, nodeMouseOverHandler,
-    //   nodeMouseLeaveHandler, nodeClickHandler);
-
-
     // Create RNN
     console.log(`-----------Creating RNN---------------`);
-    wholeSvg_rnn = d3.select(overviewComponent)
+    wholeSvg_rnn = d3.select(rnnOverviewComponent)
       .select('#rnn-svg');
     svg_rnn = wholeSvg_rnn.append('g')
       .attr('class','main-svg')
       .attr('transform',`translate(${svgPaddings.left}, 0)`);
 
-    svgStore.set(svg_rnn);
+    svgStore_rnn.set(svg_rnn);
 
     width = Number(wholeSvg_rnn.style('width').replace('px', '')) -
       svgPaddings.left - svgPaddings.right;
@@ -766,16 +718,16 @@ const HOSTED_URLS = {
       .attr("d", "M-5,-10L10,0L-5,10");
 
     console.time('Construct rnn');
-    model_lstm = await loadTrainedModel(LOCAL_URLS.model);
-    console.log(model_lstm);
+    model_lstm = await loadTrainedModel_rnn(LOCAL_URLS.model);
+    console.log("The rnn model is: ",model_lstm);
     rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
       LOCAL_URLS.metadata, model_lstm);
     console.timeEnd('Construct rnn');
     rnnStore.set(rnn);
 
-    console.log('rnn is: ', rnn);
+    console.log('rnn layers are: ', rnn);
 
-    let ui = d3.select(overviewComponent)
+    let ui = d3.select(rnnOverviewComponent)
       .select('#ui')
       // .style('dominant-baseline', 'middle')
       .style('font-size', '11px')
@@ -783,16 +735,21 @@ const HOSTED_URLS = {
       .style('opacity', 0.5)
       .text('test');
 
+    let inputDim = model_lstm.layers[0].inputDim;
+    updateRNNLayerRanges(inputDim);
+    console.log("rnn layer ranges and MinMax are: ", 
+      rnnLayerRanges, rnnLayerMinMax);
+
+    // Create and draw the RNN view
+    drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
+    nodeMouseLeaveHandler, nodeClickHandler);
+
     });
-
-    updateRNNLayerRanges();
-
-    // drawRNN(width, height, rnnGroup, null, null, null)
 
 </script>
 
 <style>
-  .overview {
+  .rnnOverview {
     padding: 0;
     height: 100%;
     width: 100%;
@@ -1029,8 +986,8 @@ const HOSTED_URLS = {
 
 </style>
 
-<div class="overview"
-  bind:this={overviewComponent}>
+<div class="rnnOverview"
+  bind:this={rnnOverviewComponent}>
 
   <div class="control-container">
 
@@ -1070,12 +1027,12 @@ const HOSTED_URLS = {
 
       <button class="button is-very-small is-link is-light"
         id="hover-label"
-        style="opacity:{hoverInfo.show ? 1 : 0}">
+        style="opacity:{hoverInfo_rnn.show ? 1 : 0}">
         <span class="icon" style="margin-right: 5px;">
           <i class="fas fa-crosshairs "></i>
         </span>
         <span id="hover-label-text">
-          {hoverInfo.text}
+          {hoverInfo_rnn.text}
         </span>
       </button>
 
@@ -1091,7 +1048,7 @@ const HOSTED_URLS = {
       <button class="button is-very-small"
         id="detailed-button"
         disabled={disableControl}
-        class:is-activated={detailedMode}
+        class:is-activated={detailedMode_rnn}
         on:click={detailedButtonClicked}>
         <span class="icon">
           <i class="fas fa-eye"></i>

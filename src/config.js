@@ -31,17 +31,29 @@ export const overviewConfig = {
     'koala', 'espresso', 'red panda', 'orange', 'sport car']
 };
 
+const layerColorScales_rnn = {
+  input: d3.interpolateGreys,
+  embedding: d3.interpolateRdBu,
+  lstm: d3.interpolateRdBu,
+  // dense: d3.interpolateRdBu,
+  dense: d3.interpolateGreys,
+  weight: d3.interpolateBrBG,
+  logit: d3.interpolateOranges
+};
+
+let nodeLength_rnn = 4;
+
 export const rnnOverviewConfig = {
-  nodeLength : nodeLength,
+  nodeLength : nodeLength_rnn,
   plusSymbolRadius : nodeLength / 5,
-  numLayers : 12,
+  numLayers : 4,
   edgeOpacity : 0.8,
   edgeInitColor : 'rgb(230, 230, 230)',
   edgeHoverColor : 'rgb(130, 130, 130)',
   edgeHoverOuting : false,
   edgeStrokeWidth : 0.7,
   intermediateColor : 'gray',
-  layerColorScales: layerColorScales,
+  layerColorScales: layerColorScales_rnn,
   svgPaddings: {top: 25, bottom: 25, left: 50, right: 50},
   kernelRectLength: 8/3,
   gapRatio: 4,

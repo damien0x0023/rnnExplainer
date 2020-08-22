@@ -29,10 +29,33 @@ export const modalStore = writable({});
 
 export const intermediateLayerPositionStore = writable({});
 
-// add rnnStore
+// add Store for rnn
 export const rnnStore = writable([]);
-// add rnnLayerRangeStore, rnnLayerMinMaxStore
+
+export const svgStore_rnn = writable(undefined);
+
+export const vSpaceAroundGapStore_rnn = writable(undefined);
+export const hSpaceAroundGapStore_rnn = writable(undefined);
+
+export const nodeCoordinateStore_rnn = writable([]);
+export const selectedScaleLevelStore_rnn = writable(undefined);
+
 export const rnnLayerRangesStore = writable({});
 export const rnnLayerMinMaxStore = writable([]);
 
-export const svgStore_rnn = writable(undefined);
+export const needRedrawStore_rnn = writable([undefined, undefined]);
+
+export const detailedModeStore_rnn = writable(true);
+
+export const shouldIntermediateAnimateStore_rnn = writable(false);
+
+//may not use in the rnn
+export const isInSoftmaxStore_rnn = writable(false);
+export const softmaxDetailViewStore_rnn = writable({});
+export const allowsSoftmaxAnimationStore_rnn = writable(false);
+
+export const hoverInfoStore_rnn = writable({});
+
+export const modalStore_rnn = writable({});
+
+export const intermediateLayerPositionStore_rnn = writable({});

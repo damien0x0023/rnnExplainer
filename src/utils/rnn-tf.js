@@ -29,7 +29,7 @@ const nodeType = {
  *
  * @return An object containing metadata as key-value pairs.
  */
-async function loadMetadata(url) {
+export const loadMetadata = async (url) => {
   console.log('Loading metadata from ' + url)
   try {
     const metadataJson = await fetch(url);
@@ -386,7 +386,7 @@ export const constructRNN = async (inputMovieReview, metadataFile, model) => {
   for (let l = 0; l< model.layers.length; l++) {
     console.log('current layer name is: ', model.layers[l].name);
     let curTensor = model.layers[l].apply(preTensor);
-    console.log(curTensor);
+    // console.log(curTensor);
 
     // Set the squeeze dim is 0 to unpack the batch otherwise it will 
     // ignore the final outcome if there is only one value.
