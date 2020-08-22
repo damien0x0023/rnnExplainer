@@ -626,8 +626,8 @@
     let svgYMid_rnn = +wholeSvg_rnn.style('height').replace('px','') / 2;
 
     detailedViewAbsCoords = {
-      1 : [600, 100 + svgYMid - 220 / 2, 490, 290],
-      2: [500, 100 + svgYMid - 220 / 2, 490, 290],
+      1 : [600, 100 + svgYMid_rnn - 220 / 2, 490, 290],
+      2: [500, 100 + svgYMid_rnn - 220 / 2, 490, 290],
       // 3 : [700, 100 + svgYMid - 220 / 2, 490, 290],
       // 4: [600, 100 + svgYMid - 220 / 2, 490, 290],
       // 5: [650, 100 + svgYMid - 220 / 2, 490, 290],
