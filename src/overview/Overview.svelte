@@ -1115,7 +1115,7 @@
     
     console.time('Construct cnn');
     model = await loadTrainedModel('PUBLIC_URL/assets/data/model.json');
-    console.log(model);
+    console.log("The cnn model is: ", model);
     cnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
     console.timeEnd('Construct cnn');
     cnnStore.set(cnn);
@@ -1125,9 +1125,12 @@
     cnn.splice(cnn.length - 2, 1);
     cnn.flatten = flatten;
 
-    console.log('cnn is: ',cnn);
+    console.log('cnn layers are: ', cnn);
 
     updateCNNLayerRanges();
+
+    console.log("cnn layer ranges and MinMax are: ", 
+      cnnLayerRanges, cnnLayerMinMax);
 
     // Create and draw the CNN view
     drawCNN(width, height, cnnGroup, nodeMouseOverHandler,

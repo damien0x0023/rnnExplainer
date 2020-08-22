@@ -15,44 +15,6 @@ const nodeType = {
   FLATTEN: 'flatten'
 }
 
-// class Node {
-//   /**
-//    * Class structure for each neuron node.
-//    * 
-//    * @param {string} layerName Name of the node's layer.
-//    * @param {int} index Index of this node in its layer.
-//    * @param {string} type Node type {input, conv, pool, relu, fc}. 
-//    * @param {number} bias The bias assocated to this node.
-//    * @param {number[]} output Output of this node.
-//    */
-//   constructor(layerName, index, type, bias, output) {
-//     this.layerName = layerName;
-//     this.index = index;
-//     this.type = type;
-//     this.bias = bias;
-//     this.output = output;
-
-//     // Weights are stored in the links
-//     this.inputLinks = [];
-//     this.outputLinks = [];
-//   }
-// }
-
-// class Link {
-//   /**
-//    * Class structure for each link between two nodes.
-//    * 
-//    * @param {Node} source Source node.
-//    * @param {Node} dest Target node.
-//    * @param {number} weight Weight associated to this link. It can be a number,
-//    *  1D array, or 2D array.
-//    */
-//   constructor(source, dest, weight) {
-//     this.source = source;
-//     this.dest = dest;
-//     this.weight = weight;
-//   }
-// }
 
 /**
  * Construct a CNN with given extracted outputs from every layer.
@@ -245,7 +207,7 @@ export const constructCNN = async (inputImageFile, model) => {
   
   // Need to feed the model with a batch
   let inputImageTensorBatch = tf.stack([inputImageTensor]);
-  console.log(inputImageTensorBatch);
+  // console.log(inputImageTensorBatch);
   // To get intermediate layer outputs, we will iterate through all layers in
   // the model, and sequencially apply transformations.
   let preTensor = inputImageTensorBatch;
@@ -254,18 +216,18 @@ export const constructCNN = async (inputImageFile, model) => {
   // Iterate through all layers, and build one model with that layer as output
   for (let l = 0; l < model.layers.length; l++) {
     let curTensor = model.layers[l].apply(preTensor);
-    console.log('current layer name is: ',model.layers[l].name);
+    // console.log('current layer name is: ',model.layers[l].name);
     // Record the output tensor
     // Because there is only one element in the batch, we use squeeze()
     // We also want to use CHW order here
     let output = curTensor.squeeze();
     if (output.shape.length === 3) {
       // console.log('before transpose:'+ output)
-      console.log(output.shape);
+      // console.log(output.shape);
       output = output.transpose([2, 0, 1]);
       // console.log('after transpose:'+ output)
     }
-    console.log(output.shape);
+    // console.log(output.shape);
     outputs.push(output);
 
     // Update preTensor for next nesting iteration

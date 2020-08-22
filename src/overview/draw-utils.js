@@ -25,7 +25,6 @@ export  const getExtent = (array) => {
         max = array[i];
       }
     }
-    console.log('deal with 1d array');
     return [min, max];
   }
 
