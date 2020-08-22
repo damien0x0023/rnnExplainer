@@ -140,7 +140,7 @@ const drawOutputScore = (d, i, g, scale) => {
     .attr('width', scale(d.output))
 }
 
-export const drawCustomImage = (image, inputLayer) => {
+export const drawCustomReivew = (image, inputLayer) => {
 
   let imageWidth = image.width;
   // Set up a second convas in order to resize image

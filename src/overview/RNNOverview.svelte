@@ -2,13 +2,6 @@
   // Svelte functions
   import { onMount } from 'svelte';
   import { 
-    cnnStore, cnnLayerMinMaxStore, cnnLayerRangesStore,
-    svgStore, vSpaceAroundGapStore, hSpaceAroundGapStore,
-    nodeCoordinateStore, selectedScaleLevelStore, needRedrawStore, 
-    detailedModeStore, shouldIntermediateAnimateStore, isInSoftmaxStore, 
-    softmaxDetailViewStore, hoverInfoStore, allowsSoftmaxAnimationStore, 
-    modalStore, intermediateLayerPositionStore,
-
     rnnStore, rnnLayerMinMaxStore, rnnLayerRangesStore, 
     svgStore_rnn, vSpaceAroundGapStore_rnn, hSpaceAroundGapStore_rnn,
     nodeCoordinateStore_rnn, selectedScaleLevelStore_rnn, needRedrawStore_rnn,
@@ -25,12 +18,12 @@
   import Modal from './Modal.svelte'
   import Article from '../article/Article.svelte';
 
-const HOSTED_URLS = {
-  model:
-      'https://storage.googleapis.com/tfjs-models/tfjs/sentiment_cnn_v1/model.json',
-  metadata:
-      'https://storage.googleapis.com/tfjs-models/tfjs/sentiment_cnn_v1/metadata.json'
-};
+  const HOSTED_URLS = {
+    model:
+        'https://storage.googleapis.com/tfjs-models/tfjs/sentiment_cnn_v1/model.json',
+    metadata:
+        'https://storage.googleapis.com/tfjs-models/tfjs/sentiment_cnn_v1/metadata.json'
+  };
 
   const LOCAL_URLS = {
     model: 'PUBLIC_URL/resources/model.json',
@@ -39,8 +32,10 @@ const HOSTED_URLS = {
 
   // Overview functions
   import { loadTrainedModel_rnn, constructRNN } from '../utils/rnn-tf.js';
-  import { loadTrainedModel, constructCNN } from '../utils/cnn-tf.js';
-  import { overviewConfig, rnnOverviewConfig } from '../config.js';
+  // import { loadTrainedModel, constructCNN } from '../utils/cnn-tf.js';
+  import { 
+    // overviewConfig, 
+    rnnOverviewConfig } from '../config.js';
 
   import {
     addOverlayRect, drawConv1, drawConv2, drawConv3, drawConv4
@@ -54,22 +49,13 @@ const HOSTED_URLS = {
     drawFlatten, softmaxDetailViewMouseOverHandler, softmaxDetailViewMouseLeaveHandler
   } from './flatten-draw.js';
 
-  import {
-    drawOutput, drawCNN, updateCNN, updateCNNLayerRanges, drawCustomImage
-  } from './overview-draw.js';
+  // import {
+  //   drawOutput, drawCNN, updateCNN, updateCNNLayerRanges, drawCustomImage
+  // } from './overview-draw.js';
 
   import {
-    drawOutputRNN, drawRNN, updateRNN, updateRNNLayerRanges
+    drawOutputRNN, drawRNN, updateRNN, updateRNNLayerRanges, drawCustomReivew
   } from './overview-drawRNN.js';
-
-  let selectedReview;
-  const exampleReviews = {
-  'empty': 'Waiting for the review... ',
-  'positive':
-      `die hard mario fan and i loved this game br br this game starts slightly boring but trust me it\'s worth it as soon as you start your hooked the levels are fun and exiting they will hook you OOV your mind turns to mush i\'m not kidding this game is also orchestrated and is beautifully done br br to keep this spoiler free i have to keep my mouth shut about details but please try this game it\'ll be worth it br br story 9 9 action 10 1 it\'s that good OOV 10 attention OOV 10 average 10`,
-  'negative':
-      `the mother in this movie is reckless with her children to the point of neglect i wish i wasn\'t so angry about her and her actions because i would have otherwise enjoyed the flick what a number she was take my advise and fast forward through everything you see her do until the end also is anyone else getting sick of watching movies that are filmed so dark anymore one can hardly see what is being filmed as an audience we are impossibly involved with the actions on the screen so then why the hell can\'t we have night vision`
-};
 
   // View bindings
   let rnnOverviewComponent;
@@ -103,49 +89,6 @@ const HOSTED_URLS = {
   const classLists = rnnOverviewConfig.classLists;
 
   // Shared properties
-  // let needRedraw = [undefined, undefined];
-  // needRedrawStore.subscribe( value => {needRedraw = value;} );
-
-  // let nodeCoordinate = undefined;
-  // nodeCoordinateStore.subscribe( value => {nodeCoordinate = value;} )
-
-  // let cnnLayerRanges = undefined;
-  // cnnLayerRangesStore.subscribe( value => {cnnLayerRanges = value;} )
-
-  // let cnnLayerMinMax = undefined;
-  // cnnLayerMinMaxStore.subscribe( value => {cnnLayerMinMax = value;} )
-
-  // let detailedMode = undefined;
-  // detailedModeStore.subscribe( value => {detailedMode = value;} )
-
-  // let shouldIntermediateAnimate = undefined;
-  // shouldIntermediateAnimateStore.subscribe(value => {
-  //   shouldIntermediateAnimate = value;
-  // })
-
-  // let vSpaceAroundGap = undefined;
-  // vSpaceAroundGapStore.subscribe( value => {vSpaceAroundGap = value;} )
-
-  // let hSpaceAroundGap = undefined;
-  // hSpaceAroundGapStore.subscribe( value => {hSpaceAroundGap = value;} )
-
-  // let isInSoftmax = undefined;
-  // isInSoftmaxStore.subscribe( value => {isInSoftmax = value;} )
-
-  // let softmaxDetailViewInfo = undefined;
-  // softmaxDetailViewStore.subscribe( value => {
-  //   softmaxDetailViewInfo = value;
-  // } )
-
-  // let modalInfo = undefined;
-  // modalStore.subscribe( value => {modalInfo = value;} )
-
-  // let hoverInfo = undefined;
-  // hoverInfoStore.subscribe( value => {hoverInfo = value;} )
-
-  // let intermediateLayerPosition = undefined;
-  // intermediateLayerPositionStore.subscribe ( value => {intermediateLayerPosition = value;} )
-
   // for rnn
   let needRedraw_rnn = [undefined, undefined];
   needRedrawStore_rnn.subscribe( value => {needRedraw_rnn = value;} );
@@ -185,7 +128,7 @@ const HOSTED_URLS = {
 
   let width = undefined;
   let height = undefined;
-  let model = undefined;
+  // let model = undefined;
   // lstm
   let model_lstm = undefined;
   let selectedNode = {layerName: '', index: -1, data: null};
@@ -203,44 +146,28 @@ const HOSTED_URLS = {
   let detailedViewAbsCoords = {
     1 : [600, 270, 490, 290],
     2: [500, 270, 490, 290],
-    3 : [700, 270, 490, 290],
-    4: [600, 270, 490, 290],
-    5: [650, 270, 490, 290],
-    6 : [775, 270, 490, 290],
-    7 : [100, 270, 490, 290],
-    8 : [60, 270, 490, 290],
-    9 : [200, 270, 490, 290],
-    10 : [300, 270, 490, 290],
+    // 3 : [700, 270, 490, 290],
+    // 4: [600, 270, 490, 290],
+    // 5: [650, 270, 490, 290],
+    // 6 : [775, 270, 490, 290],
+    // 7 : [100, 270, 490, 290],
+    // 8 : [60, 270, 490, 290],
+    // 9 : [200, 270, 490, 290],
+    // 10 : [300, 270, 490, 290],
   }
 
   const layerIndexDict = {
     'input': 0,
-    'conv_1_1': 1,
-    'relu_1_1': 2,
-    'conv_1_2': 3,
-    'relu_1_2': 4,
-    'max_pool_1': 5,
-    'conv_2_1': 6,
-    'relu_2_1': 7,
-    'conv_2_2': 8,
-    'relu_2_2': 9,
-    'max_pool_2': 10,
-    'dense_Dense1': 11
+    'embedding_Embedding1': 1,
+    'lstm_LSTM1': 2,
+    'dense_Dense1': 3
   }
 
   const layerLegendDict = {
     0: {local: 'input-legend', module: 'input-legend', global: 'input-legend'},
     1: {local: 'local-legend-0-1', module: 'module-legend-0', global: 'global-legend'},
     2: {local: 'local-legend-0-1', module: 'module-legend-0', global: 'global-legend'},
-    3: {local: 'local-legend-0-2', module: 'module-legend-0', global: 'global-legend'},
-    4: {local: 'local-legend-0-2', module: 'module-legend-0', global: 'global-legend'},
-    5: {local: 'local-legend-0-2', module: 'module-legend-0', global: 'global-legend'},
-    6: {local: 'local-legend-1-1', module: 'module-legend-1', global: 'global-legend'},
-    7: {local: 'local-legend-1-1', module: 'module-legend-1', global: 'global-legend'},
-    8: {local: 'local-legend-1-2', module: 'module-legend-1', global: 'global-legend'},
-    9: {local: 'local-legend-1-2', module: 'module-legend-1', global: 'global-legend'},
-    10: {local: 'local-legend-1-2', module: 'module-legend-1', global: 'global-legend'},
-    11: {local: 'output-legend', module: 'output-legend', global: 'output-legend'}
+    3: {local: 'output-legend', module: 'output-legend', global: 'output-legend'}
   }
 
   let imageOptions = [
@@ -257,13 +184,22 @@ const HOSTED_URLS = {
   ];
   let selectedImage = imageOptions[1].file;
 
+  let selectedReview;
+  const exampleReviews = {
+  'empty': 'Waiting for the review... ',
+  'positive':
+      `die hard mario fan and i loved this game br br this game starts slightly boring but trust me it\'s worth it as soon as you start your hooked the levels are fun and exiting they will hook you OOV your mind turns to mush i\'m not kidding this game is also orchestrated and is beautifully done br br to keep this spoiler free i have to keep my mouth shut about details but please try this game it\'ll be worth it br br story 9 9 action 10 1 it\'s that good OOV 10 attention OOV 10 average 10`,
+  'negative':
+      `the mother in this movie is reckless with her children to the point of neglect i wish i wasn\'t so angry about her and her actions because i would have otherwise enjoyed the flick what a number she was take my advise and fast forward through everything you see her do until the end also is anyone else getting sick of watching movies that are filmed so dark anymore one can hardly see what is being filmed as an audience we are impossibly involved with the actions on the screen so then why the hell can\'t we have night vision`
+  };
+
   let nodeData;
   let selectedNodeIndex = -1;
   let isExitedFromDetailedView = true;
   let isExitedFromCollapse = true;
   let customImageURL = null;
 
-    // Helper functions
+  // Helper functions
   const selectedScaleLevelChanged = () => {
     if (svg_rnn !== undefined) {
       if (!scaleLevelSet.add(selectedScaleLevel)) {
@@ -276,16 +212,16 @@ const HOSTED_URLS = {
         // make it faster by only redraw certian nodes
         let updatingLayerIndexDict = {
           local: {
-            module: [1, 2, 8, 9, 10],
-            global: [1, 2, 3, 4, 5, 8, 9, 10]
+            module: [1, 2],
+            global: [1, 2, 3, 4]
           },
           module: {
-            local: [1, 2, 8, 9, 10],
-            global: [1, 2, 3, 4, 5, 8, 9, 10]
+            local: [1, 2],
+            global: [1, 2, 3, 4]
           },
           global: {
-            local: [1, 2, 3, 4, 5, 8, 9, 10],
-            module: [1, 2, 3, 4, 5]
+            local: [1, 2, 3, 4],
+            module: [1, 2, 3, 4]
           }
         };
 
@@ -296,7 +232,7 @@ const HOSTED_URLS = {
           let range = rnnLayerRanges[selectedScaleLevel][l];
           svg_rnn.select(`#rnn-layer-group-${l}`)
             .selectAll('.node-image')
-            .each((d, i, g) => drawOutput(d, i, g, range));
+            .each((d, i, g) => drawOutputRNN(d, i, g, range));
         });
 
  
@@ -313,7 +249,9 @@ const HOSTED_URLS = {
     }
   }
 
+  // responce to click other image, todo: change image to change review option
   const imageOptionClicked = async (e) => {
+    // todo: need to rewrite for the content of review
     let newImageName = d3.select(e.target).attr('data-imageName');
 
     if (newImageName !== selectedImage) {
@@ -330,11 +268,12 @@ const HOSTED_URLS = {
       rnnStore.set(rnn);
 
       // Update all scales used in the CNN view
-      updateCNNLayerRanges();
-      updateCNN();
+      updateRNNLayerRanges();
+      updateRNN();
     }
   }
 
+  // responce to click the custom Image Button
   const customImageClicked = () => {
 
     // Case 1: there is no custom image -> show the modal to get user input
@@ -364,12 +303,14 @@ const HOSTED_URLS = {
 
   }
 
+  // cannot load the image to cannot load the text
   const handleModalCanceled = (event) => {
     // User cancels the modal without a successful image, so we restore the
     // previous selected image as input
     selectedImage = event.detail.preImage;
   }
 
+  // change custom image to custom review
   const handleCustomImage = async (event) => {
     // User gives a valid image URL
     customImageURL = event.detail.url;
@@ -387,13 +328,14 @@ const HOSTED_URLS = {
     // Update the UI
     let customImageSlot = d3.select(rnnOverviewComponent)
       .select('.custom-image').node();
-    drawCustomImage(customImageSlot, rnn[0]);
+    drawCustomReivew(customImageSlot, rnn[0]);
 
-    // Update all scales used in the CNN view
-    updateCNNLayerRanges();
-    updateCNN();
+    // Update all scales used in the RNN view
+    updateRNNLayerRanges();
+    updateRNN();
   }
 
+  // handle the event when click the detail button
   const detailedButtonClicked = () => {
     detailedMode_rnn = !detailedMode_rnn;
     detailedModeStore_rnn.set(detailedMode_rnn);
@@ -683,7 +625,18 @@ const HOSTED_URLS = {
 
     let svgYMid_rnn = +wholeSvg_rnn.style('height').replace('px','') / 2;
 
-    detailedViewAbsCoords = {}
+    detailedViewAbsCoords = {
+      1 : [600, 100 + svgYMid - 220 / 2, 490, 290],
+      2: [500, 100 + svgYMid - 220 / 2, 490, 290],
+      // 3 : [700, 100 + svgYMid - 220 / 2, 490, 290],
+      // 4: [600, 100 + svgYMid - 220 / 2, 490, 290],
+      // 5: [650, 100 + svgYMid - 220 / 2, 490, 290],
+      // 6 : [850, 100 + svgYMid - 220 / 2, 490, 290],
+      // 7 : [100, 100 + svgYMid - 220 / 2, 490, 290],
+      // 8 : [60, 100 + svgYMid - 220 / 2, 490, 290],
+      // 9 : [200, 100 + svgYMid - 220 / 2, 490, 290],
+      // 10 : [300, 100 + svgYMid - 220 / 2, 490, 290],
+    }
 
     // Define global arrow marker end
     svg_rnn.append("defs")
@@ -727,13 +680,13 @@ const HOSTED_URLS = {
 
     console.log('rnn layers are: ', rnn);
 
-    let ui = d3.select(rnnOverviewComponent)
-      .select('#ui')
-      // .style('dominant-baseline', 'middle')
-      .style('font-size', '11px')
-      .style('fill', 'black')
-      .style('opacity', 0.5)
-      .text('test');
+    // let ui = d3.select(rnnOverviewComponent)
+    //   .select('#ui')
+    //   // .style('dominant-baseline', 'middle')
+    //   .style('font-size', '11px')
+    //   .style('fill', 'black')
+    //   .style('opacity', 0.5)
+    //   .text('test');
 
     let inputDim = model_lstm.layers[0].inputDim;
     updateRNNLayerRanges(inputDim);
@@ -741,8 +694,9 @@ const HOSTED_URLS = {
       rnnLayerRanges, rnnLayerMinMax);
 
     // Create and draw the RNN view
-    drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
-    nodeMouseLeaveHandler, nodeClickHandler);
+    // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
+    // nodeMouseLeaveHandler, nodeClickHandler);
+    drawRNN(width, height, rnnGroup, null, null, null);
 
     });
 
