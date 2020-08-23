@@ -33,10 +33,8 @@
 
 <div id='explainer'>
   {#if nn==="CNN"}
-    <p>cnn</p>
     <Overview />
   {:else if nn==="RNN"}
-    <p>rnn</p>
     <RNNOverview />
   {/if}
 </div>

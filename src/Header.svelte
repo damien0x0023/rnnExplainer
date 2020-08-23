@@ -82,20 +82,6 @@
 </style>
 
 <div id="header">
-<div id="NN-select">
-  <select bind:value={selectedNN} class="NNselector">
-  		{#each NNs as NN}
-			<option value={NN}>
-				{NN.alis}
-			</option>
-		{/each}
-  </select>
-</div>
-
-
-  <!-- <p>{selectedNN.alis}</p> -->
-
-
   <div id="logo">
     <div id="logo-text">
 	{selectedNN.alis} Explainer
@@ -121,7 +107,19 @@
 		</svg>
   </div>
 
-	<div class="icons">
+  <div id="NN-select">
+	<select bind:value={selectedNN} class="NNselector">
+			{#each NNs as NN}
+				<option value={NN}>
+					{NN.alis}
+				</option>
+			{/each}
+	</select>
+	</div>
+
+	<!-- <p>{selectedNN.alis}</p> -->
+
+	<!-- <div class="icons">
 	
 		<div class="icon" title="Research paper">
 			<a target="_blank" href="http://zijie.wang/redirect/cnn-explainer/">
@@ -140,5 +138,5 @@
 				<img src="PUBLIC_URL/assets/img/github.png" alt="github icon"/>
 			</a>
 		</div>
-	</div>
+	</div> -->
 </div>

@@ -1,6 +1,7 @@
-import { overviewConfig } from '../config.js';
+import { rnnOverviewConfig, overviewConfig } from '../config.js';
 
 // Configs
+const nodeHeight = rnnOverviewConfig.nodeHeight;
 const nodeLength = overviewConfig.nodeLength;
 
 /**
@@ -67,6 +68,68 @@ export const getMidCoords = (svg, elem) => {
       left: bbox.x
     };
   }
+}
+
+/**
+ * Return the output knot (right boundary center)
+ * @param {object} point {x: x, y:y}
+ */
+export const getOutputKnotRNN = (point) => {
+  return {
+    x: point.x + nodeLength,
+    y: point.y + nodeHeight / 2
+  };
+}
+
+/**
+ * Return the output knot (left boundary center)
+ * @param {object} point {x: x, y:y}
+ */
+export const getInputKnotRNN = (point) => {
+  return {
+    x: point.x,
+    y: point.y + nodeHeight / 2
+  }
+}
+
+/**
+ * Compute edge data
+ * @param {[[[number, number]]]} nodeCoordinate Constructed neuron svg locations
+ * @param {[object]} rnn Constructed rnn model
+ */
+export const getLinkDataRNN = (nodeCoordinate, rnn) => {
+  let linkData = [];
+  // Create links backward (starting for the first layer)
+  for (let l = 1; l < rnn.length; l++) {
+    for (let n = 0; n < rnn[l].length; n++) {
+      let isOutput = rnn[l][n].layerName === 'output';
+      let curTarget = getInputKnotRNN(nodeCoordinate[l][n]);
+      for (let p = 0; p < rnn[l][n].inputLinks.length; p++) {
+        // Specially handle output layer (since we are ignoring the flatten)
+        let inputNodeIndex = rnn[l][n].inputLinks[p].source.index;
+        
+        if (isOutput) {
+          let flattenDimension = rnn[l-1][0].output.length *
+            rnn[l-1][0].output.length;
+          if (inputNodeIndex % flattenDimension !== 0){
+              continue;
+          }
+          inputNodeIndex = Math.floor(inputNodeIndex / flattenDimension);
+        }
+        let curSource = getOutputKnotRNN(nodeCoordinate[l-1][inputNodeIndex]);
+        let curWeight = rnn[l][n].inputLinks[p].weight;
+        linkData.push({
+          source: curSource,
+          target: curTarget,
+          weight: curWeight,
+          targetLayerIndex: l,
+          targetNodeIndex: n,
+          sourceNodeIndex: inputNodeIndex
+        });
+      }
+    }
+  }
+  return linkData;
 }
 
 /**

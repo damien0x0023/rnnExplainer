@@ -33,6 +33,7 @@ export const overviewConfig = {
 
 const layerColorScales_rnn = {
   input: d3.interpolateGreys,
+  conv: d3.interpolateRdBu,
   embedding: d3.interpolateRdBu,
   lstm: d3.interpolateRdBu,
   // dense: d3.interpolateRdBu,
@@ -41,23 +42,23 @@ const layerColorScales_rnn = {
   logit: d3.interpolateOranges
 };
 
-let nodeLength_rnn = 4;
+let nodeLength_rnn = 40;
 
 export const rnnOverviewConfig = {
   nodeLength : nodeLength_rnn,
-  plusSymbolRadius : nodeLength / 5,
+  nodeHeight : 2,
+  plusSymbolRadius : nodeLength_rnn/5,
   numLayers : 4,
-  edgeOpacity : 0.8,
+  edgeOpacity : 0.9,
   edgeInitColor : 'rgb(230, 230, 230)',
   edgeHoverColor : 'rgb(130, 130, 130)',
   edgeHoverOuting : false,
-  edgeStrokeWidth : 0.7,
+  edgeStrokeWidth : 0.2,
   intermediateColor : 'gray',
   layerColorScales: layerColorScales_rnn,
   svgPaddings: {top: 25, bottom: 25, left: 50, right: 50},
   kernelRectLength: 8/3,
   gapRatio: 4,
   overlayRectOffset: 12,
-  classLists: ['lifeboat', 'ladybug', 'pizza', 'bell pepper', 'school bus',
-    'koala', 'espresso', 'red panda', 'orange', 'sport car']
+  classLists: ['Love or hate']
 };

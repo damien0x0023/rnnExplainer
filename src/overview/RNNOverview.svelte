@@ -31,7 +31,7 @@
   };
 
   // Overview functions
-  import { loadTrainedModel_rnn, constructRNN } from '../utils/rnn-tf.js';
+  import { loadTrainedModel_rnn, constructRNN, trimInputText } from '../utils/rnn-tf.js';
   // import { loadTrainedModel, constructCNN } from '../utils/cnn-tf.js';
   import { 
     // overviewConfig, 
@@ -673,20 +673,16 @@
     console.time('Construct rnn');
     model_lstm = await loadTrainedModel_rnn(LOCAL_URLS.model);
     console.log("The rnn model is: ",model_lstm);
+
     rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
       LOCAL_URLS.metadata, model_lstm);
+
+    let inputArray = await trimInputText(`${exampleReviews[selectedReview]}`);
+    console.log('input text array is: ', inputArray);
     console.timeEnd('Construct rnn');
     rnnStore.set(rnn);
 
     console.log('rnn layers are: ', rnn);
-
-    // let ui = d3.select(rnnOverviewComponent)
-    //   .select('#ui')
-    //   // .style('dominant-baseline', 'middle')
-    //   .style('font-size', '11px')
-    //   .style('fill', 'black')
-    //   .style('opacity', 0.5)
-    //   .text('test');
 
     let inputDim = model_lstm.layers[0].inputDim;
     updateRNNLayerRanges(inputDim);
@@ -696,7 +692,7 @@
     // Create and draw the RNN view
     // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
     // nodeMouseLeaveHandler, nodeClickHandler);
-    drawRNN(width, height, rnnGroup, null, null, null);
+    drawRNN(width, height, rnnGroup, null, null, null, inputArray);
 
     });
 
@@ -946,7 +942,7 @@
   <div class="control-container">
 
     <div class="left-control">
-      {#each imageOptions as image, i}
+      <!-- {#each imageOptions as image, i}
         <div class="image-container"
           on:click={disableControl ? () => {} : imageOptionClicked}
           class:inactive={selectedImage !== image.file}
@@ -957,9 +953,9 @@
             title="{image.class}"
             data-imageName={image.file}/>
         </div>
-      {/each}
+      {/each} -->
 
-      <div class="image-container"
+      <!-- <div class="image-container"
           class:inactive={selectedImage !== 'custom'}
           class:disabled={disableControl}
           data-imageName={'custom'}
@@ -977,9 +973,9 @@
             <i class="fas fa-pen fa-stack-1x fa-inverse"></i>
           </span>
 
-      </div>
+      </div> -->
 
-      <button class="button is-very-small is-link is-light"
+      <!-- <button class="button is-very-small is-link is-light"
         id="hover-label"
         style="opacity:{hoverInfo_rnn.show ? 1 : 0}">
         <span class="icon" style="margin-right: 5px;">
@@ -988,7 +984,7 @@
         <span id="hover-label-text">
           {hoverInfo_rnn.text}
         </span>
-      </button>
+      </button> -->
 
       <select bind:value={selectedReview} id="test-example-select" class="form-control">
         <option value="empty"> Please choose one example</option>

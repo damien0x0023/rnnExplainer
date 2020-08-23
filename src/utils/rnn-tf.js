@@ -6,6 +6,7 @@ import {Node, Link} from './class';
 // Network input image size
 const networkInputSize = 64;
 
+let inputTextOriginalArray;
 let indexFrom;
 let maxLen;
 let wordIndex;
@@ -53,6 +54,17 @@ export const loadMetadata = async (url) => {
 }
 
 /**
+ * Trim original review to text array
+ * 
+ * @param {string} inputReview 
+ * @returns Array of text
+ */
+export const trimInputText = (inputReview) => {
+  // Convert to lower case and remove all punctuations.
+  return inputReview.trim().toLowerCase().replace(/(\.|\,|\!)/g, '').split(' ');
+}
+
+/**
  * Get the 2D value array of the given review content.
  * 
  * @param {string} inputReview content of movie review
@@ -60,11 +72,10 @@ export const loadMetadata = async (url) => {
  */
 const getInputTextArray = (inputReview) => {
   // Convert to lower case and remove all punctuations.
-  let inputText =
-    inputReview.trim().toLowerCase().replace(/(\.|\,|\!)/g, '').split(' ');
+  inputTextOriginalArray = trimInputText(inputReview);
 
-    // Convert the words to a sequence of word indices.
-  let sequence = inputText.map(word => {
+  // Convert the words to a sequence of word indices.
+  let sequence = inputTextOriginalArray.map(word => {
       let this_wordIndex = wordIndex[word] + indexFrom;
       if (this_wordIndex > vocabularySize) {
         this_wordIndex = OOV_INDEX;
