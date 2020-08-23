@@ -51,50 +51,12 @@ yarn dev
 
 Navigate to [localhost:5000](https://localhost:5000). You should see the Explainer running in your broswer.
 
-To see how we trained the RNN, visit the directory [`./tiny-vgg/`](tiny-vgg) or [`./imdb/`](imdb).
+To see how we trained the CNN or RNN, visit the directory [`./tiny-vgg/`](tiny-vgg) or [`./imdb/`](imdb).
 
 ## Credits
-todo:
-CNN Explainer was created by 
-<a href="https://zijie.wang/">Jay Wang</a>,
-<a href="https://www.linkedin.com/in/robert-turko/">Robert Turko</a>, 
-<a href="http://oshaikh.com/">Omar Shaikh</a>,
-<a href="https://haekyu.com/">Haekyu Park</a>,
-<a href="http://nilakshdas.com/">Nilaksh Das</a>,
-<a href="https://fredhohman.com/">Fred Hohman</a>,
-<a href="http://minsuk.com">Minsuk Kahng</a>, and
-<a href="https://www.cc.gatech.edu/~dchau/">Polo Chau</a>,
-which was the result of a research collaboration between 
-Georgia Tech and Oregon State.
 
-<!-- We thank
-[Anmol Chhabria](https://www.linkedin.com/in/anmolchhabria),
-[Kaan Sancak](https://kaansancak.com),
-[Kantwon Rogers](https://www.kantwon.com), and the
-[Georgia Tech Visualization Lab](http://vis.gatech.edu)
-for their support and constructive feedback. -->
- 
-<!-- ## Citation
-```
-@article{wangCNNExplainerLearning2020,
-  title = {{{CNN Explainer}}: {{Learning Convolutional Neural Networks}} with {{Interactive Visualization}}},
-  shorttitle = {{{CNN Explainer}}},
-  author = {Wang, Zijie J. and Turko, Robert and Shaikh, Omar and Park, Haekyu and Das, Nilaksh and Hohman, Fred and Kahng, Minsuk and Chau, Duen Horng},
-  year = {2020},
-  month = apr,
-  archivePrefix = {arXiv},
-  eprint = {2004.15004},
-  eprinttype = {arxiv},
-  journal = {arXiv:2004.15004 [cs]}
-}
-``` -->
 
 ## License
-todo:
 The software is available under the [MIT License](https://github.com/poloclub/cnn-explainer/blob/master/LICENSE).
-
-## Contact
-todo:
-If you have any questions, feel free to [open an issue](https://github.com/poloclub/cnn-explainer/issues/new/choose) or contact [Jay Wang](https://www.zijie.wang).
 
 
