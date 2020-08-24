@@ -85,10 +85,10 @@ export const getOutputKnotRNN = (point) => {
  * Return the output knot (left boundary center)
  * @param {object} point {x: x, y:y}
  */
-export const getInputKnotRNN = (point) => {
+export const getInputKnotRNN = (point,deltaY) => {
   return {
     x: point.x,
-    y: point.y + nodeHeight / 2
+    y: point.y + deltaY 
   }
 }
 
@@ -103,7 +103,10 @@ export const getLinkDataRNN = (nodeCoordinate, rnn) => {
   for (let l = 1; l < rnn.length; l++) {
     for (let n = 0; n < rnn[l].length; n++) {
       let isOutput = rnn[l][n].layerName === 'output';
-      let curTarget = getInputKnotRNN(nodeCoordinate[l][n]);
+      // for calibration of the position of y in dense layer, 
+      // the height of the dense rect is nodeLength/4, so clibraton value should 5/8 of nodeLength
+      let deltaY = l !== rnn.length -1? nodeHeight/2 : nodeLength*5/8;
+      let curTarget = getInputKnotRNN(nodeCoordinate[l][n],deltaY);
       for (let p = 0; p < rnn[l][n].inputLinks.length; p++) {
         // Specially handle output layer (since we are ignoring the flatten)
         let inputNodeIndex = rnn[l][n].inputLinks[p].source.index;
@@ -116,7 +119,14 @@ export const getLinkDataRNN = (nodeCoordinate, rnn) => {
           }
           inputNodeIndex = Math.floor(inputNodeIndex / flattenDimension);
         }
-        let curSource = getOutputKnotRNN(nodeCoordinate[l-1][inputNodeIndex]);
+        // check if the source node in input layer exists, skip it if not
+        let curSource;
+        if (rnn[l-1][inputNodeIndex]){
+          curSource = getOutputKnotRNN(nodeCoordinate[l-1][inputNodeIndex]);
+        } else {
+
+          continue
+        }
         let curWeight = rnn[l][n].inputLinks[p].weight;
         linkData.push({
           source: curSource,

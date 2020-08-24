@@ -16,7 +16,7 @@
   import PoolView from '../detail-view/Poolview.svelte';
   import SoftmaxView from '../detail-view/Softmaxview.svelte';
   import Modal from './Modal.svelte'
-  import Article from '../article/Article.svelte';
+  import ArticleRNN from '../article/ArticleRNN.svelte';
 
   const HOSTED_URLS = {
     model:
@@ -186,7 +186,7 @@
 
   let selectedReview;
   const exampleReviews = {
-  'empty': 'Waiting for the review... ',
+  'empty': 'Helpless Waiting... ',
   'positive':
       `die hard mario fan and i loved this game br br this game starts slightly boring but trust me it\'s worth it as soon as you start your hooked the levels are fun and exiting they will hook you OOV your mind turns to mush i\'m not kidding this game is also orchestrated and is beautifully done br br to keep this spoiler free i have to keep my mouth shut about details but please try this game it\'ll be worth it br br story 9 9 action 10 1 it\'s that good OOV 10 attention OOV 10 average 10`,
   'negative':
@@ -261,11 +261,11 @@
       // rnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
       rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
         LOCAL_URLS.metadata, model_lstm);
-      // Ignore the flatten layer for now
-      // let flatten = cnn[cnn.length - 2];
-      // cnn.splice(cnn.length - 2, 1);
-      // cnn.flatten = flatten;
-      rnnStore.set(rnn);
+      // Ignore the meanless input <pad> for now
+      // let orignalInput = rnn[0];
+      // rnn[0].filter(d => d.output !== 0);
+      // rnn.rawInput = orignalInput;
+      // rnnStore.set(rnn);
 
       // Update all scales used in the CNN view
       updateRNNLayerRanges();
@@ -676,10 +676,15 @@
 
     rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
       LOCAL_URLS.metadata, model_lstm);
+    console.timeEnd('Construct rnn');
 
     let inputArray = await trimInputText(`${exampleReviews[selectedReview]}`);
     console.log('input text array is: ', inputArray);
-    console.timeEnd('Construct rnn');
+
+    // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
+    // cause the exploration of edges, which will cost performance loss in interface
+    rnn.rawInput = rnn[0];
+    rnn[0] = rnn.nonPadInput;
     rnnStore.set(rnn);
 
     console.log('rnn layers are: ', rnn);
@@ -692,7 +697,7 @@
     // Create and draw the RNN view
     // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
     // nodeMouseLeaveHandler, nodeClickHandler);
-    drawRNN(width, height, rnnGroup, null, null, null, inputArray);
+    drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null, inputArray);
 
     });
 
@@ -1043,7 +1048,7 @@
 
 </div>
 
-<Article/>
+<!-- <ArticleRNN/> -->
 
 <div id='detailview'>
  

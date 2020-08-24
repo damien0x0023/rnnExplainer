@@ -119,6 +119,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
 
   // Add the first layer (input layer)
   let inputLayer = [];
+  let nonPadInputLayer = [];
   let inputShape = model.layers[0].batchInputShape.slice(1);
   let inputTextArray = inputTextTensor.transpose([1,0]).arraySync();
 
@@ -126,6 +127,9 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
   for (let i = 0; i < inputShape[0]; i++) {
     let node = new Node('input', i, nodeType.INPUT, 0, inputTextArray[i]);
     inputLayer.push(node);
+    if (inputTextArray[i][0] !== 0) {
+      nonPadInputLayer.push(node);
+    }
   }
                                                                                                                    
   rnn.push(inputLayer);
@@ -371,6 +375,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
     curLayerIndex++;
   }
 
+  rnn.nonPadInput = nonPadInputLayer;
   return rnn;
 }
 

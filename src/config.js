@@ -49,16 +49,16 @@ export const rnnOverviewConfig = {
   nodeHeight : 2,
   plusSymbolRadius : nodeLength_rnn/5,
   numLayers : 4,
-  edgeOpacity : 0.9,
+  edgeOpacity : 0.8,
   edgeInitColor : 'rgb(230, 230, 230)',
   edgeHoverColor : 'rgb(130, 130, 130)',
   edgeHoverOuting : false,
-  edgeStrokeWidth : 0.2,
+  edgeStrokeWidth : 0.3,
   intermediateColor : 'gray',
   layerColorScales: layerColorScales_rnn,
   svgPaddings: {top: 25, bottom: 25, left: 50, right: 50},
   kernelRectLength: 8/3,
   gapRatio: 4,
   overlayRectOffset: 12,
-  classLists: ['Love or hate']
+  classLists: ['Hate', 'Love']
 };
