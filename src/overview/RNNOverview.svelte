@@ -992,7 +992,7 @@
       </button> -->
 
       <select bind:value={selectedReview} id="test-example-select" class="form-control">
-        <option value="empty"> Please choose one example</option>
+        <!-- <option value="empty"> Please choose one example</option> -->
         <option value="positive">Positive example</option>
         <option value="negative">Negative example</option>
       </select>

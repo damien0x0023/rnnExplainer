@@ -43,13 +43,15 @@ const layerColorScales_rnn = {
 };
 
 let nodeLength_rnn = 40;
+let nodeHeight_rnn = 4
 
 export const rnnOverviewConfig = {
   nodeLength : nodeLength_rnn,
-  nodeHeight : 2,
+  nodeHeight : nodeHeight_rnn,
+  // lenHeiRat: nodeLength_rnn/nodeHeight_rnn,
   plusSymbolRadius : nodeLength_rnn/5,
   numLayers : 4,
-  edgeOpacity : 0.8,
+  edgeOpacity : 0.5,
   edgeInitColor : 'rgb(230, 230, 230)',
   edgeHoverColor : 'rgb(130, 130, 130)',
   edgeHoverOuting : false,

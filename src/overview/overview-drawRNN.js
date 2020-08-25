@@ -13,7 +13,6 @@ import { rnnOverviewConfig, overviewConfig } from '../config.js';
 // Configs
 const layerColorScales = rnnOverviewConfig.layerColorScales;
 const nodeLength = rnnOverviewConfig.nodeLength;
-const nodeWidth = rnnOverviewConfig.nodeWidth;
 const nodeHeight = rnnOverviewConfig.nodeHeight;
 const numLayers = rnnOverviewConfig.numLayers;
 const edgeOpacity = rnnOverviewConfig.edgeOpacity;
@@ -76,26 +75,55 @@ export const drawOutputRNN = (d, i, g, range) => {
   // }
 
   // Set up a second canvas in order to resize image
+  // imageLength is the width of canvas in rnn
   let imageLength = d.output.length === undefined ? 1 : d.output.length;
+
   let bufferCanvas = document.createElement("canvas");
   let bufferContext = bufferCanvas.getContext("2d");
+
   bufferCanvas.width = imageLength;
   bufferCanvas.height = imageLength;
+  // the above code may cause problem because the imageHeight is not the same as imageLength 
+  // the height of node for embedding unit in rnn is 1
+  let imageHeight = 1 ;
+  // if (!d.output.length || !d.output[0].length){
+  //   // number or 1d array
+  //   imageHeight = 1;
+  // } else if (!d.output[0][0].length )  {
+  //   // 2d array
+  //   imageHeight = d.output[0].length;
+  // } 
+  // bufferCanvas.height = imageHeight;
 
   // Fill image pixel array
-  let imageSingle = bufferContext.getImageData(0, 0, imageLength, imageLength);
+  let imageSingle = bufferContext.getImageData(0, 0, imageLength, imageHeight);
   let imageSingleArray = imageSingle.data;
 
   if (imageLength === 1) {
-    imageSingleArray[0] = d.output;
-  } else {
+    // imageSingleArray[0] = d.output;
+    // for output is number, for instance, LSTM..
+    let color = d3.rgb(colorScale((d.output+range/2)/range));
+    imageSingleArray[0] = color.r;
+    imageSingleArray[1] = color.g;
+    imageSingleArray[2] = color.b;
+    imageSingleArray[3] = 255;
+  } else if (d.type.includes('embedding')){
+    for (let j = 0; j < imageLength; j++){
+      let color = d3.rgb(colorScale((d.output[j] + range/2)/range));
+
+      imageSingleArray[4*j] = color.r;
+      imageSingleArray[4*j + 1] = color.g;
+      imageSingleArray[4*j + 2] = color.b;
+      imageSingleArray[4*j + 3] = 255;
+    }
+  }else{
     for (let i = 0; i < imageSingleArray.length; i+=4) {
       let pixeIndex = Math.floor(i / 4);
       let row = Math.floor(pixeIndex / imageLength);
       let column = pixeIndex % imageLength;
       let color = undefined;
       if (d.type === 'input' || d.type === 'fc' ) {
-        color = d3.rgb(colorScale(1 - d.output[row][column]))
+        color = d3.rgb(colorScale(1 - d.output[row][column]));
       } else {
         color = d3.rgb(colorScale((d.output[row][column] + range / 2) / range));
       }
@@ -106,19 +134,42 @@ export const drawOutputRNN = (d, i, g, range) => {
       imageSingleArray[i + 3] = 255;
     }
   }
+  
+
+  if(i === 127) {
+    console.log(imageSingle);
+  }
 
   // canvas.toDataURL() only exports image in 96 DPI, so we can hack it to have
   // higher DPI by rescaling the image using canvas magic
   let largeCanvas = document.createElement('canvas');
-  largeCanvas.width = nodeLength * 3;
-  largeCanvas.height = nodeLength * 3;
+  largeCanvas.width = nodeLength*3 ;
+  largeCanvas.height = nodeHeight*3 ;
   let largeCanvasContext = largeCanvas.getContext('2d');
 
   // Use drawImage to resize the original pixel array, and put the new image
   // (canvas) into corresponding canvas
   bufferContext.putImageData(imageSingle, 0, 0);
-  largeCanvasContext.drawImage(bufferCanvas, 0, 0, imageLength, imageLength,
-    0, 0, nodeLength * 3, nodeLength * 3);
+  // drawImage(img,sx,sy,swidth,sheight,x,y,width,height);
+  // sx Optional
+  // The x-axis coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
+  // sy Optional
+  // The y-axis coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
+  // sWidth Optional
+  // The width of the sub-rectangle of the source image to draw into the destination context. If not specified, the entire rectangle from the coordinates specified by sx and sy to the bottom-right corner of the image is used.
+  // sHeight Optional
+  // The height of the sub-rectangle of the source image to draw into the destination context.
+  // dx
+  // The x-axis coordinate in the destination canvas at which to place the top-left corner of the source image.
+  // dy
+  // The y-axis coordinate in the destination canvas at which to place the top-left corner of the source image.
+  // dWidth Optional
+  // The width to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in width when drawn.
+  // dHeight Optional
+  // The height to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in height when drawn.
+  largeCanvasContext.drawImage(bufferCanvas, 0, 0, imageLength, imageHeight,
+      0, 0, nodeLength*3, nodeHeight*3);
+
   
   let imageDataURL = largeCanvas.toDataURL();
   d3.select(image).attr('xlink:href', imageDataURL);
@@ -531,9 +582,8 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
       //   .attr('width', nodeLength)
       //   .attr('height', nodeLength)
       //   .attr('x', left)
-      //   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y);
-      
-      // Add a rectangle to show the border
+      //   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y);      
+
       nodeGroups.append('rect')
         .attr('class', 'input-rect')
         .attr('width', nodeLength)
@@ -544,51 +594,27 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
         .style('fill', (d, i) => colorScale((curLayer[i].output+range/2)/range))
         .style('stroke', 'gray')
         .style('stroke-width', 0.1)
-        .classed('hidden', false);
       nodeGroups.append('text')
         .attr('class', 'input-text')
-        .attr('x', svgPaddings.left/2)
+        .attr('x', svgPaddings.left/3)
         .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
         .style('dominant-baseline', 'middle')
         .style('font-size', '8px')
         .style('fill', 'black')
         .style('opacity', 0.8)
-        .text((d, i) => inputTextList[i] === undefined? '<pad>':inputTextList[i]);
-    } else if (curLayer[0].layerName.includes('lstm')) {
-      nodeGroups.append('rect')
-      .attr('class', 'lstm-rect')
-      .attr('width', nodeLength)
-      .attr('height', nodeHeight)
-      .attr('x', left)
-      .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
-      .style('cursor', 'crosshair')
-      .style('fill', (d, i) => colorScale((curLayer[i].output+range/2)/range))
-      .style('stroke', 'gray')
-      .style('stroke-width', 0.1)
-      .classed('hidden', false);
-    } else if (curLayer[0].layerName.includes('embedding')){ 
-      nodeGroups.append('rect')
-      .attr('class', 'embedding-rect')
-        .attr('width', nodeLength)
-        .attr('height', nodeHeight)
-        .attr('x', left)
-        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
-        .style('cursor', 'crosshair')
-        // need to review the output [100] for  colorScale
-        .style('fill', (d, i) => colorScale((curLayer[i].output[0]+range/2)/range))
-        .style('stroke', 'gray')
-        .style('stroke-width', 0.1)
-        .classed('hidden', false);
+        .text((d, i) => inputTextList[i] === undefined? `<pad>:${d.output}`:`${inputTextList[i]}:${d.output}`);
     } else if (curLayer[0].layerName.includes('dense')){ 
+      // Add a rectangle to show the border
       nodeGroups.append('rect')
-      .attr('class', 'output-rect-border')
+      .attr('class', 'bounding')
       .attr('x', left)
       .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
       .attr('height', nodeLength / 4)
       .attr('width', nodeLength)
       .style('fill', 'none')
-      .style('stroke', 'rgb(20, 20, 20)')
-      .style('stroke-width', 0.3);
+      .style('stroke', 'gray')
+      .style('stroke-width', 0.5)
+      .classed('hidden', false);
       nodeGroups.append('rect')
         .attr('class', 'output-rect')
         .attr('x', left)
@@ -631,7 +657,28 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
       //   .attr('x', left)
       //   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + 10)
       //   .text(d => `(${d3.format('.4f')(d.output)})`);
+    } else {
+            // Embed raster image in these groups
+            nodeGroups.append('image')
+            .attr('class', 'node-image')
+            .attr('width', nodeLength)
+            .attr('height', nodeHeight)
+            .attr('x', left)
+            .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y);
+
+          // Add a rectangle to show the border
+          nodeGroups.append('rect')
+            .attr('class', 'bounding')
+            .attr('width', nodeLength)
+            .attr('height', nodeHeight)
+            .attr('x', left)
+            .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+            .style('fill', 'none')
+            .style('stroke', 'gray')
+            .style('stroke-width', 1)
+            .classed('hidden', true);    
     }
+
     leftAccuumulatedSpace += nodeLength;
   }
 
@@ -644,13 +691,14 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
         .domain([rnnLayerMinMax[rnn.length-1].min, rnnLayerMinMax[rnn.length-1].max])
         .range([0, nodeLength]);
 
-  // // Draw the canvas
-  // for (let l = 0; l < rnn.length; l++) {
-  //   let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
-  //   svg_rnn.select(`g#rnn-layer-group-${l}`)
-  //     .selectAll('image.node-image')
-  //     .each((d, i, g) => drawOutputRNN(d, i, g, range));
-  // }
+  // Draw the canvas
+  for (let l = 0; l < rnn.length; l++) {
+    let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
+
+    svg_rnn.select(`g#rnn-layer-group-${l}`)
+      .selectAll('image.node-image')
+      .each((d, i, g) => drawOutputRNN(d, i, g, range));
+  }
 
   svg_rnn.selectAll('g.node-output').each(
     (d, i, g) => drawOutputScore(d, i, g, outputRectScale)
