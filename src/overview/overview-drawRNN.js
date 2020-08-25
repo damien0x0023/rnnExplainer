@@ -509,15 +509,14 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
       .attr('class', 'rnn-layer-group')
       .attr('id', `rnn-layer-group-${l}`);
 
-    // // igonre the count of y when the node contains <pad> in the input layer
-    // if (curLayer[0].layerName === 'input') {
-    //   meaningfulInputLen = curLayer.filter(d =>d.output !== 0).length;
-    //   vSpaceAroundGap_rnn = (height - nodeHeight * meaningfulInputLen) /
-    //   (meaningfulInputLen + 1);
-    // } else {
+    // igonre the count of y when the node contains <pad> in the input layer
+    if (curLayer[0].layerName !== 'input') {
       vSpaceAroundGap_rnn = (height - nodeHeight * curLayer.length) /
       (curLayer.length + 1);
-    // }
+    } else {
+      vSpaceAroundGap_rnn = (height - nodeHeight/2 * curLayer.length) /
+      (curLayer.length + 1);
+    }
 
     vSpaceAroundGapStore_rnn.set(vSpaceAroundGap_rnn);
 
@@ -537,7 +536,13 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
         // Not using transform on the group object because of a decade old
         // bug on webkit (safari)
         // https://bugs.webkit.org/show_bug.cgi?id=23113
-        let top = i * nodeHeight + (i + 1) * vSpaceAroundGap_rnn;
+        let top;
+        if (d.type !=='input'){
+          top = i * nodeHeight + (i + 1) * vSpaceAroundGap_rnn;
+        } else{
+          top = i * nodeHeight/2 + (i + 1) * vSpaceAroundGap_rnn;
+        }
+
         top += svgPaddings.top;
         nodeCoordinate_rnn[l].push({x: left, y: top});
         return `layer-${l}-node-${i}`
@@ -587,7 +592,7 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
       nodeGroups.append('rect')
         .attr('class', 'input-rect')
         .attr('width', nodeLength)
-        .attr('height', nodeHeight)
+        .attr('height', nodeHeight/2)
         .attr('x', left)
         .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
         .style('cursor', 'crosshair')
@@ -596,13 +601,14 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
         .style('stroke-width', 0.1)
       nodeGroups.append('text')
         .attr('class', 'input-text')
-        .attr('x', svgPaddings.left/3)
+        .attr('x', 0)
         .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
         .style('dominant-baseline', 'middle')
-        .style('font-size', '8px')
+        .style('font-size', '7px')
         .style('fill', 'black')
         .style('opacity', 0.8)
-        .text((d, i) => inputTextList[i] === undefined? `<pad>:${d.output}`:`${inputTextList[i]}:${d.output}`);
+        // .text((d, i) => inputTextList[i] === undefined? `<pad>:${d.output}`:`${inputTextList[i]}:${d.output}`);
+        .text((d, i) => inputTextList[i] === undefined? `<pad>`:`${inputTextList[i]}`);
     } else if (curLayer[0].layerName.includes('dense')){ 
       // Add a rectangle to show the border
       nodeGroups.append('rect')
@@ -815,14 +821,14 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
   getLegendGradient(svg_rnn, layerColorScales.input, 'inputGradient');
   getLegendGradient(svg_rnn, layerColorScales.dense, 'denseGradient');
 
-  let legendHeight = 5;
+  let legendHeight = nodeLength / 8;
+  let legentY = svgPaddings.top + vSpaceAroundGap_rnn 
+    * (rnn[rnn.length-1].length+1) + nodeLength / 3;
+
   // y is based on the last one of vSpaceAroundGap_rnn
   let legends = svg_rnn.append('g')
       .attr('class', 'color-legend')
-      .attr('transform', `translate(${0}, ${
-        svgPaddings.top + vSpaceAroundGap_rnn 
-          * (rnn[rnn.length-1].length+1) + nodeLength / 5
-      })`);
+      .attr('transform', `translate(${0}, ${legentY})`);
   
   drawLegends(legends, legendHeight);
 

@@ -186,7 +186,7 @@
 
   let selectedReview;
   const exampleReviews = {
-  'empty': 'Helpless Waiting... ',
+  'empty': 'Helpless Waiting... The text here is for testing as rendering 100 words representation will cost much time I will seek to improve the responce speed later',
   'positive':
       `die hard mario fan and i loved this game br br this game starts slightly boring but trust me it\'s worth it as soon as you start your hooked the levels are fun and exiting they will hook you OOV your mind turns to mush i\'m not kidding this game is also orchestrated and is beautifully done br br to keep this spoiler free i have to keep my mouth shut about details but please try this game it\'ll be worth it br br story 9 9 action 10 1 it\'s that good OOV 10 attention OOV 10 average 10`,
   'negative':

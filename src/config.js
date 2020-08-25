@@ -43,7 +43,7 @@ const layerColorScales_rnn = {
 };
 
 let nodeLength_rnn = 40;
-let nodeHeight_rnn = 4
+let nodeHeight_rnn = nodeLength_rnn / 4;
 
 export const rnnOverviewConfig = {
   nodeLength : nodeLength_rnn,
