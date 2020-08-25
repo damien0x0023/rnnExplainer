@@ -25,12 +25,132 @@ const nodeType = {
   DENSE: 'dense',
 };
 
+export class SentimentPredictor{
+  /**
+   * 
+   * @param {string} urls 
+   */
+  async init(urls) {
+    this.urls= urls;
+    this.model = await loadTrainedModel_rnn(urls.model);
+    this.metadata = await this.loadMetadata(urls.metadata);
+    this.inputArray;
+    this.inputTensor;
+
+    return this;
+  }
+
+  /**
+ * Load metadata file.
+ *
+ * @return An object containing metadata as key-value pairs.
+ */
+  async loadMetadata(url) {
+    console.log('Loading metadata from ' + url)
+    try {
+      const metadataJson = await fetch(url);
+      const metadata = await metadataJson.json();
+      console.log('Done loading metadata from '+url);
+
+      indexFrom = metadata['index_from'];
+      maxLen = metadata['max_len'];
+      wordIndex = metadata['word_index'];
+      vocabularySize = metadata['vocabulary_size'];
+      console.log('indexFrom = ' , indexFrom);
+      console.log('maxLen = ' , maxLen);
+      // console.log('wordIndex = ' , wordIndex);
+      console.log('vocabularySize = ', vocabularySize);
+
+      return metadata;
+    } catch(err) {
+      console.error(err);
+      console.log('Loading metadata failed.');
+    }
+  }
+
+  /**
+ * return a object of elapsed time and final score
+ * 
+ * @param {Tensor} input Loaded input text tensor.
+ * @param {Model} model Loaded tf.js model.
+ */
+  async predictResult(inputMovieReview, model=this.model) {
+    console.log("-----------------predict this review directly using tfjs-----------------")
+    // console.log('input review is: ', inputMovieReview)
+    if(!this.inputArray){
+      this.inputArray = await getInputTextArray(inputMovieReview);
+    }
+    if(!this.inputTensor){
+      this.inputTensor = await getInputTextTensor(this.inputArray);
+    }
+
+    // console.log('tensor is: '+ this.inputTensor);
+    let beginMs = performance.now();
+    let predictOut = model.predict(this.inputTensor);
+    let res = predictOut.dataSync();
+    let score = res[0];
+    predictOut.dispose();
+    let endMs = performance.now();
+
+    return {score: score, elapsed: (endMs - beginMs), 
+      inputReviewArray: this.inputArray,
+      inputReviewTensor: this.inputTensor};
+  }
+
+  async constructNN(inputMovieReview, model= this.model) {
+    console.log("-----------------predict layer by layer and generate NN structure-----------------")
+    // console.log('input review is: ', inputMovieReview)
+
+    // Get the array and tensor if do not execure predictOut before
+    if(!this.inputArray){
+      this.inputArray = await getInputTextArray(inputMovieReview);
+    }
+    if(!this.inputTensor){
+      this.inputTensor = await getInputTextTensor(this.inputArray);
+    }
+
+    // let inputTensorBatch = tf.stack([inputTensor]);
+    // console.log('input text tensor is: ', this.inputTensor);
+
+    let preTensor = this.inputTensor; 
+    let outputs = [];
+
+    for (let l = 0; l< model.layers.length; l++) {
+      console.log('current layer name is: ', model.layers[l].name);
+      let curTensor = model.layers[l].apply(preTensor);
+      // console.log(curTensor);
+
+      // Set the squeeze dim is 0 to unpack the batch otherwise it will 
+      // ignore the final outcome if there is only one value.
+      let output = curTensor.squeeze([0]);
+      // let output = curTensor.squeeze();
+
+
+      if (output.shape.length === 2) {
+        console.log(output.shape);
+        output = output.transpose([1, 0]);
+      } 
+      console.log(output.shape);
+      outputs.push(output);
+
+      preTensor = curTensor;
+    }
+    console.log('final rnn outputs is ' )
+    console.log(outputs);
+    console.log('rnn result is ' + outputs[2])
+
+    let rnn = constructRNNFromOutputs(outputs, model, this.inputTensor);
+    return rnn;
+  }
+
+}
+
 /**
  * Load metadata file.
  *
  * @return An object containing metadata as key-value pairs.
  */
-export const loadMetadata = async (url) => {
+const loadMetadata = async (url) => {
   console.log('Loading metadata from ' + url)
   try {
     const metadataJson = await fetch(url);
@@ -65,7 +185,7 @@ export const trimInputText = (inputReview) => {
 }
 
 /**
- * Get the 2D value array of the given review content.
+ * Get the 1D value array of the given review content.
  * 
  * @param {string} inputReview content of movie review
  * @returns A promise with the corresponding 2D array
@@ -74,8 +194,17 @@ const getInputTextArray = (inputReview) => {
   // Convert to lower case and remove all punctuations.
   inputTextOriginalArray = trimInputText(inputReview);
 
+  return inputTextOriginalArray;
+}
+
+/**
+ *  Get the tensor of the given review array
+ * 
+ * @param {array[string]} inputArray 
+ */
+const getInputTextTensor = (inputArray) => {
   // Convert the words to a sequence of word indices.
-  let sequence = inputTextOriginalArray.map(word => {
+  let sequence = inputArray.map(word => {
       let this_wordIndex = wordIndex[word] + indexFrom;
       if (this_wordIndex > vocabularySize) {
         this_wordIndex = OOV_INDEX;
@@ -87,24 +216,27 @@ const getInputTextArray = (inputReview) => {
   let paddedSequence = padSequences([sequence], maxLen);
   // console.log('paddedSequence is: ',paddedSequence);
   let tensor = tf.tensor2d(paddedSequence, [1,maxLen]);
-  return tensor;
+
+  return tensor
 }
 
-/**
- * return a object of elapsed time and final score
- * 
- * @param {Tensor} input Loaded input text tensor.
- * @param {Model} model Loaded tf.js model.
- */
-const predictResult = (input, model) => {
-  let beginMs = performance.now();
-  let predictOut = model.predict(input);
-  let score = predictOut.dataSync()[0];
-  predictOut.dispose();
-  let endMs = performance.now();
+// /**
+//  * return a object of elapsed time and final score
+//  * 
+//  * @param {Tensor} input Loaded input text tensor.
+//  * @param {Model} model Loaded tf.js model.
+//  */
+// export const predictResult = async (inputMovieReview, model) => {
+//   let inputTextTensor = await getInputTextArray(inputMovieReview);
+  
+//   let beginMs = performance.now();
+//   let predictOut = model.predict(inputTextTensor);
+//   let score = predictOut.dataSync()[0];
+//   predictOut.dispose();
+//   let endMs = performance.now();
 
-  return {score: score, elapsed: (endMs - beginMs)};
-}
+//   return {score: score, elapsed: (endMs - beginMs)};
+// }
 
 /**
  * Construct layer architecture of a RNN with given extracted outputs from every layer.
@@ -422,10 +554,6 @@ export const constructRNN = async (inputMovieReview, metadataFile, model) => {
   console.log('final rnn outputs is ' )
   console.log(outputs);
   console.log('rnn result is ' + outputs[2])
-  
-  // let result = predictResult(inputTextTensor, model);
-  // console.log('predicted time is: ', result.elapsed);
-  // console.log('predicted score is: ', result.score);
 
   let rnn = constructRNNFromOutputs(outputs, model, inputTextTensor);
   return rnn;

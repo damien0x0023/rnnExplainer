@@ -31,7 +31,7 @@
   };
 
   // Overview functions
-  import { loadTrainedModel_rnn, constructRNN, trimInputText } from '../utils/rnn-tf.js';
+  import { loadTrainedModel_rnn, constructRNN, SentimentPredictor } from '../utils/rnn-tf.js';
   // import { loadTrainedModel, constructCNN } from '../utils/cnn-tf.js';
   import { 
     // overviewConfig, 
@@ -670,15 +670,27 @@
       .style('stroke-width', 2)
       .attr("d", "M-5,-10L10,0L-5,10");
 
-    console.time('Construct rnn');
-    model_lstm = await loadTrainedModel_rnn(LOCAL_URLS.model);
-    console.log("The rnn model is: ",model_lstm);
+    // model_lstm = await loadTrainedModel_rnn(LOCAL_URLS.model);
+    // console.log("The rnn model is: ",model_lstm);
 
-    rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
-      LOCAL_URLS.metadata, model_lstm);
+    let predictor = await new SentimentPredictor().init(LOCAL_URLS);
+    model_lstm = predictor.model;
+    console.log("The rnn model is: ", model_lstm);
+
+    let result;
+    await predictor.predictResult(`${exampleReviews[selectedReview]}`, model_lstm).
+          then(res => result = res);
+    console.log('Direct Result: Inference result (0 - negative; 1 - positive): ' +
+                  result.score.toFixed(6) +
+                ' (elapsed: ' + result.elapsed.toFixed(2) + ' ms)');
+
+    console.time('Construct rnn');
+    // rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
+    //   LOCAL_URLS.metadata, model_lstm);
+    rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
     console.timeEnd('Construct rnn');
 
-    let inputArray = await trimInputText(`${exampleReviews[selectedReview]}`);
+    let inputArray = predictor.inputArray;
     console.log('input text array is: ', inputArray);
 
     // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
@@ -992,7 +1004,7 @@
       </button> -->
 
       <select bind:value={selectedReview} id="test-example-select" class="form-control">
-        <!-- <option value="empty"> Please choose one example</option> -->
+        <option value="empty"> Please choose one example</option>
         <option value="positive">Positive example</option>
         <option value="negative">Negative example</option>
       </select>
@@ -1036,6 +1048,8 @@
   <div class="review">
     <textarea id="review-text">{exampleReviews[selectedReview]}</textarea>
   </div>
+
+  <div class="ui"></div>
 
   <div class="rnn" id="rnnView">
     <span id='ui' class="status"></span>
