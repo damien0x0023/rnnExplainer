@@ -466,6 +466,11 @@ const drawLegends = (legends, legendHeight) => {
     .style('fill', 'url(#inputGradient)');
 }
 
+//todo: split drawRNN into small pieces for the use of updateRNN
+const drawMainFrame = () => {
+  
+}
+
 /**
  * Draw the overview
  * @param {number} width Width of the rnn group
@@ -480,9 +485,10 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
   // Draw the RNN
 
   hSpaceAroundGap_rnn = (width - nodeLength * numLayers) 
-    / (n_shortGaps + n_longGaps * gapRatio);
+               / (n_shortGaps + n_longGaps * gapRatio);
   // console.log('horizontal space around gap is: ', hSpaceAroundGap_rnn);
   hSpaceAroundGapStore_rnn.set(hSpaceAroundGap_rnn);
+  
   let leftAccuumulatedSpace = 0;
 
   // Iterate through the rnn to draw nodes in each layer
@@ -1011,7 +1017,7 @@ export const updateRNN = () => {
 /**
  * Update the ranges for current CNN layers
  */
-export const updateRNNLayerRanges = (inputDim=1) => {
+export const updateRNNLayerRanges = () => {
   // Iterate through all nodes to find a output ranges for each layer
   let rnnLayerRangesLocal = [1];
   let curRange = undefined;
@@ -1067,8 +1073,8 @@ export const updateRNNLayerRanges = (inputDim=1) => {
   rnnLayerRangesComponent.push(1);
 
   let rnnLayerRangesGlobal = [1];
-  let maxRange = Math.max(...rnnLayerRangesLocal.slice(1,
-    rnnLayerRangesLocal.length - 1));
+  let maxRange = Math.max(...rnnLayerRangesLocal.
+                  slice(1, rnnLayerRangesLocal.length - 1));
   for (let i = 0; i < numLayers - 2; i++) {
     rnnLayerRangesGlobal.push(maxRange);
   }
