@@ -31,7 +31,7 @@
   };
 
   // Overview functions
-  import { loadTrainedModel_rnn, constructRNN, trimInputText } from '../utils/rnn-tf.js';
+  import { loadTrainedModel_rnn, constructRNN, SentimentPredictor } from '../utils/rnn-tf.js';
   // import { loadTrainedModel, constructCNN } from '../utils/cnn-tf.js';
   import { 
     // overviewConfig, 
@@ -184,14 +184,17 @@
   ];
   let selectedImage = imageOptions[1].file;
 
-  let selectedReview;
+
   const exampleReviews = {
-  'empty': 'Helpless Waiting... ',
+  'empty': 'Helpless Waiting... The text here is for testing as rendering 100 words representation will cost much time I will seek to improve the responce speed later',
   'positive':
       `die hard mario fan and i loved this game br br this game starts slightly boring but trust me it\'s worth it as soon as you start your hooked the levels are fun and exiting they will hook you OOV your mind turns to mush i\'m not kidding this game is also orchestrated and is beautifully done br br to keep this spoiler free i have to keep my mouth shut about details but please try this game it\'ll be worth it br br story 9 9 action 10 1 it\'s that good OOV 10 attention OOV 10 average 10`,
   'negative':
       `the mother in this movie is reckless with her children to the point of neglect i wish i wasn\'t so angry about her and her actions because i would have otherwise enjoyed the flick what a number she was take my advise and fast forward through everything you see her do until the end also is anyone else getting sick of watching movies that are filmed so dark anymore one can hardly see what is being filmed as an audience we are impossibly involved with the actions on the screen so then why the hell can\'t we have night vision`
   };
+  let selectedReview = 'negative';
+  let previousSelectedReview = selectedReview;
+  let predictor;
 
   let nodeData;
   let selectedNodeIndex = -1;
@@ -249,6 +252,34 @@
     }
   }
 
+  const reviewOptionClicked = async ()=>{
+    // let newReview = exampleReviews[selectedReview];
+
+    if (selectedReview !== previousSelectedReview) {
+      previousSelectedReview = selectedReview; 
+      console.log('function unfinished. The current Review is: ', selectedReview);
+
+      console.time('Construct rnn');
+      // rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
+      //   LOCAL_URLS.metadata, model_lstm);
+      rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
+      console.timeEnd('Construct rnn');
+
+      rnn.rawInput = rnn[0];
+      rnn[0] = rnn.nonPadInput;
+      rnnStore.set(rnn);
+      console.log('rnn layers are: ', rnn);
+
+      updateRNNLayerRanges();
+      console.log("rnn layer ranges and MinMax are: ", 
+        rnnLayerRanges, rnnLayerMinMax);
+
+      updateRNN();
+    } else {
+      console.log('function unfinished. The current Review does not change')
+    }
+  }
+
   // responce to click other image, todo: change image to change review option
   const imageOptionClicked = async (e) => {
     // todo: need to rewrite for the content of review
@@ -267,7 +298,7 @@
       // rnn.rawInput = orignalInput;
       // rnnStore.set(rnn);
 
-      // Update all scales used in the CNN view
+      // Update all scales used in the RNN view
       updateRNNLayerRanges();
       updateRNN();
     }
@@ -613,6 +644,22 @@
     }
   }
 
+  const directPredict = (input, model) => {
+    if (predictor) {
+      // await predictor.predictResult(input, model).
+            // then(res => result = res);
+
+      let result = predictor.predictResult(input, model);
+
+      console.log('Direct Result: Inference result (0 - negative; 1 - positive): ' +
+                    result.score.toFixed(6) +
+                  ' (elapsed: ' + result.elapsed.toFixed(2) + ' ms)');
+    } else {
+      console.log('something went wrong with predictor');
+    }
+
+  }
+
   onMount(async () => {
     // Create RNN
     console.log(`-----------Creating RNN---------------`);
@@ -682,15 +729,30 @@
       .style('stroke-width', 2)
       .attr("d", "M-5,-10L10,0L-5,10");
 
-    console.time('Construct rnn');
-    model_lstm = await loadTrainedModel_rnn(LOCAL_URLS.model);
-    console.log("The rnn model is: ",model_lstm);
+    // model_lstm = await loadTrainedModel_rnn(LOCAL_URLS.model);
+    // console.log("The rnn model is: ",model_lstm);
 
-    rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
-      LOCAL_URLS.metadata, model_lstm);
+    predictor = await new SentimentPredictor().init(LOCAL_URLS);
+    model_lstm = predictor.model;
+    console.log("The rnn model is: ", model_lstm);
+
+    // check the result first
+    directPredict(`${exampleReviews[selectedReview]}`, model_lstm);
+
+    // // let result;
+    // // await predictor.predictResult(`${exampleReviews[selectedReview]}`, model_lstm).
+    // //       then(res => result = res);
+    // // console.log('Direct Result: Inference result (0 - negative; 1 - positive): ' +
+    // //               result.score.toFixed(6) +
+    // //             ' (elapsed: ' + result.elapsed.toFixed(2) + ' ms)');
+
+    console.time('Construct rnn');
+    // rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
+    //   LOCAL_URLS.metadata, model_lstm);
+    rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
     console.timeEnd('Construct rnn');
 
-    let inputArray = await trimInputText(`${exampleReviews[selectedReview]}`);
+    let inputArray = predictor.inputArray;
     console.log('input text array is: ', inputArray);
 
     // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
@@ -698,11 +760,9 @@
     rnn.rawInput = rnn[0];
     rnn[0] = rnn.nonPadInput;
     rnnStore.set(rnn);
-
     console.log('rnn layers are: ', rnn);
 
-    let inputDim = model_lstm.layers[0].inputDim;
-    updateRNNLayerRanges(inputDim);
+    updateRNNLayerRanges();
     console.log("rnn layer ranges and MinMax are: ", 
       rnnLayerRanges, rnnLayerMinMax);
 
@@ -1003,10 +1063,11 @@
         </span>
       </button> -->
 
-      <select bind:value={selectedReview} id="test-example-select" class="form-control">
-        <!-- <option value="empty"> Please choose one example</option> -->
-        <option value="positive">Positive example</option>
-        <option value="negative">Negative example</option>
+      <select bind:value={selectedReview} id="test-example-select" class="form-control" 
+        on:blur = {disableControl ? '' : reviewOptionClicked} >
+          <option value="empty"> Please choose one example</option>
+          <option value="positive">Positive example</option>
+          <option value="negative">Negative example</option>
       </select>
     </div>
 
@@ -1048,6 +1109,8 @@
   <div class="review">
     <textarea id="review-text">{exampleReviews[selectedReview]}</textarea>
   </div>
+
+  <div class="ui"></div>
 
   <div class="rnn" id="rnnView">
     <span id='ui' class="status"></span>
