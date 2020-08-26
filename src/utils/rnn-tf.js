@@ -74,14 +74,20 @@ export class SentimentPredictor{
  * @param {Tensor} input Loaded input text tensor.
  * @param {Model} model Loaded tf.js model.
  */
-  async predictResult(inputMovieReview, model=this.model) {
-    console.log("-----------------predict this review directly using tfjs-----------------")
-    // console.log('input review is: ', inputMovieReview)
+  predictResult(inputMovieReview, model=this.model) {
+    console.log("-----------------predict directly and print the result-----------------")
+    let ipArray = getInputTextArray(inputMovieReview);
     if(!this.inputArray){
-      this.inputArray = await getInputTextArray(inputMovieReview);
+      this.inputArray = ipArray;
+    } else if (this.inputArray !== ipArray){
+      this.inputArray = ipArray;
     }
+
+    let ipTensor = getInputTextTensor(this.inputArray);
     if(!this.inputTensor){
-      this.inputTensor = await getInputTextTensor(this.inputArray);
+      this.inputTensor = ipTensor;
+    } else if (this.inputTensor !== ipTensor) {
+      this.inputTensor = ipTensor;
     }
 
     // console.log('tensor is: '+ this.inputTensor);
@@ -102,11 +108,18 @@ export class SentimentPredictor{
     // console.log('input review is: ', inputMovieReview)
 
     // Get the array and tensor if do not execure predictOut before
+    let ipArray = await getInputTextArray(inputMovieReview);
     if(!this.inputArray){
-      this.inputArray = await getInputTextArray(inputMovieReview);
+      this.inputArray = ipArray;
+    } else if (this.inputArray !== ipArray){
+      this.inputArray = ipArray;
     }
+
+    let ipTensor = await getInputTextTensor(this.inputArray);
     if(!this.inputTensor){
-      this.inputTensor = await getInputTextTensor(this.inputArray);
+      this.inputTensor = ipTensor;
+    } else if (this.inputTensor !== ipTensor) {
+      this.inputTensor = ipTensor;
     }
 
     // let inputTensorBatch = tf.stack([inputTensor]);
