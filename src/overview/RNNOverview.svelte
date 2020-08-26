@@ -475,8 +475,20 @@
           intermediateNodeClicked);
       }
     
-      else if (d.layerName === 'dense_Dense1') {
+      else if (d.layerName === 'flatten') {
         drawFlatten(curLayerIndex, d, nodeIndex, width, height);
+      } 
+      else if (d.layerName === 'embedding_Embedding1'){
+        // // todo:
+        // drawEmbedding(curLayerIndex, d, nodeIndex, width, height,
+        //   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
+        //   intermediateNodeClicked);
+      }
+      else if (d.layerName === 'lstm_LSTM1'){
+        // // todo:
+        // drawEmbedding(curLayerIndex, d, nodeIndex, width, height,
+        //   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
+        //   intermediateNodeClicked);
       }
     }
     // Quit the layerview
