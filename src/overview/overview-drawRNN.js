@@ -8,7 +8,7 @@ import {
 import {
   getExtent, getLinkDataRNN
 } from './draw-utils.js';
-import { rnnOverviewConfig, overviewConfig } from '../config.js';
+import { rnnOverviewConfig } from '../config.js';
 
 // Configs
 const layerColorScales = rnnOverviewConfig.layerColorScales;
@@ -199,6 +199,7 @@ const drawOutputScore = (d, i, g, scale) => {
     .text((d, i) => d.output.toFixed(4));
 }
 
+
 export const drawCustomReivew = (image, inputLayer) => {
 
   let imageWidth = image.width;
@@ -285,7 +286,7 @@ const getLegendGradient = (g, colorScale, gradientName, min, max) => {
  * @param {object} legends Parent group
  * @param {number} legendHeight Height of the legend element
  */
-const drawLegends = (legends, legendHeight) => {
+const drawAllLegends = (legends, legendHeight) => {
   // Add local legends
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
@@ -462,8 +463,6 @@ const drawLegends = (legends, legendHeight) => {
     .style('fill', 'url(#inputGradient)');
 }
 
-//todo: split drawRNN into small pieces for the use of updateRNN
-
 /**
  * return the horizontal gap for the whole NN
  * 
@@ -484,6 +483,9 @@ const calcVerSpaceGap = (height, curLayerLength, curLayerNodeHeight) => {
   return (height - curLayerNodeHeight * curLayerLength) / (curLayerLength + 1);
 }
 
+/** 
+ *  add labels for each layer
+ */
 const addLabels = ()=> {
   let layerNames = rnn.map(d => {
     if (d[0].layerName === 'dense_Dense1' || d[0].layerName.includes('lstm')) {
@@ -590,6 +592,9 @@ const addLabels = ()=> {
     });
 }
 
+/**
+ * add legends for layers with image nodes
+ */
 const addLegends = () => {
   getLegendGradient(svg_rnn, layerColorScales.embedding, 'embeddingGradient');
   getLegendGradient(svg_rnn, layerColorScales.lstm, 'lstmGradient');
@@ -605,10 +610,11 @@ const addLegends = () => {
       .attr('class', 'color-legend')
       .attr('transform', `translate(${0}, ${legentY})`);
   
-  drawLegends(legends, legendHeight);
+  drawAllLegends(legends, legendHeight);
 }
 
 /**
+ *  add edges btw layers
  * 
  * @param {object} rnnGroup Group to appen rnn elements to
  */
@@ -637,6 +643,15 @@ const addEdges = (rnnGroup)=> {
     .style('stroke', edgeInitColor);
 }
 
+/**
+ * create image nodes, rects, texts and annotations for input layer
+ * 
+ * @param {*} nodeGroups 
+ * @param {*} left 
+ * @param {*} l 
+ * @param {*} curLayer 
+ * @param {*} inputTextList 
+ */
 const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
   nodeGroups.append('image')
   .attr('class', 'node-image')
@@ -679,6 +694,13 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
     .text((d,i) => d.output);
 }
 
+/**
+ * create rects, text and annotation for output layer
+ * 
+ * @param {*} nodeGroups 
+ * @param {*} left 
+ * @param {*} l 
+ */
 const initOutputLayer = (nodeGroups, left, l) => {
         // Add a rectangle to show the border
         nodeGroups.append('rect')
@@ -729,6 +751,9 @@ const initOutputLayer = (nodeGroups, left, l) => {
           .text((d, i) => classLists[i+1]);
 }
 
+/**
+ * draw rects for output and display the scores
+ */
 const drawOutPutLayer = () => {
   // Compute the scale of the output score width (mapping the the node
   // width to the max output score)
@@ -741,6 +766,13 @@ const drawOutPutLayer = () => {
   );    
 }
 
+/**
+ * create image nodes and rects for middle layers
+ * 
+ * @param {object} nodeGroups 'node-group' 'layer-i-node-j'
+ * @param {number} left distance for x
+ * @param {number} l index of current layer
+ */
 const initMiddleLayer = (nodeGroups, left, l) => {
    // Embed raster image in these groups
    nodeGroups.append('image')
@@ -763,7 +795,11 @@ const initMiddleLayer = (nodeGroups, left, l) => {
      .classed('hidden', true);  
 }
 
-// Draw the canvas
+/**
+ * Draw the canvas of image nodes
+ * 
+ * @param {number} l index of nn layer 
+ */
 const drawImageNodes = (l) => {
     let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
 
@@ -789,12 +825,15 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
   hSpaceAroundGapStore_rnn.set(hSpaceAroundGap_rnn);
   
   let leftAccuumulatedSpace = hSpaceAroundGap_rnn;
-
+  // clear nodeCoordinate_rnn for reloading, otherwise it will push new coords into 
+  //existing array as well as generate blank array
+  nodeCoordinate_rnn.length=0;
   // Iterate through the rnn to draw nodes in each layer
   for (let l = 0; l < rnn.length; l++) {
 
     let curLayer = rnn[l];
     let isOutput = curLayer[0].layerName === 'dense_Dense1';
+
     nodeCoordinate_rnn.push([]);
 
     // Compute the x coordinate of the whole layer
@@ -874,7 +913,7 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
   }
 
   // Share the nodeCoordinate
-  nodeCoordinateStore_rnn.set(nodeCoordinate_rnn)  
+  nodeCoordinateStore_rnn.set(nodeCoordinate_rnn);
 
   // Add layer label
   addLabels();

@@ -410,6 +410,10 @@ export const drawCNN = (width, height, cnnGroup, nodeMouseOverHandler,
   hSpaceAroundGap = (width - nodeLength * numLayers) / (8 + 5 * gapRatio);
   hSpaceAroundGapStore.set(hSpaceAroundGap);
   let leftAccuumulatedSpace = 0;
+  
+  // clear nodeCoordinate for reloading, otherwise it will push new coords into 
+  //existing array as well as generate blank array
+  nodeCoordinate.length=0;
 
   // Iterate through the cnn to draw nodes in each layer
   for (let l = 0; l < cnn.length; l++) {
