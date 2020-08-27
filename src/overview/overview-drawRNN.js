@@ -677,7 +677,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
     // .attr('x', svgPaddings.left/3)
     .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
     .style('dominant-baseline', 'middle')
-    .style('font-size', '7px')
+    .style('font-size', '6px')
     .style('fill', 'black')
     .style('opacity', 0.8)
     .text((d, i) => d.output[0] === 0 
@@ -688,7 +688,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
     .attr('x', left-nodeLength/2)
     .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
     .style('dominant-baseline', 'middle')
-    .style('font-size', '7px')
+    .style('font-size', '6px')
     .style('fill', 'black')
     .style('opacity', 0.8)
     .text((d,i) => d.output);
