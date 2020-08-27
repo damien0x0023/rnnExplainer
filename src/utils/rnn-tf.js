@@ -71,6 +71,31 @@ export class SentimentPredictor{
     }
   }
 
+  getInputTextTensor () {
+    // Convert the words to a sequence of word indices.
+    try {
+      let sequence = this.inputArray.map(word => {
+          let this_wordIndex = this.wordIndex[word] + this.indexFrom;
+          // the issue: 'OOV' to NaN has been solved: 'OOV' and 
+          // other words outside the dictionary to 2 now
+          if (!this_wordIndex || this_wordIndex > this.vocabularySize) {
+            this_wordIndex = OOV_INDEX;
+          }
+          return this_wordIndex;
+      });
+    
+      // Perform truncation and padding.
+      this.paddedSequence = padSequences([sequence], this.maxLen);
+      console.log('paddedSequence is: ', this.paddedSequence);
+      let tensor = tf.tensor2d(this.paddedSequence, [1, this.maxLen]);
+    
+      return tensor
+    } catch(err) {
+      console.error(err);
+      console.log('Get Input Text Tensor failed.');
+    }
+  }
+
   /**
  * return a object of elapsed time and final score
  * 
@@ -86,7 +111,7 @@ export class SentimentPredictor{
       this.inputArray = ipArray;
     }
 
-    let ipTensor = getInputTextTensor(this.inputArray, 
+    let ipTensor = this.getInputTextTensor(this.inputArray, 
       this.indexFrom,this.wordIndex,this.vocabularySize,this.maxLen);
     if(!this.inputTensor){
       this.inputTensor = ipTensor;
@@ -120,7 +145,7 @@ export class SentimentPredictor{
     }
     console.log('input text array is: ', this.inputArray);
 
-    let ipTensor = await getInputTextTensor(this.inputArray, 
+    let ipTensor = await this.getInputTextTensor(this.inputArray, 
       this.indexFrom,this.wordIndex,this.vocabularySize,this.maxLen);
     if(!this.inputTensor){
       this.inputTensor = ipTensor;
@@ -202,34 +227,26 @@ const getInputTextArray = (inputReview) => {
   return inputReview.trim().toLowerCase().replace(/(\.|\,|\!)/g, '').split(' ');
 }
 
-/**
- * 
- * @param {*} inputArray 
- * @param {*} indexFrom 
- * @param {*} wordIndex 
- * @param {*} vocabularySize 
- * @param {*} maxLen 
- */
-const getInputTextTensor = (inputArray, indexFrom, 
-  wordIndex, vocabularySize, maxLen) => {
-  // Convert the words to a sequence of word indices.
-  let sequence = inputArray.map(word => {
-      let this_wordIndex = wordIndex[word] + indexFrom;
-      // the issue: 'OOV' to NaN has been solved: 'OOV' and 
-      // other words outside the dictionary to 2 now
-      if (!this_wordIndex || this_wordIndex > vocabularySize) {
-        this_wordIndex = OOV_INDEX;
-      }
-      return this_wordIndex;
-  });
+// const getInputTextTensor = (inputArray, indexFrom, 
+//   wordIndex, vocabularySize, maxLen) => {
+//   // Convert the words to a sequence of word indices.
+//   let sequence = inputArray.map(word => {
+//       let this_wordIndex = wordIndex[word] + indexFrom;
+//       // the issue: 'OOV' to NaN has been solved: 'OOV' and 
+//       // other words outside the dictionary to 2 now
+//       if (!this_wordIndex || this_wordIndex > vocabularySize) {
+//         this_wordIndex = OOV_INDEX;
+//       }
+//       return this_wordIndex;
+//   });
 
-  // Perform truncation and padding.
-  let paddedSequence = padSequences([sequence], maxLen);
-  console.log('paddedSequence is: ', paddedSequence);
-  let tensor = tf.tensor2d(paddedSequence, [1,maxLen]);
+//   // Perform truncation and padding.
+//   let paddedSequence = padSequences([sequence], maxLen);
+//   console.log('paddedSequence is: ', paddedSequence);
+//   let tensor = tf.tensor2d(paddedSequence, [1,maxLen]);
 
-  return tensor
-}
+//   return tensor
+// }
 
 // /**
 //  * return a object of elapsed time and final score
