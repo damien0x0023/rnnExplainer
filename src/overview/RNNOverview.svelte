@@ -184,7 +184,8 @@
   'negative':
       `the mother in this movie is reckless with her children to the point of neglect i wish i wasn\'t so angry about her and her actions because i would have otherwise enjoyed the flick what a number she was take my advise and fast forward through everything you see her do until the end also is anyone else getting sick of watching movies that are filmed so dark anymore one can hardly see what is being filmed as an audience we are impossibly involved with the actions on the screen so then why the hell can\'t we have night vision`
   };
-  let selectedReview = 'empty';
+  let selectedReview = 'negative';
+  let reviewContent;
   let previousSelectedReview = selectedReview;
   let predictor;
   let inputDim;
@@ -197,6 +198,11 @@
   let customImageURL = null;
 
   // Helper functions
+
+  const textCount= () => {
+    let val = d3.select('#review-text').text;
+    return val.length;
+  }
   const selectedScaleLevelChanged = () => {
     if (svg_rnn !== undefined) {
       if (!scaleLevelSet.add(selectedScaleLevel)) {
@@ -247,7 +253,9 @@
   }
 
   const reviewOptionClicked = async ()=>{
-    if (selectedReview !== previousSelectedReview) {
+    // let newReview = exampleReviews[selectedReview];
+
+    if (reviewContent !== previousSelectedReview) {
       previousSelectedReview = selectedReview; 
       console.log('The current Review is: ', selectedReview);
 
@@ -748,6 +756,25 @@
     padding-right: 2em;
   }
 
+  .textarea {
+    width:400px;
+    min-height:48px;
+    max-height:240;
+    _height:120px;
+    margin-left:auto;
+    margin-right:auto;
+    outline:0;
+    border:1pxsolid#a0b3d6;
+    font-size:12px;
+    line-height:24px;
+    padding:0px;
+    word-wrap:break-word;
+    overflow-x:hidden;
+    overflow-y:auto;
+
+    border-color:rgba(82,168,236,0.8);
+    box-shadow:inset01px3pxrgba(0,0,0,0.1),008pxrgba(82,168,236,0.6);
+  }
 
   .rnn {
     width: 100%;
@@ -1003,8 +1030,8 @@
           </span>
 
           <div class="select">
-            <select bind:value={selectedReview} id="example-select" class="form-control" 
-            on:blur = "" >
+            <select bind:value="{selectedReview}" id="example-select" class="form-control" 
+            on:blur = "{disableControl ? '' : reviewOptionClicked}" >
               <option value="empty"> Please choose one example</option>
               <option value="positive">Positive example</option>
               <option value="negative">Negative example</option>
@@ -1049,7 +1076,9 @@
   </div>
 
   <div class="review">
-    <textarea id="review-text" on:blur={disableControl ? '' : reviewOptionClicked} readonly>{exampleReviews[selectedReview]}</textarea>
+    <div bind:innerHTML={reviewContent} class="textarea" contenteditable="false">{exampleReviews[selectedReview]}</div>
+    <!-- <textarea id="review-text" on:blur="{disableControl ? '' : reviewOptionClicked}" maxlength = "100o">{exampleReviews[selectedReview]}</textarea> -->
+    <!-- <p class="text-count"><span id="textCount">0</span>/100</p> -->
   </div>
 
   <div class="rnn" id="rnnView">
