@@ -23,6 +23,8 @@ const gapRatio = rnnOverviewConfig.gapRatio;
 const classLists = rnnOverviewConfig.classLists;
 const formater = d3.format('.4f');
 
+ const inputNodeHeight = nodeHeight/2;
+
 // Shared variables
 //for rnn
 let svg_rnn = undefined;
@@ -52,12 +54,52 @@ rnnLayerMinMaxStore.subscribe( value => {rnnLayerMinMax = value;} )
 let detailedMode_rnn = undefined;
 detailedModeStore_rnn.subscribe( value => {detailedMode_rnn = value;} )
 
-// There are 0 short gaps and 3 long gaps
-let n_shortGaps = 2;
+// There are 3 short gaps(2 left 1 right) and 3 long gaps (btw nodes)
+let n_shortGaps = 3;
 let n_longGaps = 3;
 // for module view
 let num_module = 2;
 let num_stack = 1;
+
+const enlargeOutputImage = (oriWidth, oriHeight, enlargedWidth, 
+  enlargedHeight, bufferCan, bufferCtx,img) =>{
+  // canvas.toDataURL() only exports image in 96 DPI, so we can hack it to have
+  // higher DPI by rescaling the image using canvas magic
+  let larCanvas = document.createElement('canvas');
+  larCanvas.width = enlargedWidth ;
+  larCanvas.height = enlargedHeight ;
+  let larCanvasContext = larCanvas.getContext('2d');
+
+  // Use drawImage to resize the original pixel array, and put the new image
+  // (canvas) into corresponding canvas
+  bufferCtx.putImageData(img, 0, 0);
+  // drawImage(img,sx,sy,swidth,sheight,x,y,width,height);
+  // sx Optional
+  // The x-axis coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
+  // sy Optional
+  // The y-axis coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
+  // sWidth Optional
+  // The width of the sub-rectangle of the source image to draw into the destination context. If not specified, the entire rectangle from the coordinates specified by sx and sy to the bottom-right corner of the image is used.
+  // sHeight Optional
+  // The height of the sub-rectangle of the source image to draw into the destination context.
+  // dx
+  // The x-axis coordinate in the destination canvas at which to place the top-left corner of the source image.
+  // dy
+  // The y-axis coordinate in the destination canvas at which to place the top-left corner of the source image.
+  // dWidth Optional
+  // The width to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in width when drawn.
+  // dHeight Optional
+  // The height to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in height when drawn.
+  
+  // todo: the dimension of embbeding layer needs to be reviewed
+  larCanvasContext.drawImage(bufferCan, 0, 0, oriWidth, oriHeight,
+      0, 0, enlargedWidth, enlargedHeight);
+
+  let imgURL = larCanvas.toDataURL();
+  larCanvas.remove();
+
+  return imgURL;
+}
 
 /**
  * Use bounded d3 data to draw one canvas
@@ -68,11 +110,8 @@ let num_stack = 1;
  */
 export const drawOutputRNN = (d, i, g, range) => {
   let image = g[i];
+  //draw and update the colors of image nodes
   let colorScale = layerColorScales[d.type];
-
-  // if (d.type === 'input') {
-  //   colorScale = colorScale[d.index];
-  // }
 
   // Set up a second canvas in order to resize image
   // imageLength is the width of canvas in rnn
@@ -98,85 +137,37 @@ export const drawOutputRNN = (d, i, g, range) => {
   // Fill image pixel array
   let imageSingle = bufferContext.getImageData(0, 0, imageLength, imageHeight);
   let imageSingleArray = imageSingle.data;
+  let imageDataURL;
 
-  if (imageLength === 1) {
-    // imageSingleArray[0] = d.output;
-    // for output is number, for instance, LSTM..
-    let color = d3.rgb(colorScale((d.output+range/2)/range));
-    imageSingleArray[0] = color.r;
-    imageSingleArray[1] = color.g;
-    imageSingleArray[2] = color.b;
-    imageSingleArray[3] = 255;
-  } else if (d.type.includes('embedding')){
-    for (let j = 0; j < imageLength; j++){
-      let color = d3.rgb(colorScale((d.output[j] + range/2)/range));
-
-      imageSingleArray[4*j] = color.r;
-      imageSingleArray[4*j + 1] = color.g;
-      imageSingleArray[4*j + 2] = color.b;
-      imageSingleArray[4*j + 3] = 255;
+  for (let j = 0; j< imageLength; j++){
+    let color;
+    if (d.type === 'input'){
+      color = d3.rgb(colorScale(0.1 +d.output/range));
+    } else if (d.type.includes('lstm')) {
+      color = d3.rgb(colorScale((d.output+range/2)/range));
+    } else if (d.type.includes('embedding')){
+      color = d3.rgb(colorScale((d.output[j] + range/2)/range));
     }
-  }else{
-    for (let i = 0; i < imageSingleArray.length; i+=4) {
-      let pixeIndex = Math.floor(i / 4);
-      let row = Math.floor(pixeIndex / imageLength);
-      let column = pixeIndex % imageLength;
-      let color = undefined;
-      if (d.type === 'input' || d.type === 'fc' ) {
-        color = d3.rgb(colorScale(1 - d.output[row][column]));
-      } else {
-        color = d3.rgb(colorScale((d.output[row][column] + range / 2) / range));
-      }
 
-      imageSingleArray[i] = color.r;
-      imageSingleArray[i + 1] = color.g;
-      imageSingleArray[i + 2] = color.b;
-      imageSingleArray[i + 3] = 255;
-    }
+    imageSingleArray[4*j] = color.r;
+    imageSingleArray[4*j + 1] = color.g;
+    imageSingleArray[4*j + 2] = color.b;
+    imageSingleArray[4*j + 3] = 255;
   }
   
-
-  if(i === 127) {
-    console.log(imageSingle);
+  if (d.type === 'input') {
+    imageDataURL = enlargeOutputImage(imageLength, imageHeight, nodeLength*3,
+      inputNodeHeight*3, bufferCanvas, bufferContext, imageSingle);
+  } else {
+    imageDataURL = enlargeOutputImage(imageLength, imageHeight, nodeLength*3,
+      nodeHeight*3, bufferCanvas, bufferContext, imageSingle);
   }
 
-  // canvas.toDataURL() only exports image in 96 DPI, so we can hack it to have
-  // higher DPI by rescaling the image using canvas magic
-  let largeCanvas = document.createElement('canvas');
-  largeCanvas.width = nodeLength*3 ;
-  largeCanvas.height = nodeHeight*3 ;
-  let largeCanvasContext = largeCanvas.getContext('2d');
-
-  // Use drawImage to resize the original pixel array, and put the new image
-  // (canvas) into corresponding canvas
-  bufferContext.putImageData(imageSingle, 0, 0);
-  // drawImage(img,sx,sy,swidth,sheight,x,y,width,height);
-  // sx Optional
-  // The x-axis coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
-  // sy Optional
-  // The y-axis coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
-  // sWidth Optional
-  // The width of the sub-rectangle of the source image to draw into the destination context. If not specified, the entire rectangle from the coordinates specified by sx and sy to the bottom-right corner of the image is used.
-  // sHeight Optional
-  // The height of the sub-rectangle of the source image to draw into the destination context.
-  // dx
-  // The x-axis coordinate in the destination canvas at which to place the top-left corner of the source image.
-  // dy
-  // The y-axis coordinate in the destination canvas at which to place the top-left corner of the source image.
-  // dWidth Optional
-  // The width to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in width when drawn.
-  // dHeight Optional
-  // The height to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in height when drawn.
-  largeCanvasContext.drawImage(bufferCanvas, 0, 0, imageLength, imageHeight,
-      0, 0, nodeLength*3, nodeHeight*3);
-
-  
-  let imageDataURL = largeCanvas.toDataURL();
   d3.select(image).attr('xlink:href', imageDataURL);
 
   // Destory the buffer canvas
   bufferCanvas.remove();
-  largeCanvas.remove();
+  // largeCanvas.remove();
 }
 
 /**
@@ -188,13 +179,24 @@ export const drawOutputRNN = (d, i, g, range) => {
  */
 const drawOutputScore = (d, i, g, scale) => {
   let group = d3.select(g[i]);
+  // draw and update the width of output rects
   group.select('rect.output-rect')
     .transition('dense')
     .delay(500)
     .duration(800)
     .ease(d3.easeCubicIn)
-    .attr('width', scale(d.output))
-    .attr('fill', scale(d.output[1]));   
+    .attr('width', scale(d.output));
+  // draw and update the proba of outputs
+  group.select('text.annotation-output')
+    .transition('dense')
+    .delay(500)
+    .duration(800)
+    .ease(d3.easeCubicIn)
+    .style('dominant-baseline', 'middle')
+    .style('font-size', '11px')
+    .style('fill', 'black')
+    .style('opacity', 0.5)
+    .text((d, i) => d.output.toFixed(4));
 }
 
 export const drawCustomReivew = (image, inputLayer) => {
@@ -291,13 +293,13 @@ const drawLegends = (legends, legendHeight) => {
     let range2 = rnnLayerRanges.local[start + 1];
 
     let localLegendScale1 = d3.scaleLinear()
-      .range([0, (num_module -1) * nodeLength 
-        + (num_module-2) * hSpaceAroundGap_rnn- 1.2])
+      .range([0, 1 * nodeLength 
+        + 0 * hSpaceAroundGap_rnn- 1.2])
       .domain([-range1 / 2, range1 / 2]);
     
     let localLegendScale2 = d3.scaleLinear()
-      .range([0, (num_module -1) * nodeLength 
-        + (num_module-2) * hSpaceAroundGap_rnn - 1.2])
+      .range([0, 1 * nodeLength 
+        + 0 * hSpaceAroundGap_rnn - 1.2])
       .domain([-range2 / 2, range2 / 2]);
 
     let localLegendAxis1 = d3.axisBottom()
@@ -347,7 +349,7 @@ const drawLegends = (legends, legendHeight) => {
     let range = rnnLayerRanges.module[start];
 
     let moduleLegendScale = d3.scaleLinear()
-      .range([0, num_module * nodeLength + (num_module-2) * hSpaceAroundGap_rnn +
+      .range([0, num_module * nodeLength + 0 * hSpaceAroundGap_rnn +
         (num_module-1) * hSpaceAroundGap_rnn * gapRatio - 1.2])
       .domain([-range / 2, range / 2]);
 
@@ -367,7 +369,7 @@ const drawLegends = (legends, legendHeight) => {
       .call(moduleLegendAxis)
 
     moduleLegend.append('rect')
-      .attr('width', num_module * nodeLength + (num_module-2) * hSpaceAroundGap_rnn +
+      .attr('width', num_module * nodeLength + 0 * hSpaceAroundGap_rnn +
         (num_module-1) * hSpaceAroundGap_rnn * gapRatio)
       .attr('height', legendHeight)
       .style('fill', 'url(#embeddingGradient)');
@@ -379,8 +381,8 @@ const drawLegends = (legends, legendHeight) => {
 
   let globalLegendScale = d3.scaleLinear()
     .range([0, (numLayers-2) * nodeLength
-      + (n_shortGaps-2) * hSpaceAroundGap_rnn +
-     (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2])
+        + 0 * hSpaceAroundGap_rnn 
+        + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2])
     .domain([-range / 2, range / 2]);
 
   let globalLegendAxis = d3.axisBottom()
@@ -400,11 +402,10 @@ const drawLegends = (legends, legendHeight) => {
 
   globalLegend.append('rect')
     .attr('width', (numLayers-2) * nodeLength
-       + (n_shortGaps-2) * hSpaceAroundGap_rnn +
+       + 0 * hSpaceAroundGap_rnn +
       (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio)
     .attr('height', legendHeight)
     .style('fill', 'url(#embeddingGradient)');
-
 
   // Add output legend
   let outputRectScale = d3.scaleLinear()
@@ -415,8 +416,7 @@ const drawLegends = (legends, legendHeight) => {
   let outputLegendAxis = d3.axisBottom()
     .scale(outputRectScale)
     .tickFormat(d3.format('.1f'))
-    .tickValues([0, rnnLayerMinMax[nodeCoordinate_rnn.length-1].max/2, 
-      rnnLayerMinMax[nodeCoordinate_rnn.length-1].max])
+    .tickValues([0, rnnLayerMinMax[nodeCoordinate_rnn.length-1].max])
   
   let outputLegend = legends.append('g')
     .attr('class', 'legend output-legend')
@@ -429,23 +429,19 @@ const drawLegends = (legends, legendHeight) => {
     .call(outputLegendAxis);
 
   outputLegend.append('rect')
-    .attr('x', 0.3)
     .attr('width', nodeLength - 0.3)
     .attr('height', legendHeight)
-    .attr('transform', `rotate(180, ${nodeLength/2}, ${legendHeight/2})`)
-    .style('stroke', 'rgb(20, 20, 20)')
-    .style('stroke-width', 0.3)
-    .style('fill', 'url(#denseGradient)');
+    .style('fill','gray');
   
   // Add input image legend
   let inputScale = d3.scaleLinear()
     .range([0, nodeLength - 1.2])
-    .domain([0, 1]);
+    .domain([0, rnnLayerRanges.local[0]]);
 
   let inputLegendAxis = d3.axisBottom()
     .scale(inputScale)
-    .tickFormat(d3.format('.1f'))
-    .tickValues([0, 0.5, 1]);
+    // .tickFormat(d3.format('.1f'))
+    .tickValues([0, rnnLayerRanges.local[0]]);
 
   let inputLegend = legends.append('g')
     .attr('class', 'legend input-legend')
@@ -460,263 +456,35 @@ const drawLegends = (legends, legendHeight) => {
     .attr('x', 0.3)
     .attr('width', nodeLength - 0.3)
     .attr('height', legendHeight)
-    .attr('transform', `rotate(180, ${nodeLength/2}, ${legendHeight/2})`)
+    // .attr('transform', `rotate(180, ${nodeLength/2}, ${legendHeight/2})`)
     .style('stroke', 'rgb(20, 20, 20)')
     .style('stroke-width', 0.3)
     .style('fill', 'url(#inputGradient)');
 }
 
 //todo: split drawRNN into small pieces for the use of updateRNN
-const drawMainFrame = () => {
-  
+
+/**
+ * return the horizontal gap for the whole NN
+ * 
+ * @param {number} width 
+ */
+const calcHorSpaceGap = (width) => {
+  return (width - nodeLength * numLayers)  / (n_shortGaps + n_longGaps * gapRatio);
 }
 
 /**
- * Draw the overview
- * @param {number} width Width of the rnn group
- * @param {number} height Height of the rnn group
- * @param {object} rnnGroup Group to appen rnn elements to
- * @param {function} nodeMouseOverHandler Callback func for mouseOver
- * @param {function} nodeMouseLeaveHandler Callback func for mouseLeave
- * @param {function} nodeClickHandler Callback func for click
+ * return the vertical gap value for curLayer
+ * 
+ * @param {number} height 
+ * @param {number} curLayerLength 
+ * @param {number} curLayerNodeHeight 
  */
-export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
-  nodeMouseLeaveHandler, nodeClickHandler, inputTextList) => {
-  // Draw the RNN
+const calcVerSpaceGap = (height, curLayerLength, curLayerNodeHeight) => {
+  return (height - curLayerNodeHeight * curLayerLength) / (curLayerLength + 1);
+}
 
-  hSpaceAroundGap_rnn = (width - nodeLength * numLayers) 
-               / (n_shortGaps + n_longGaps * gapRatio);
-  // console.log('horizontal space around gap is: ', hSpaceAroundGap_rnn);
-  hSpaceAroundGapStore_rnn.set(hSpaceAroundGap_rnn);
-  
-  let leftAccuumulatedSpace = 0;
-
-  // Iterate through the rnn to draw nodes in each layer
-  for (let l = 0; l < rnn.length; l++) {
-
-    let curLayer = rnn[l];
-    let isOutput = curLayer[0].layerName === 'dense_Dense1';
-
-    nodeCoordinate_rnn.push([]);
-
-    // Compute the x coordinate of the whole layer
-    // Output layer and conv layer has long gaps
-    if (isOutput || curLayer[0].type === 'embedding' || curLayer[0].type ==='lstm') {
-      leftAccuumulatedSpace += hSpaceAroundGap_rnn * gapRatio;
-    } else {
-      leftAccuumulatedSpace += hSpaceAroundGap_rnn;
-    }
-
-    // All nodes share the same x coordiante (left in div style)
-    let left = leftAccuumulatedSpace;
-    // let meaningfulInputLen;
-
-    let layerGroup = rnnGroup.append('g')
-      .attr('class', 'rnn-layer-group')
-      .attr('id', `rnn-layer-group-${l}`);
-
-    // igonre the count of y when the node contains <pad> in the input layer
-    if (curLayer[0].layerName !== 'input') {
-      vSpaceAroundGap_rnn = (height - nodeHeight * curLayer.length) /
-      (curLayer.length + 1);
-    } else {
-      vSpaceAroundGap_rnn = (height - nodeHeight/2 * curLayer.length) /
-      (curLayer.length + 1);
-    }
-
-    vSpaceAroundGapStore_rnn.set(vSpaceAroundGap_rnn);
-
-    let nodeGroups = layerGroup.selectAll('g.node-group')
-      .data(curLayer, d => d.index)
-      .enter()
-      .append('g')
-      .attr('class', 'node-group')
-      .style('cursor', 'pointer')
-      .style('pointer-events', 'all')
-      .on('click', nodeClickHandler)
-      .on('mouseover', nodeMouseOverHandler)
-      .on('mouseleave', nodeMouseLeaveHandler)
-      .classed('node-output', isOutput)
-      .attr('id', (d, i) => {
-        // Compute the coordinate
-        // Not using transform on the group object because of a decade old
-        // bug on webkit (safari)
-        // https://bugs.webkit.org/show_bug.cgi?id=23113
-        let top;
-        if (d.type !=='input'){
-          top = i * nodeHeight + (i + 1) * vSpaceAroundGap_rnn;
-        } else{
-          top = i * nodeHeight/2 + (i + 1) * vSpaceAroundGap_rnn;
-        }
-
-        top += svgPaddings.top;
-        nodeCoordinate_rnn[l].push({x: left, y: top});
-        return `layer-${l}-node-${i}`
-      });
-    
-    // Overwrite the mouseover and mouseleave function for output nodes to show
-    // hover info in the UI
-    layerGroup.selectAll('g.node-output')
-      .on('mouseover', (d, i, g) => {
-        nodeMouseOverHandler(d, i, g);
-        hoverInfoStore_rnn.set( {show: true, text: `Output value: ${formater(d.output)}`} );
-      })
-      .on('mouseleave', (d, i, g) => {
-        nodeMouseLeaveHandler(d, i, g);
-        hoverInfoStore_rnn.set( {show: false, text: `Output value: ${formater(d.output)}`} );
-      });
-
-    // let pixelWidth = nodeLength / 2;
-    // let totalLength = (2 * nodeLength +
-    //   5.5 * hSpaceAroundGap * gapRatio + pixelWidth);
-    // let leftX = nodeCoordinate_rnn[l+1][0].x - totalLength;
-    // let intermediateGap = (hSpaceAroundGap * gapRatio * 4) / 2;
-
-    // let intermediateX1 = leftX + nodeLength + intermediateGap;
-    // let intermediateX2 = intermediateX1 + intermediateGap + pixelWidth;
-
-    let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
-    // ??? d.type or conv
-    let colorScale = layerColorScales[curLayer[0].type];
-    // ??? divided bb conv units???
-    let extractedLength = rnn[l].length / 1
-
-    let topY = nodeCoordinate_rnn[l][0].y;
-    let bottomY = nodeCoordinate_rnn[l][rnn[l].length-1].y + nodeLength -
-      extractedLength * nodeHeight;
-
-    
-    if (curLayer[0].layerName === 'input') {
-      // // Embed raster image in these groups
-      // nodeGroups.append('image')
-      //   .attr('class', 'node-image')
-      //   .attr('width', nodeLength)
-      //   .attr('height', nodeLength)
-      //   .attr('x', left)
-      //   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y);      
-
-      nodeGroups.append('rect')
-        .attr('class', 'input-rect')
-        .attr('width', nodeLength)
-        .attr('height', nodeHeight/2)
-        .attr('x', left)
-        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
-        .style('cursor', 'crosshair')
-        .style('fill', (d, i) => colorScale((curLayer[i].output+range/2)/range))
-        .style('stroke', 'gray')
-        .style('stroke-width', 0.1)
-      nodeGroups.append('text')
-        .attr('class', 'input-text')
-        .attr('x', 0)
-        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
-        .style('dominant-baseline', 'middle')
-        .style('font-size', '7px')
-        .style('fill', 'black')
-        .style('opacity', 0.8)
-        // .text((d, i) => inputTextList[i] === undefined? `<pad>:${d.output}`:`${inputTextList[i]}:${d.output}`);
-        .text((d, i) => inputTextList[i] === undefined? `<pad>`:`${inputTextList[i]}`);
-    } else if (curLayer[0].layerName.includes('dense')){ 
-      // Add a rectangle to show the border
-      nodeGroups.append('rect')
-      .attr('class', 'bounding')
-      .attr('x', left)
-      .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
-      .attr('height', nodeLength / 4)
-      .attr('width', nodeLength)
-      .style('fill', 'none')
-      .style('stroke', 'gray')
-      .style('stroke-width', 0.5)
-      .classed('hidden', false);
-      nodeGroups.append('rect')
-        .attr('class', 'output-rect')
-        .attr('x', left)
-        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
-        .attr('height', nodeLength / 4)
-        .attr('width', nodeLength)
-        .style('fill', 'gray');
-      nodeGroups.append('text')
-        .attr('class', 'output-text-score')
-        .attr('x', left + nodeLength/4)
-        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y+ nodeLength)
-        .style('dominant-baseline', 'middle')
-        .style('font-size', '11px')
-        .style('fill', 'black')
-        .style('opacity', 0.5)
-        .text((d, i) => d.output.toFixed(2));
-      nodeGroups.append('text')
-        .attr('class', 'output-text-one')
-        .attr('x', left-nodeLength/4)
-        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 4)
-        .style('dominant-baseline', 'middle')
-        .style('font-size', '11px')
-        .style('fill', 'black')
-        .style('opacity', 0.5)
-        .text((d, i) => classLists[i]);
-      nodeGroups.append('text')
-        .attr('class', 'output-text-two')
-        .attr('x', left+nodeLength*3/4)
-        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 4)
-        .style('dominant-baseline', 'middle')
-        .style('font-size', '11px')
-        .style('fill', 'black')
-        .style('opacity', 0.5)
-        .text((d, i) => classLists[i+1]);
-      
-      // Add annotation text to tell readers the exact output probability
-      // nodeGroups.append('text')
-      //   .attr('class', 'annotation-text')
-      //   .attr('id', (d, i) => `output-prob-${i}`)
-      //   .attr('x', left)
-      //   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + 10)
-      //   .text(d => `(${d3.format('.4f')(d.output)})`);
-    } else {
-            // Embed raster image in these groups
-            nodeGroups.append('image')
-            .attr('class', 'node-image')
-            .attr('width', nodeLength)
-            .attr('height', nodeHeight)
-            .attr('x', left)
-            .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y);
-
-          // Add a rectangle to show the border
-          nodeGroups.append('rect')
-            .attr('class', 'bounding')
-            .attr('width', nodeLength)
-            .attr('height', nodeHeight)
-            .attr('x', left)
-            .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
-            .style('fill', 'none')
-            .style('stroke', 'gray')
-            .style('stroke-width', 1)
-            .classed('hidden', true);    
-    }
-
-    leftAccuumulatedSpace += nodeLength;
-  }
-
-  // Share the nodeCoordinate
-  nodeCoordinateStore_rnn.set(nodeCoordinate_rnn)
-
-  // Compute the scale of the output score width (mapping the the node
-  // width to the max output score)
-  let outputRectScale = d3.scaleLinear()
-        .domain([rnnLayerMinMax[rnn.length-1].min, rnnLayerMinMax[rnn.length-1].max])
-        .range([0, nodeLength]);
-
-  // Draw the canvas
-  for (let l = 0; l < rnn.length; l++) {
-    let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
-
-    svg_rnn.select(`g#rnn-layer-group-${l}`)
-      .selectAll('image.node-image')
-      .each((d, i, g) => drawOutputRNN(d, i, g, range));
-  }
-
-  svg_rnn.selectAll('g.node-output').each(
-    (d, i, g) => drawOutputScore(d, i, g, outputRectScale)
-  );
-
-  // Add layer label
+const addLabels = ()=> {
   let layerNames = rnn.map(d => {
     if (d[0].layerName === 'dense_Dense1' || d[0].layerName.includes('lstm')) {
       return {
@@ -820,12 +588,13 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
 
       return d.name
     });
+}
 
-  // Add layer color scale legends
+const addLegends = () => {
   getLegendGradient(svg_rnn, layerColorScales.embedding, 'embeddingGradient');
   getLegendGradient(svg_rnn, layerColorScales.lstm, 'lstmGradient');
   getLegendGradient(svg_rnn, layerColorScales.input, 'inputGradient');
-  getLegendGradient(svg_rnn, layerColorScales.dense, 'denseGradient');
+  // getLegendGradient(svg_rnn, layerColorScales.dense, 'denseGradient');
 
   let legendHeight = nodeLength / 8;
   let legentY = svgPaddings.top + vSpaceAroundGap_rnn 
@@ -837,17 +606,22 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
       .attr('transform', `translate(${0}, ${legentY})`);
   
   drawLegends(legends, legendHeight);
+}
 
-  // Add edges between nodes
+/**
+ * 
+ * @param {object} rnnGroup Group to appen rnn elements to
+ */
+const addEdges = (rnnGroup)=> {
   let linkGen = d3.linkHorizontal()
     .x(d => d.x)
     .y(d => d.y);
-  
+
   let linkData = getLinkDataRNN(nodeCoordinate_rnn, rnn);
   console.log('linkData is: ', linkData);
   let edgeGroup = rnnGroup.append('g')
     .attr('class', 'edge-group');
-  
+
   edgeGroup.selectAll('path.edge')
     .data(linkData)
     .enter()
@@ -861,57 +635,268 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
     .style('stroke-width', d =>d.targetLayerIndex !==3 ? edgeStrokeWidth:edgeStrokeWidth*3)
     .style('opacity', edgeOpacity)
     .style('stroke', edgeInitColor);
+}
 
-  // // Add input channel annotations
-  // let inputAnnotation = rnnGroup.append('g')
-  //   .attr('class', 'input-annotation');
+const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
+  nodeGroups.append('image')
+  .attr('class', 'node-image')
+  .attr('width', nodeLength)
+  .attr('height', inputNodeHeight)
+  .attr('x', left)
+  .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
 
-  // let redChannel = inputAnnotation.append('text')
-  //   .attr('x', nodeCoordinate_rnn[0][0].x + nodeLength / 2)
-  //   .attr('y', nodeCoordinate_rnn[0][0].y + nodeLength + 5)
-  //   .attr('class', 'annotation-text')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('text-anchor', 'middle');
+  nodeGroups.append('rect')
+    .attr('class', 'input-rect')
+    .attr('width', nodeLength)
+    .attr('height', inputNodeHeight)
+    .attr('x', left)
+    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+    .style('fill', 'none')
+    .style('stroke', 'gray')
+    .style('stroke-width', 1)
+    .classed('hidden', true);  
+
+  nodeGroups.append('text')
+    .attr('class', 'input-text')
+    .attr('x', 0)
+    // .attr('x', svgPaddings.left/3)
+    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+    .style('dominant-baseline', 'middle')
+    .style('font-size', '7px')
+    .style('fill', 'black')
+    .style('opacity', 0.8)
+    .text((d, i) => d.output[0] === 0 
+      ? `<pad>`:`${inputTextList[i + inputTextList.length - curLayer.length]}`);
+
+  nodeGroups.append('text')
+    .attr('class','input-annotation')
+    .attr('x', svgPaddings.left*3/4)
+    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+    .style('dominant-baseline', 'middle')
+    .style('font-size', '7px')
+    .style('fill', 'black')
+    .style('opacity', 0.8)
+    .text((d,i) => d.output);
+}
+
+const initOutputLayer = (nodeGroups, left, l) => {
+        // Add a rectangle to show the border
+        nodeGroups.append('rect')
+        .attr('class', 'bounding')
+        .attr('x', left)
+        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
+        .attr('height', nodeLength / 4)
+        .attr('width', nodeLength)
+        .style('fill', 'none')
+        .style('stroke', 'gray')
+        .style('stroke-width', 0.5)
+        .classed('hidden', false);
+        nodeGroups.append('rect')
+          .attr('class', 'output-rect')
+          .attr('x', left)
+          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
+          .attr('height', nodeLength / 4)
+          .attr('width', nodeLength)
+          .style('fill', 'gray');
+        // Add annotation text to tell readers the exact output probability
+        nodeGroups.append('text')
+          .attr('class', 'annotation-output')
+          .attr('id', (d, i) => `output-prob-${i}`)
+          .attr('x', left + nodeLength/4)
+          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength)
+          // .style('dominant-baseline', 'middle')
+          // .style('font-size', '11px')
+          // .style('fill', 'black')
+          // .style('opacity', 0.5)
+          // .text((d, i) => d.output.toFixed(4));
+        nodeGroups.append('text')
+          .attr('class', 'output-text-one')
+          .attr('x', left-nodeLength/4)
+          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 4)
+          .style('dominant-baseline', 'middle')
+          .style('font-size', '11px')
+          .style('fill', 'black')
+          .style('opacity', 0.5)
+          .text((d, i) => classLists[i]);
+        nodeGroups.append('text')
+          .attr('class', 'output-text-two')
+          .attr('x', left+nodeLength*3/4)
+          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 4)
+          .style('dominant-baseline', 'middle')
+          .style('font-size', '11px')
+          .style('fill', 'black')
+          .style('opacity', 0.5)
+          .text((d, i) => classLists[i+1]);
+}
+
+const drawOutPutLayer = () => {
+  // Compute the scale of the output score width (mapping the the node
+  // width to the max output score)
+  let outputRectScale = d3.scaleLinear()
+        .domain([rnnLayerMinMax[rnn.length-1].min, rnnLayerMinMax[rnn.length-1].max])
+        .range([0, nodeLength]);
+
+  svg_rnn.selectAll('g.node-output').each(
+    (d, i, g) => drawOutputScore(d, i, g, outputRectScale)
+  );    
+}
+
+const initMiddleLayer = (nodeGroups, left, l) => {
+   // Embed raster image in these groups
+   nodeGroups.append('image')
+   .attr('class', 'node-image')
+   .attr('width', nodeLength)
+   .attr('height', nodeHeight)
+   .attr('x', left)
+   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y);
+
+   // Add a rectangle to show the border
+   nodeGroups.append('rect')
+     .attr('class', 'bounding')
+     .attr('width', nodeLength)
+     .attr('height', nodeHeight)
+     .attr('x', left)
+     .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+     .style('fill', 'none')
+     .style('stroke', 'gray')
+     .style('stroke-width', 1)
+     .classed('hidden', true);  
+}
+
+// Draw the canvas
+const drawImageNodes = (l) => {
+    let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
+
+    svg_rnn.select(`g#rnn-layer-group-${l}`)
+      .selectAll('image.node-image')
+      .each((d, i, g) => drawOutputRNN(d, i, g, range));
+}
+
+/**
+ * Draw the overview
+ * @param {number} width Width of the rnn group
+ * @param {number} height Height of the rnn group
+ * @param {object} rnnGroup Group to appen rnn elements to
+ * @param {function} nodeMouseOverHandler Callback func for mouseOver
+ * @param {function} nodeMouseLeaveHandler Callback func for mouseLeave
+ * @param {function} nodeClickHandler Callback func for click
+ * @param {[string]} inputTextList 
+ */
+export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
+  nodeMouseLeaveHandler, nodeClickHandler, inputTextList) => {
+  // Draw the RNN
+  hSpaceAroundGap_rnn = calcHorSpaceGap(width);
+  hSpaceAroundGapStore_rnn.set(hSpaceAroundGap_rnn);
   
-  // redChannel.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('fill', '#C95E67')
-  //   .text('Red');
-  
-  // redChannel.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .text(' channel');
+  let leftAccuumulatedSpace = hSpaceAroundGap_rnn;
 
-  // inputAnnotation.append('text')
-  //   .attr('x', nodeCoordinate_rnn[0][1].x + nodeLength / 2)
-  //   .attr('y', nodeCoordinate_rnn[0][1].y + nodeLength + 5)
-  //   .attr('class', 'annotation-text')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('text-anchor', 'middle')
-  //   .style('fill', '#3DB665')
-  //   .text('Green');
+  // Iterate through the rnn to draw nodes in each layer
+  for (let l = 0; l < rnn.length; l++) {
 
-  // inputAnnotation.append('text')
-  //   .attr('x', nodeCoordinate_rnn[0][2].x + nodeLength / 2)
-  //   .attr('y', nodeCoordinate_rnn[0][2].y + nodeLength + 5)
-  //   .attr('class', 'annotation-text')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('text-anchor', 'middle')
-  //   .style('fill', '#3F7FBC')
-  //   .text('Blue');
+    let curLayer = rnn[l];
+    let isOutput = curLayer[0].layerName === 'dense_Dense1';
+    nodeCoordinate_rnn.push([]);
+
+    // Compute the x coordinate of the whole layer
+    // Output (dense), embedding and lstm layer has long gaps
+    if (isOutput || curLayer[0].type === 'embedding' || curLayer[0].type ==='lstm') {
+      leftAccuumulatedSpace += hSpaceAroundGap_rnn * gapRatio;
+    } else {
+      leftAccuumulatedSpace += hSpaceAroundGap_rnn;
+    }
+
+    // All nodes share the same x coordiante (left in div style)
+    let left = leftAccuumulatedSpace;
+
+    vSpaceAroundGap_rnn = curLayer[0].layerName !== 'input' 
+        ? calcVerSpaceGap(height, curLayer.length, nodeHeight) 
+        : calcVerSpaceGap(height, curLayer.length, inputNodeHeight);
+    vSpaceAroundGapStore_rnn.set(vSpaceAroundGap_rnn);
+
+    let layerGroup = rnnGroup.append('g')
+      .attr('class', 'rnn-layer-group')
+      .attr('id', `rnn-layer-group-${l}`);
+
+    let nodeGroups = layerGroup.selectAll('g.node-group')
+      .data(curLayer, d => d.index)
+      .enter()
+      .append('g')
+      .attr('class', 'node-group')
+      .style('cursor', 'pointer')
+      .style('pointer-events', 'all')
+      .on('click', nodeClickHandler)
+      .on('mouseover', nodeMouseOverHandler)
+      .on('mouseleave', nodeMouseLeaveHandler)
+      .classed('node-output', isOutput)
+      .attr('id', (d, i) => {
+          // Compute the coordinate
+          // Not using transform on the group object because of a decade old
+          // bug on webkit (safari)
+          // https://bugs.webkit.org/show_bug.cgi?id=23113
+          let top;
+          if (d.type !=='input'){
+              top = i * nodeHeight + (i + 1) * vSpaceAroundGap_rnn;
+            } else{
+              top = i * inputNodeHeight + (i + 1) * vSpaceAroundGap_rnn;
+            }
+
+          top += svgPaddings.top;
+          nodeCoordinate_rnn[l].push({x: left, y: top});
+          return `layer-${l}-node-${i}`
+        }
+      );
+
+    // Overwrite the mouseover and mouseleave function for output nodes to show
+    // hover info in the UI
+    layerGroup.selectAll('g.node-output')
+      .on('mouseover', (d, i, g) => {
+        nodeMouseOverHandler(d, i, g);
+        hoverInfoStore_rnn.set( {show: true, text: `Output value: ${formater(d.output)}`} );
+      })
+      .on('mouseleave', (d, i, g) => {
+        nodeMouseLeaveHandler(d, i, g);
+        hoverInfoStore_rnn.set( {show: false, text: `Output value: ${formater(d.output)}`} );
+      }
+    );
+    
+    if (curLayer[0].layerName === 'input') {
+        initInputLayer(nodeGroups, left, l, curLayer, inputTextList);
+        drawImageNodes(l);
+      } else if (curLayer[0].layerName.includes('dense')){ 
+        initOutputLayer(nodeGroups, left, l);
+        drawOutPutLayer();
+      } else {
+        initMiddleLayer(nodeGroups, left, l);
+        drawImageNodes(l);
+      }
+
+    leftAccuumulatedSpace += nodeLength;
+  }
+
+  // Share the nodeCoordinate
+  nodeCoordinateStore_rnn.set(nodeCoordinate_rnn)  
+
+  // Add layer label
+  addLabels();
+
+  // Add layer color scale legends
+  addLegends();
+
+  // Add edges between nodes
+  addEdges(rnnGroup);
 }
 
 /**
  * Update canvas values when user changes input image
  */
-export const updateRNN = () => {
+export const updateRNN = (inputTextList) => {
   // Compute the scale of the output score width (mapping the the node
   // width to the max output score)
   let outputRectScale = d3.scaleLinear()
-      .domain(rnnLayerRanges.output)
+      .domain([rnnLayerMinMax[rnn.length-1].min, rnnLayerMinMax[rnn.length-1].max])
       .range([0, nodeLength]);
 
-  // Rebind the cnn data to layer groups layer by layer
+  // Rebind the rnn data to layer groups layer by layer
   for (let l = 0; l < rnn.length; l++) {
     let curLayer = rnn[l];
     let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
@@ -930,6 +915,13 @@ export const updateRNN = () => {
           d3.select(this)
             .select('image.node-image')
             .each((d, i, g) => drawOutputRNN(d, i, g, range));
+          d3.select(this)
+            .select('text.input-annotation')
+            .text((d,i) => d.output);
+          d3.select(this)
+            .select('text.input-text')
+            .text((d,i,g) => d.output[0] === 0 
+              ? `<pad>`:`${inputTextList[d.index+inputTextList.length-rnn[l].length]}` );
           d3.select(this).transition('appear')
             .duration(700)
             .ease(d3.easeCubicIn)
@@ -947,25 +939,25 @@ export const updateRNN = () => {
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
     let range1 = rnnLayerRanges.local[start];
-    let range2 = rnnLayerRanges.local[start + 2];
+    let range2 = rnnLayerRanges.local[start + 1];
 
     let localLegendScale1 = d3.scaleLinear()
-      .range([0, 2 * nodeLength + hSpaceAroundGap_rnn])
-      .domain([-range1, range1]);
+      .range([0, 1 * nodeLength + 0 * hSpaceAroundGap_rnn])
+      .domain([-range1/2, range1/2]);
     
     let localLegendScale2 = d3.scaleLinear()
-      .range([0, 3 * nodeLength + 2 * hSpaceAroundGap_rnn])
-      .domain([-range2, range2]);
+      .range([0, 1 * nodeLength + 0 * hSpaceAroundGap_rnn])
+      .domain([-range2/2, range2/2]);
 
     let localLegendAxis1 = d3.axisBottom()
       .scale(localLegendScale1)
-      .tickFormat(d3.format('.2f'))
-      .tickValues([-range1, 0, range1]);
+      .tickFormat(d3.format('.1f'))
+      .tickValues([-range1/2, 0, range1/2]);
     
     let localLegendAxis2 = d3.axisBottom()
       .scale(localLegendScale2)
-      .tickFormat(d3.format('.2f'))
-      .tickValues([-range2, 0, range2]);
+      .tickFormat(d3.format('.1f'))
+      .tickValues([-range2/2, 0, range2/2]);
     
     svg_rnn.select(`g#local-legend-${i}-1`).select('g').call(localLegendAxis1);
     svg_rnn.select(`g#local-legend-${i}-2`).select('g').call(localLegendAxis2);
@@ -977,14 +969,14 @@ export const updateRNN = () => {
     let range = rnnLayerRanges.local[start];
 
     let moduleLegendScale = d3.scaleLinear()
-      .range([0, num_module * nodeLength + 3 * hSpaceAroundGap_rnn +
-        1 * hSpaceAroundGap_rnn * gapRatio - 1.2])
-      .domain([-range, range]);
+      .range([0, num_module * nodeLength + 0 * hSpaceAroundGap_rnn +
+        (num_module-1) * hSpaceAroundGap_rnn * gapRatio - 1.2])
+      .domain([-range/2, range/2]);
 
     let moduleLegendAxis = d3.axisBottom()
       .scale(moduleLegendScale)
       .tickFormat(d3.format('.2f'))
-      .tickValues([-range, -(range / 2), 0, range/2, range]);
+      .tickValues([-range/2, -(range / 4), 0, range/4, range/2]);
     
     svg_rnn.select(`g#module-legend-${i}`).select('g').call(moduleLegendAxis);
   }
@@ -994,32 +986,34 @@ export const updateRNN = () => {
   let range = rnnLayerRanges.global[start];
 
   let globalLegendScale = d3.scaleLinear()
-    .range([0, 10 * nodeLength + 6 * hSpaceAroundGap_rnn +
-      3 * hSpaceAroundGap_rnn * gapRatio - 1.2])
-    .domain([-range, range]);
+    .range([0, (numLayers-2) * nodeLength 
+      + 0 * hSpaceAroundGap_rnn 
+      + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2])
+    .domain([-range/2, range/2]);
 
   let globalLegendAxis = d3.axisBottom()
     .scale(globalLegendScale)
     .tickFormat(d3.format('.2f'))
-    .tickValues([-range, -(range / 2), 0, range/2, range]);
+    .tickValues([-range/2, -(range / 4), 0, range/4, range/2]);
 
   svg_rnn.select(`g#global-legend`).select('g').call(globalLegendAxis);
 
-  // Output legend
-  let outputLegendAxis = d3.axisBottom()
-    .scale(outputRectScale)
-    .tickFormat(d3.format('.1f'))
-    .tickValues([0, rnnLayerMinMax[rnn.length-1].max]);
+  // // Output legend
+  // let outputLegendAxis = d3.axisBottom()
+  //   .scale(outputRectScale)
+  //   .tickFormat(d3.format('.1f'))
+  //   .tickValues([0, rnnLayerRanges.output[1]]);
   
-  svg_rnn.select('g#output-legend').select('g').call(outputLegendAxis);
+  // svg_rnn.select('g#output-legend').select('g').call(outputLegendAxis);
 }
 
 /**
  * Update the ranges for current CNN layers
  */
-export const updateRNNLayerRanges = () => {
+export const updateRNNLayerRanges = (maxLen =1) => {
   // Iterate through all nodes to find a output ranges for each layer
-  let rnnLayerRangesLocal = [1];
+  let rnnLayerRangesLocal = [maxLen];
+  // let rnnLayerRangesLocal = [1];
   let curRange = undefined;
 
   // Also track the min/max of each layer (avoid computing during intermediate
@@ -1030,19 +1024,26 @@ export const updateRNNLayerRanges = () => {
     let curLayer = rnn[l];
 
     // Compute the min max
-    let outputExtents = curLayer.map(l => getExtent(l.output));
+    let outputExtents = curLayer.map(d => getExtent(d.output));
     let aggregatedExtent = outputExtents.reduce((acc, cur) => {
       return [Math.min(acc[0], cur[0]), Math.max(acc[1], cur[1])];
     })
 
-    // input layer refreshes curRange counting to [0, 1]
-    // because there are too many words in dictionary
-    if (curLayer[0].type ==='input') {
-      aggregatedExtent = aggregatedExtent.map(i => i/aggregatedExtent[1]);
-      // console.log('divided by input dims');
-    } 
+    // if (l === 0)  { 
+    //   console.log(outputExtents,aggregatedExtent);
+    // }
+
     rnnLayerMinMax.push({min: aggregatedExtent[0], max: aggregatedExtent[1]});
 
+    // input layer refreshes curRange counting to [0, 1]
+    // because there are too many words in dictionary
+    // if (curLayer[0].type ==='input') {
+    //   aggregatedExtent = aggregatedExtent.map(i => i/aggregatedExtent[1]);
+    //   // console.log('divided by input dims');
+    //   // Plus 0.1 to offset the rounding error (avoid black color)
+    //   curRange = 2 * (0.1 + 
+    //     Math.round(Math.max(...aggregatedExtent) * 1000) / 1000);
+    // } 
     // embedding and lstm layers refresh curRange counting
     if (curLayer[0].type === 'embedding' || curLayer[0].type === 'lstm') {
       aggregatedExtent = aggregatedExtent.map(Math.abs);
@@ -1061,7 +1062,7 @@ export const updateRNNLayerRanges = () => {
   rnnLayerMinMax.push({min: 0, max: 1});
 
   // Support different levels of scales (1) lcoal, (2) component, (3) global
-  let rnnLayerRangesComponent = [1];
+  let rnnLayerRangesComponent = [maxLen];
   let numOfComponent = (numLayers - 2) / num_module;
   for (let i = 0; i < numOfComponent; i++) {
     let curArray = rnnLayerRangesLocal.slice(1 + num_module * i, 1 + num_module * i + num_module);
@@ -1072,7 +1073,7 @@ export const updateRNNLayerRanges = () => {
   }
   rnnLayerRangesComponent.push(1);
 
-  let rnnLayerRangesGlobal = [1];
+  let rnnLayerRangesGlobal = [maxLen];
   let maxRange = Math.max(...rnnLayerRangesLocal.
                   slice(1, rnnLayerRangesLocal.length - 1));
   for (let i = 0; i < numLayers - 2; i++) {

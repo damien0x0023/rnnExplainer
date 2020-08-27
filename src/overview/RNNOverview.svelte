@@ -31,7 +31,9 @@
   };
 
   // Overview functions
-  import { loadTrainedModel_rnn, constructRNN, SentimentPredictor } from '../utils/rnn-tf.js';
+  import { loadTrainedModel_rnn, 
+    // constructRNN, 
+    SentimentPredictor } from '../utils/rnn-tf.js';
   // import { loadTrainedModel, constructCNN } from '../utils/cnn-tf.js';
   import { 
     // overviewConfig, 
@@ -186,15 +188,16 @@
 
 
   const exampleReviews = {
-  'empty': 'Helpless Waiting... The text here is for testing as rendering 100 words representation will cost much time I will seek to improve the responce speed later',
+  'empty': 'Helpless Waiting... The text here is for testing as rendering 100 words representation will cost much time I will seek to improve the response speed later',
   'positive':
       `die hard mario fan and i loved this game br br this game starts slightly boring but trust me it\'s worth it as soon as you start your hooked the levels are fun and exiting they will hook you OOV your mind turns to mush i\'m not kidding this game is also orchestrated and is beautifully done br br to keep this spoiler free i have to keep my mouth shut about details but please try this game it\'ll be worth it br br story 9 9 action 10 1 it\'s that good OOV 10 attention OOV 10 average 10`,
   'negative':
       `the mother in this movie is reckless with her children to the point of neglect i wish i wasn\'t so angry about her and her actions because i would have otherwise enjoyed the flick what a number she was take my advise and fast forward through everything you see her do until the end also is anyone else getting sick of watching movies that are filmed so dark anymore one can hardly see what is being filmed as an audience we are impossibly involved with the actions on the screen so then why the hell can\'t we have night vision`
   };
-  let selectedReview = 'negative';
+  let selectedReview = 'empty';
   let previousSelectedReview = selectedReview;
   let predictor;
+  let inputDim;
 
   let nodeData;
   let selectedNodeIndex = -1;
@@ -265,106 +268,52 @@
       rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
       console.timeEnd('Construct rnn');
 
-      rnn.rawInput = rnn[0];
-      rnn[0] = rnn.nonPadInput;
+      // rnn.rawInput = rnn[0];
+      // rnn[0] = rnn.nonPadInput;
       rnnStore.set(rnn);
       console.log('rnn layers are: ', rnn);
 
-      updateRNNLayerRanges();
+      updateRNNLayerRanges(inputDim);
       console.log("rnn layer ranges and MinMax are: ", 
         rnnLayerRanges, rnnLayerMinMax);
 
-      updateRNN();
+      updateRNN(predictor.inputArray);
     } else {
       console.log('function unfinished. The current Review does not change')
     }
   }
 
-  // responce to click other image, todo: change image to change review option
-  const imageOptionClicked = async (e) => {
-    // todo: need to rewrite for the content of review
-    let newImageName = d3.select(e.target).attr('data-imageName');
+  // // cannot load the image to cannot load the text
+  // const handleModalCanceled = (event) => {
+  //   // User cancels the modal without a successful image, so we restore the
+  //   // previous selected image as input
+  //   selectedImage = event.detail.preImage;
+  // }
 
-    if (newImageName !== selectedImage) {
-      selectedImage = newImageName;
+  // // change custom image to custom review
+  // const handleCustomImage = async (event) => {
+  //   // User gives a valid image URL
+  //   customImageURL = event.detail.url;
 
-      // Re-compute the CNN using the new input image
-      // rnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
-      rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
-        LOCAL_URLS.metadata, model_lstm);
-      // Ignore the meanless input <pad> for now
-      // let orignalInput = rnn[0];
-      // rnn[0].filter(d => d.output !== 0);
-      // rnn.rawInput = orignalInput;
-      // rnnStore.set(rnn);
+  //   // Re-compute the CNN using the new input image
+  //   // rnn = await constructCNN(customImageURL, model);
+  //   rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
+  //       LOCAL_URLS.metadata, model_lstm);
+  //   // Ignore the flatten layer for now
+  //   // let flatten = cnn[cnn.length - 2];
+  //   // cnn.splice(cnn.length - 2, 1);
+  //   // cnn.flatten = flatten;
+  //   rnnStore.set(rnn);
 
-      // Update all scales used in the RNN view
-      updateRNNLayerRanges();
-      updateRNN();
-    }
-  }
+  //   // Update the UI
+  //   let customImageSlot = d3.select(rnnOverviewComponent)
+  //     .select('.custom-image').node();
+  //   drawCustomReivew(customImageSlot, rnn[0]);
 
-  // responce to click the custom Image Button
-  const customImageClicked = () => {
-
-    // Case 1: there is no custom image -> show the modal to get user input
-    if (customImageURL === null) {
-      modalInfo_rnn.show = true;
-      modalInfo_rnn.preImage = selectedImage;
-      modalStore_rnn.set(modalInfo_rnn);
-    }
-
-    // Case 2: there is an existing custom image, not the focus -> switch to this image
-    else if (selectedImage !== 'custom') {
-      let fakeEvent = {detail: {url: customImageURL}};
-      handleCustomImage(fakeEvent);
-    }
-
-    // Case 3: there is an existing custom image, and its the focus -> let user
-    // upload a new image
-    else {
-      modalInfo_rnn.show = true;
-      modalInfo_rnn.preImage = selectedImage;
-      modalStore_rnn.set(modalInfo_rnn);
-    }
-
-    if (selectedImage !== 'custom') {
-      selectedImage = 'custom';
-    }
-
-  }
-
-  // cannot load the image to cannot load the text
-  const handleModalCanceled = (event) => {
-    // User cancels the modal without a successful image, so we restore the
-    // previous selected image as input
-    selectedImage = event.detail.preImage;
-  }
-
-  // change custom image to custom review
-  const handleCustomImage = async (event) => {
-    // User gives a valid image URL
-    customImageURL = event.detail.url;
-
-    // Re-compute the CNN using the new input image
-    // rnn = await constructCNN(customImageURL, model);
-    rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
-        LOCAL_URLS.metadata, model_lstm);
-    // Ignore the flatten layer for now
-    // let flatten = cnn[cnn.length - 2];
-    // cnn.splice(cnn.length - 2, 1);
-    // cnn.flatten = flatten;
-    rnnStore.set(rnn);
-
-    // Update the UI
-    let customImageSlot = d3.select(rnnOverviewComponent)
-      .select('.custom-image').node();
-    drawCustomReivew(customImageSlot, rnn[0]);
-
-    // Update all scales used in the RNN view
-    updateRNNLayerRanges();
-    updateRNN();
-  }
+  //   // Update all scales used in the RNN view
+  //   updateRNNLayerRanges();
+  //   updateRNN();
+  // }
 
   // handle the event when click the detail button
   const detailedButtonClicked = () => {
@@ -605,8 +554,10 @@
         .style('stroke', edgeInitColor)
         .style('stroke-width', edgeStrokeWidth)
         .style('opacity', edgeOpacity);
-
-      d3.select(g[i]).select('rect.bounding').classed('hidden', true);
+      
+      if (d.type !== 'dense') {
+        d3.select(g[i]).select('rect.bounding').classed('hidden', true);
+      }
 
       if (d.inputLinks.length === 1) {
         let link = d.inputLinks[0];
@@ -739,39 +690,29 @@
     // check the result first
     directPredict(`${exampleReviews[selectedReview]}`, model_lstm);
 
-    // // let result;
-    // // await predictor.predictResult(`${exampleReviews[selectedReview]}`, model_lstm).
-    // //       then(res => result = res);
-    // // console.log('Direct Result: Inference result (0 - negative; 1 - positive): ' +
-    // //               result.score.toFixed(6) +
-    // //             ' (elapsed: ' + result.elapsed.toFixed(2) + ' ms)');
-
     console.time('Construct rnn');
     // rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
     //   LOCAL_URLS.metadata, model_lstm);
     rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
     console.timeEnd('Construct rnn');
 
-    let inputArray = predictor.inputArray;
-    console.log('input text array is: ', inputArray);
-
-    // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
-    // cause the exploration of edges, which will cost performance loss in interface
-    rnn.rawInput = rnn[0];
-    rnn[0] = rnn.nonPadInput;
+    // // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
+    // // cause the exploration of edges, which will cost performance loss in interface
+    // rnn.rawInput = rnn[0];
+    // rnn[0] = rnn.nonPadInput;
     rnnStore.set(rnn);
     console.log('rnn layers are: ', rnn);
 
-    updateRNNLayerRanges();
+    inputDim = model_lstm.layers[0].inputDim;
+    updateRNNLayerRanges(inputDim);
     console.log("rnn layer ranges and MinMax are: ", 
       rnnLayerRanges, rnnLayerMinMax);
 
     // Create and draw the RNN view
     // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
     // nodeMouseLeaveHandler, nodeClickHandler);
-    drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null, inputArray);
-
-    });
+    drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null, predictor.inputArray);
+  });
 
 </script>
 
@@ -1129,5 +1070,5 @@
  
 </div>
 
-<Modal on:xClicked={handleModalCanceled}
-  on:urlTyped={handleCustomImage}/>
+<!-- <Modal on:xClicked={handleModalCanceled}
+  on:urlTyped={handleCustomImage}/> -->
