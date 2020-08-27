@@ -44,10 +44,8 @@ export function padSequences(
       } else {
         seq.splice(maxLen, seq.length - maxLen);
       }
-    }
-
     // Perform padding.
-    if (seq.length < maxLen) {
+    } else if (seq.length < maxLen) {
       const pad = [];
       for (let i = 0; i < maxLen - seq.length; ++i) {
         pad.push(value);
