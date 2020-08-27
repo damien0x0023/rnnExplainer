@@ -194,7 +194,7 @@
   'negative':
       `the mother in this movie is reckless with her children to the point of neglect i wish i wasn\'t so angry about her and her actions because i would have otherwise enjoyed the flick what a number she was take my advise and fast forward through everything you see her do until the end also is anyone else getting sick of watching movies that are filmed so dark anymore one can hardly see what is being filmed as an audience we are impossibly involved with the actions on the screen so then why the hell can\'t we have night vision`
   };
-  let selectedReview = 'negative';
+  let selectedReview = 'empty';
   let previousSelectedReview = selectedReview;
   let predictor;
   let inputDim;
@@ -268,8 +268,8 @@
       rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
       console.timeEnd('Construct rnn');
 
-      rnn.rawInput = rnn[0];
-      rnn[0] = rnn.nonPadInput;
+      // rnn.rawInput = rnn[0];
+      // rnn[0] = rnn.nonPadInput;
       rnnStore.set(rnn);
       console.log('rnn layers are: ', rnn);
 
@@ -277,7 +277,7 @@
       console.log("rnn layer ranges and MinMax are: ", 
         rnnLayerRanges, rnnLayerMinMax);
 
-      updateRNN();
+      updateRNN(predictor.inputArray);
     } else {
       console.log('function unfinished. The current Review does not change')
     }
@@ -696,10 +696,10 @@
     rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
     console.timeEnd('Construct rnn');
 
-    // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
-    // cause the exploration of edges, which will cost performance loss in interface
-    rnn.rawInput = rnn[0];
-    rnn[0] = rnn.nonPadInput;
+    // // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
+    // // cause the exploration of edges, which will cost performance loss in interface
+    // rnn.rawInput = rnn[0];
+    // rnn[0] = rnn.nonPadInput;
     rnnStore.set(rnn);
     console.log('rnn layers are: ', rnn);
 

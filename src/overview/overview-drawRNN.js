@@ -54,7 +54,7 @@ rnnLayerMinMaxStore.subscribe( value => {rnnLayerMinMax = value;} )
 let detailedMode_rnn = undefined;
 detailedModeStore_rnn.subscribe( value => {detailedMode_rnn = value;} )
 
-// There are 0 short gaps and 3 long gaps
+// There are 3 short gaps(2 left 1 right) and 3 long gaps (btw nodes)
 let n_shortGaps = 3;
 let n_longGaps = 3;
 // for module view
@@ -110,6 +110,7 @@ const enlargeOutputImage = (oriWidth, oriHeight, enlargedWidth,
  */
 export const drawOutputRNN = (d, i, g, range) => {
   let image = g[i];
+  //draw and update the colors of image nodes
   let colorScale = layerColorScales[d.type];
 
   // Set up a second canvas in order to resize image
@@ -178,12 +179,24 @@ export const drawOutputRNN = (d, i, g, range) => {
  */
 const drawOutputScore = (d, i, g, scale) => {
   let group = d3.select(g[i]);
+  // draw and update the width of output rects
   group.select('rect.output-rect')
     .transition('dense')
     .delay(500)
     .duration(800)
     .ease(d3.easeCubicIn)
-    .attr('width', scale(d.output))
+    .attr('width', scale(d.output));
+  // draw and update the proba of outputs
+  group.select('text.annotation-output')
+    .transition('dense')
+    .delay(500)
+    .duration(800)
+    .ease(d3.easeCubicIn)
+    .style('dominant-baseline', 'middle')
+    .style('font-size', '11px')
+    .style('fill', 'black')
+    .style('opacity', 0.5)
+    .text((d, i) => d.output.toFixed(4));
 }
 
 export const drawCustomReivew = (image, inputLayer) => {
@@ -280,13 +293,13 @@ const drawLegends = (legends, legendHeight) => {
     let range2 = rnnLayerRanges.local[start + 1];
 
     let localLegendScale1 = d3.scaleLinear()
-      .range([0, (num_module -1) * nodeLength 
-        + (num_module-2) * hSpaceAroundGap_rnn- 1.2])
+      .range([0, 1 * nodeLength 
+        + 0 * hSpaceAroundGap_rnn- 1.2])
       .domain([-range1 / 2, range1 / 2]);
     
     let localLegendScale2 = d3.scaleLinear()
-      .range([0, (num_module -1) * nodeLength 
-        + (num_module-2) * hSpaceAroundGap_rnn - 1.2])
+      .range([0, 1 * nodeLength 
+        + 0 * hSpaceAroundGap_rnn - 1.2])
       .domain([-range2 / 2, range2 / 2]);
 
     let localLegendAxis1 = d3.axisBottom()
@@ -336,7 +349,7 @@ const drawLegends = (legends, legendHeight) => {
     let range = rnnLayerRanges.module[start];
 
     let moduleLegendScale = d3.scaleLinear()
-      .range([0, num_module * nodeLength + (num_module-2) * hSpaceAroundGap_rnn +
+      .range([0, num_module * nodeLength + 0 * hSpaceAroundGap_rnn +
         (num_module-1) * hSpaceAroundGap_rnn * gapRatio - 1.2])
       .domain([-range / 2, range / 2]);
 
@@ -356,7 +369,7 @@ const drawLegends = (legends, legendHeight) => {
       .call(moduleLegendAxis)
 
     moduleLegend.append('rect')
-      .attr('width', num_module * nodeLength + (num_module-2) * hSpaceAroundGap_rnn +
+      .attr('width', num_module * nodeLength + 0 * hSpaceAroundGap_rnn +
         (num_module-1) * hSpaceAroundGap_rnn * gapRatio)
       .attr('height', legendHeight)
       .style('fill', 'url(#embeddingGradient)');
@@ -368,8 +381,8 @@ const drawLegends = (legends, legendHeight) => {
 
   let globalLegendScale = d3.scaleLinear()
     .range([0, (numLayers-2) * nodeLength
-      + (n_shortGaps-2) * hSpaceAroundGap_rnn +
-     (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2])
+        + 0 * hSpaceAroundGap_rnn 
+        + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2])
     .domain([-range / 2, range / 2]);
 
   let globalLegendAxis = d3.axisBottom()
@@ -389,7 +402,7 @@ const drawLegends = (legends, legendHeight) => {
 
   globalLegend.append('rect')
     .attr('width', (numLayers-2) * nodeLength
-       + (n_shortGaps-2) * hSpaceAroundGap_rnn +
+       + 0 * hSpaceAroundGap_rnn +
       (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio)
     .attr('height', legendHeight)
     .style('fill', 'url(#embeddingGradient)');
@@ -450,9 +463,6 @@ const drawLegends = (legends, legendHeight) => {
 }
 
 //todo: split drawRNN into small pieces for the use of updateRNN
-const drawMainFrame = () => {
-  
-}
 
 /**
  * return the horizontal gap for the whole NN
@@ -628,8 +638,6 @@ const addEdges = (rnnGroup)=> {
 }
 
 const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
-  let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
-  let colorScale = layerColorScales[curLayer[0].type];
   nodeGroups.append('image')
   .attr('class', 'node-image')
   .attr('width', nodeLength)
@@ -657,7 +665,8 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
     .style('font-size', '7px')
     .style('fill', 'black')
     .style('opacity', 0.8)
-    .text((d, i) => inputTextList[i] === undefined? `<pad>`:`${inputTextList[i]}`);
+    .text((d, i) => d.output[0] === 0 
+      ? `<pad>`:`${inputTextList[i + inputTextList.length - curLayer.length]}`);
 
   nodeGroups.append('text')
     .attr('class','input-annotation')
@@ -668,15 +677,6 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
     .style('fill', 'black')
     .style('opacity', 0.8)
     .text((d,i) => d.output);
-}
-
-const drawInputLayer = (l) => {
-  let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
-  console.log(range);
-
-  svg_rnn.select(`g#rnn-layer-group-${l}`)
-  .selectAll('image.node-image')
-  .each((d, i, g) => drawOutputRNN(d, i, g, range));
 }
 
 const initOutputLayer = (nodeGroups, left, l) => {
@@ -700,15 +700,15 @@ const initOutputLayer = (nodeGroups, left, l) => {
           .style('fill', 'gray');
         // Add annotation text to tell readers the exact output probability
         nodeGroups.append('text')
-          .attr('class', 'annotation-text')
+          .attr('class', 'annotation-output')
           .attr('id', (d, i) => `output-prob-${i}`)
           .attr('x', left + nodeLength/4)
           .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength)
-          .style('dominant-baseline', 'middle')
-          .style('font-size', '11px')
-          .style('fill', 'black')
-          .style('opacity', 0.5)
-          .text((d, i) => d.output.toFixed(4));
+          // .style('dominant-baseline', 'middle')
+          // .style('font-size', '11px')
+          // .style('fill', 'black')
+          // .style('opacity', 0.5)
+          // .text((d, i) => d.output.toFixed(4));
         nodeGroups.append('text')
           .attr('class', 'output-text-one')
           .attr('x', left-nodeLength/4)
@@ -738,7 +738,7 @@ const drawOutPutLayer = () => {
 
   svg_rnn.selectAll('g.node-output').each(
     (d, i, g) => drawOutputScore(d, i, g, outputRectScale)
-  );
+  );    
 }
 
 const initMiddleLayer = (nodeGroups, left, l) => {
@@ -764,7 +764,7 @@ const initMiddleLayer = (nodeGroups, left, l) => {
 }
 
 // Draw the canvas
-const drawMiddleLayer = (l) => {
+const drawImageNodes = (l) => {
     let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
 
     svg_rnn.select(`g#rnn-layer-group-${l}`)
@@ -861,13 +861,13 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
     
     if (curLayer[0].layerName === 'input') {
         initInputLayer(nodeGroups, left, l, curLayer, inputTextList);
-        drawInputLayer(l);
+        drawImageNodes(l);
       } else if (curLayer[0].layerName.includes('dense')){ 
         initOutputLayer(nodeGroups, left, l);
         drawOutPutLayer();
       } else {
         initMiddleLayer(nodeGroups, left, l);
-        drawMiddleLayer(l);
+        drawImageNodes(l);
       }
 
     leftAccuumulatedSpace += nodeLength;
@@ -884,57 +884,19 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
 
   // Add edges between nodes
   addEdges(rnnGroup);
-
-  // // Add input channel annotations
-  // let inputAnnotation = rnnGroup.append('g')
-  //   .attr('class', 'input-annotation');
-
-  // let redChannel = inputAnnotation.append('text')
-  //   .attr('x', nodeCoordinate_rnn[0][0].x + nodeLength / 2)
-  //   .attr('y', nodeCoordinate_rnn[0][0].y + nodeLength + 5)
-  //   .attr('class', 'annotation-text')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('text-anchor', 'middle');
-  
-  // redChannel.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('fill', '#C95E67')
-  //   .text('Red');
-  
-  // redChannel.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .text(' channel');
-
-  // inputAnnotation.append('text')
-  //   .attr('x', nodeCoordinate_rnn[0][1].x + nodeLength / 2)
-  //   .attr('y', nodeCoordinate_rnn[0][1].y + nodeLength + 5)
-  //   .attr('class', 'annotation-text')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('text-anchor', 'middle')
-  //   .style('fill', '#3DB665')
-  //   .text('Green');
-
-  // inputAnnotation.append('text')
-  //   .attr('x', nodeCoordinate_rnn[0][2].x + nodeLength / 2)
-  //   .attr('y', nodeCoordinate_rnn[0][2].y + nodeLength + 5)
-  //   .attr('class', 'annotation-text')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('text-anchor', 'middle')
-  //   .style('fill', '#3F7FBC')
-  //   .text('Blue');
 }
 
 /**
  * Update canvas values when user changes input image
  */
-export const updateRNN = () => {
+export const updateRNN = (inputTextList) => {
   // Compute the scale of the output score width (mapping the the node
   // width to the max output score)
   let outputRectScale = d3.scaleLinear()
-      .domain(rnnLayerRanges.output)
+      .domain([rnnLayerMinMax[rnn.length-1].min, rnnLayerMinMax[rnn.length-1].max])
       .range([0, nodeLength]);
 
-  // Rebind the cnn data to layer groups layer by layer
+  // Rebind the rnn data to layer groups layer by layer
   for (let l = 0; l < rnn.length; l++) {
     let curLayer = rnn[l];
     let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
@@ -953,6 +915,13 @@ export const updateRNN = () => {
           d3.select(this)
             .select('image.node-image')
             .each((d, i, g) => drawOutputRNN(d, i, g, range));
+          d3.select(this)
+            .select('text.input-annotation')
+            .text((d,i) => d.output);
+          d3.select(this)
+            .select('text.input-text')
+            .text((d,i,g) => d.output[0] === 0 
+              ? `<pad>`:`${inputTextList[d.index+inputTextList.length-rnn[l].length]}` );
           d3.select(this).transition('appear')
             .duration(700)
             .ease(d3.easeCubicIn)
@@ -970,25 +939,25 @@ export const updateRNN = () => {
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
     let range1 = rnnLayerRanges.local[start];
-    let range2 = rnnLayerRanges.local[start + 2];
+    let range2 = rnnLayerRanges.local[start + 1];
 
     let localLegendScale1 = d3.scaleLinear()
-      .range([0, 2 * nodeLength + hSpaceAroundGap_rnn])
-      .domain([-range1, range1]);
+      .range([0, 1 * nodeLength + 0 * hSpaceAroundGap_rnn])
+      .domain([-range1/2, range1/2]);
     
     let localLegendScale2 = d3.scaleLinear()
-      .range([0, 3 * nodeLength + 2 * hSpaceAroundGap_rnn])
-      .domain([-range2, range2]);
+      .range([0, 1 * nodeLength + 0 * hSpaceAroundGap_rnn])
+      .domain([-range2/2, range2/2]);
 
     let localLegendAxis1 = d3.axisBottom()
       .scale(localLegendScale1)
-      .tickFormat(d3.format('.2f'))
-      .tickValues([-range1, 0, range1]);
+      .tickFormat(d3.format('.1f'))
+      .tickValues([-range1/2, 0, range1/2]);
     
     let localLegendAxis2 = d3.axisBottom()
       .scale(localLegendScale2)
-      .tickFormat(d3.format('.2f'))
-      .tickValues([-range2, 0, range2]);
+      .tickFormat(d3.format('.1f'))
+      .tickValues([-range2/2, 0, range2/2]);
     
     svg_rnn.select(`g#local-legend-${i}-1`).select('g').call(localLegendAxis1);
     svg_rnn.select(`g#local-legend-${i}-2`).select('g').call(localLegendAxis2);
@@ -1000,14 +969,14 @@ export const updateRNN = () => {
     let range = rnnLayerRanges.local[start];
 
     let moduleLegendScale = d3.scaleLinear()
-      .range([0, num_module * nodeLength + 3 * hSpaceAroundGap_rnn +
-        1 * hSpaceAroundGap_rnn * gapRatio - 1.2])
-      .domain([-range, range]);
+      .range([0, num_module * nodeLength + 0 * hSpaceAroundGap_rnn +
+        (num_module-1) * hSpaceAroundGap_rnn * gapRatio - 1.2])
+      .domain([-range/2, range/2]);
 
     let moduleLegendAxis = d3.axisBottom()
       .scale(moduleLegendScale)
       .tickFormat(d3.format('.2f'))
-      .tickValues([-range, -(range / 2), 0, range/2, range]);
+      .tickValues([-range/2, -(range / 4), 0, range/4, range/2]);
     
     svg_rnn.select(`g#module-legend-${i}`).select('g').call(moduleLegendAxis);
   }
@@ -1017,24 +986,25 @@ export const updateRNN = () => {
   let range = rnnLayerRanges.global[start];
 
   let globalLegendScale = d3.scaleLinear()
-    .range([0, 10 * nodeLength + 6 * hSpaceAroundGap_rnn +
-      3 * hSpaceAroundGap_rnn * gapRatio - 1.2])
-    .domain([-range, range]);
+    .range([0, (numLayers-2) * nodeLength 
+      + 0 * hSpaceAroundGap_rnn 
+      + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2])
+    .domain([-range/2, range/2]);
 
   let globalLegendAxis = d3.axisBottom()
     .scale(globalLegendScale)
     .tickFormat(d3.format('.2f'))
-    .tickValues([-range, -(range / 2), 0, range/2, range]);
+    .tickValues([-range/2, -(range / 4), 0, range/4, range/2]);
 
   svg_rnn.select(`g#global-legend`).select('g').call(globalLegendAxis);
 
-  // Output legend
-  let outputLegendAxis = d3.axisBottom()
-    .scale(outputRectScale)
-    .tickFormat(d3.format('.1f'))
-    .tickValues([0, rnnLayerRanges.output[1]]);
+  // // Output legend
+  // let outputLegendAxis = d3.axisBottom()
+  //   .scale(outputRectScale)
+  //   .tickFormat(d3.format('.1f'))
+  //   .tickValues([0, rnnLayerRanges.output[1]]);
   
-  svg_rnn.select('g#output-legend').select('g').call(outputLegendAxis);
+  // svg_rnn.select('g#output-legend').select('g').call(outputLegendAxis);
 }
 
 /**
