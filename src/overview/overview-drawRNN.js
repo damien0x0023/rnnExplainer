@@ -658,7 +658,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
 
   nodeGroups.append('text')
     .attr('class', 'input-text')
-    .attr('x', 0)
+    .attr('x', left - nodeLength*2)
     // .attr('x', svgPaddings.left/3)
     .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
     .style('dominant-baseline', 'middle')
@@ -670,7 +670,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
 
   nodeGroups.append('text')
     .attr('class','input-annotation')
-    .attr('x', svgPaddings.left*3/4)
+    .attr('x', left-nodeLength/2)
     .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
     .style('dominant-baseline', 'middle')
     .style('font-size', '7px')
