@@ -79,6 +79,16 @@
     height: 100%;
     object-fit: contain;
 	}
+
+	.is-very-small {
+    font-size: 12px;
+  	}
+
+	.control > .select > #NN-select {
+    padding-left: 1em;
+    padding-right: 0.5em;
+  }
+	
 </style>
 
 <div id="header">
@@ -107,15 +117,24 @@
 		</svg>
   </div>
 
-  <div id="NN-select">
-	<select bind:value={selectedNN} class="NNselector">
-			{#each NNs as NN}
-				<option value={NN}>
-					{NN.alis}
-				</option>
-			{/each}
-	</select>
+  <div class = "control is-very-small has-icons-left" title="Change NN">
+	<span class="icon is-left">
+		<i class="fas fa-bezier-curve"></i>
+	</span>
+
+	<div class = "select">
+		<div id="NN-select">
+			<select bind:value={selectedNN} class="NNselector">
+					{#each NNs as NN}
+						<option value={NN}>
+							{NN.alis}
+						</option>
+					{/each}
+			</select>
+		</div>
 	</div>
+
+  </div>
 
 	<!-- <p>{selectedNN.alis}</p> -->
 

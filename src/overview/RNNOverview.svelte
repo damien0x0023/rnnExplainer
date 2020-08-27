@@ -31,29 +31,19 @@
   };
 
   // Overview functions
-  import { loadTrainedModel_rnn, 
-    // constructRNN, 
-    SentimentPredictor } from '../utils/rnn-tf.js';
+  import { loadTrainedModel_rnn, SentimentPredictor } from '../utils/rnn-tf.js';
   // import { loadTrainedModel, constructCNN } from '../utils/cnn-tf.js';
-  import { 
-    // overviewConfig, 
-    rnnOverviewConfig } from '../config.js';
+  import { rnnOverviewConfig } from '../config.js';
 
   import {
     addOverlayRect, drawConv1, drawConv2, drawConv3, drawConv4
   } from './intermediate-draw.js';
 
-  import {
-    moveLayerX, addOverlayGradient
-  } from './intermediate-utils.js';
+  import { moveLayerX, addOverlayGradient } from './intermediate-utils.js';
 
   import {
     drawFlatten, softmaxDetailViewMouseOverHandler, softmaxDetailViewMouseLeaveHandler
   } from './flatten-draw.js';
-
-  // import {
-  //   drawOutput, drawCNN, updateCNN, updateCNNLayerRanges, drawCustomImage
-  // } from './overview-draw.js';
 
   import {
     drawOutputRNN, drawRNN, updateRNN, updateRNNLayerRanges, drawCustomReivew
@@ -198,6 +188,7 @@
   let previousSelectedReview = selectedReview;
   let predictor;
   let inputDim;
+  let isFirstMount = true;
 
   let nodeData;
   let selectedNodeIndex = -1;
@@ -256,11 +247,9 @@
   }
 
   const reviewOptionClicked = async ()=>{
-    // let newReview = exampleReviews[selectedReview];
-
     if (selectedReview !== previousSelectedReview) {
       previousSelectedReview = selectedReview; 
-      console.log('function unfinished. The current Review is: ', selectedReview);
+      console.log('The current Review is: ', selectedReview);
 
       console.time('Construct rnn');
       // rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
@@ -279,7 +268,7 @@
 
       updateRNN(predictor.inputArray);
     } else {
-      console.log('function unfinished. The current Review does not change')
+      console.log('The current Review does not change')
     }
   }
 
@@ -290,30 +279,34 @@
   //   selectedImage = event.detail.preImage;
   // }
 
-  // // change custom image to custom review
-  // const handleCustomImage = async (event) => {
-  //   // User gives a valid image URL
-  //   customImageURL = event.detail.url;
+  // change custom image to custom review
+  const handleCustomImage = async (event) => {
+    // User gives a valid image URL
+    customImageURL = event.detail.url;
 
-  //   // Re-compute the CNN using the new input image
-  //   // rnn = await constructCNN(customImageURL, model);
-  //   rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
-  //       LOCAL_URLS.metadata, model_lstm);
-  //   // Ignore the flatten layer for now
-  //   // let flatten = cnn[cnn.length - 2];
-  //   // cnn.splice(cnn.length - 2, 1);
-  //   // cnn.flatten = flatten;
-  //   rnnStore.set(rnn);
+    // Re-compute the CNN using the new input image
+    // rnn = await constructCNN(customImageURL, model);
+    rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
+        LOCAL_URLS.metadata, model_lstm);
+    // Ignore the flatten layer for now
+    // let flatten = cnn[cnn.length - 2];
+    // cnn.splice(cnn.length - 2, 1);
+    // cnn.flatten = flatten;
+    rnnStore.set(rnn);
 
-  //   // Update the UI
-  //   let customImageSlot = d3.select(rnnOverviewComponent)
-  //     .select('.custom-image').node();
-  //   drawCustomReivew(customImageSlot, rnn[0]);
+    // Update the UI
+    let customImageSlot = d3.select(rnnOverviewComponent)
+      .select('.custom-image').node();
+    drawCustomReivew(customImageSlot, rnn[0]);
 
-  //   // Update all scales used in the RNN view
-  //   updateRNNLayerRanges();
-  //   updateRNN();
-  // }
+    // Update all scales used in the RNN view
+    updateRNNLayerRanges();
+    updateRNN();
+  }
+
+  const handleCustomReview = async () => {
+    let newReview
+  }
 
   // handle the event when click the detail button
   const detailedButtonClicked = () => {
@@ -612,106 +605,106 @@
   }
 
   onMount(async () => {
-    // Create RNN
-    console.log(`-----------Creating RNN---------------`);
-    wholeSvg_rnn = d3.select(rnnOverviewComponent)
-      .select('#rnn-svg');
-    svg_rnn = wholeSvg_rnn.append('g')
-      .attr('class','main-svg')
-      .attr('transform',`translate(${svgPaddings.left}, 0)`);
+      // Create RNN
+      console.log(`-----------Creating RNN---------------`);
+      wholeSvg_rnn = d3.select(rnnOverviewComponent)
+        .select('#rnn-svg');
+      svg_rnn = wholeSvg_rnn.append('g')
+        .attr('class','main-svg')
+        .attr('transform',`translate(${svgPaddings.left}, 0)`);
 
-    svgStore_rnn.set(svg_rnn);
+      svgStore_rnn.set(svg_rnn);
 
-    width = Number(wholeSvg_rnn.style('width').replace('px', '')) -
-      svgPaddings.left - svgPaddings.right;
-    height = Number(wholeSvg_rnn.style('height').replace('px', '')) -
-      svgPaddings.top - svgPaddings.bottom;
+      width = Number(wholeSvg_rnn.style('width').replace('px', '')) -
+        svgPaddings.left - svgPaddings.right;
+      height = Number(wholeSvg_rnn.style('height').replace('px', '')) -
+        svgPaddings.top - svgPaddings.bottom;
 
-    let rnnGroup = svg_rnn.append('g')
-      .attr('class','rnn-group');
-    
-    let underGroup_rnn = svg_rnn.append('g')
-      .attr('class', 'underneath');
+      let rnnGroup = svg_rnn.append('g')
+        .attr('class','rnn-group');
+      
+      let underGroup_rnn = svg_rnn.append('g')
+        .attr('class', 'underneath');
 
-    let svgYMid_rnn = +wholeSvg_rnn.style('height').replace('px','') / 2;
+      let svgYMid_rnn = +wholeSvg_rnn.style('height').replace('px','') / 2;
 
-    detailedViewAbsCoords = {
-      1 : [600, 100 + svgYMid_rnn - 220 / 2, 490, 290],
-      2: [500, 100 + svgYMid_rnn - 220 / 2, 490, 290],
-      // 3 : [700, 100 + svgYMid - 220 / 2, 490, 290],
-      // 4: [600, 100 + svgYMid - 220 / 2, 490, 290],
-      // 5: [650, 100 + svgYMid - 220 / 2, 490, 290],
-      // 6 : [850, 100 + svgYMid - 220 / 2, 490, 290],
-      // 7 : [100, 100 + svgYMid - 220 / 2, 490, 290],
-      // 8 : [60, 100 + svgYMid - 220 / 2, 490, 290],
-      // 9 : [200, 100 + svgYMid - 220 / 2, 490, 290],
-      // 10 : [300, 100 + svgYMid - 220 / 2, 490, 290],
-    }
+      detailedViewAbsCoords = {
+        1 : [600, 100 + svgYMid_rnn - 220 / 2, 490, 290],
+        2: [500, 100 + svgYMid_rnn - 220 / 2, 490, 290],
+        // 3 : [700, 100 + svgYMid - 220 / 2, 490, 290],
+        // 4: [600, 100 + svgYMid - 220 / 2, 490, 290],
+        // 5: [650, 100 + svgYMid - 220 / 2, 490, 290],
+        // 6 : [850, 100 + svgYMid - 220 / 2, 490, 290],
+        // 7 : [100, 100 + svgYMid - 220 / 2, 490, 290],
+        // 8 : [60, 100 + svgYMid - 220 / 2, 490, 290],
+        // 9 : [200, 100 + svgYMid - 220 / 2, 490, 290],
+        // 10 : [300, 100 + svgYMid - 220 / 2, 490, 290],
+      }
 
-    // Define global arrow marker end
-    svg_rnn.append("defs")
-      .append("marker")
-      .attr("id", 'marker')
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 6)
-      .attr("refY", 0)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto")
-      .append("path")
-      .style('stroke-width', 1.2)
-      .style('fill', 'gray')
-      .style('stroke', 'gray')
-      .attr("d", "M0,-5L10,0L0,5");
+      // Define global arrow marker end
+      svg_rnn.append("defs")
+        .append("marker")
+        .attr("id", 'marker')
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 6)
+        .attr("refY", 0)
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .attr("orient", "auto")
+        .append("path")
+        .style('stroke-width', 1.2)
+        .style('fill', 'gray')
+        .style('stroke', 'gray')
+        .attr("d", "M0,-5L10,0L0,5");
 
-    // Alternative arrow head style for non-interactive annotation
-    svg_rnn.append("defs")
-      .append("marker")
-      .attr("id", 'marker-alt')
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 6)
-      .attr("refY", 0)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto")
-      .append("path")
-      .style('fill', 'none')
-      .style('stroke', 'gray')
-      .style('stroke-width', 2)
-      .attr("d", "M-5,-10L10,0L-5,10");
+      // Alternative arrow head style for non-interactive annotation
+      svg_rnn.append("defs")
+        .append("marker")
+        .attr("id", 'marker-alt')
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 6)
+        .attr("refY", 0)
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .attr("orient", "auto")
+        .append("path")
+        .style('fill', 'none')
+        .style('stroke', 'gray')
+        .style('stroke-width', 2)
+        .attr("d", "M-5,-10L10,0L-5,10");
 
-    // model_lstm = await loadTrainedModel_rnn(LOCAL_URLS.model);
-    // console.log("The rnn model is: ",model_lstm);
+      // model_lstm = await loadTrainedModel_rnn(LOCAL_URLS.model);
+      // console.log("The rnn model is: ",model_lstm);
 
-    predictor = await new SentimentPredictor().init(LOCAL_URLS);
-    model_lstm = predictor.model;
-    console.log("The rnn model is: ", model_lstm);
+      predictor = await new SentimentPredictor().init(LOCAL_URLS);
+      model_lstm = predictor.model;
+      console.log("The rnn model is: ", model_lstm);
 
-    // check the result first
-    directPredict(`${exampleReviews[selectedReview]}`, model_lstm);
+      // check the result first
+      directPredict(`${exampleReviews[selectedReview]}`, model_lstm);
 
-    console.time('Construct rnn');
-    // rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
-    //   LOCAL_URLS.metadata, model_lstm);
-    rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
-    console.timeEnd('Construct rnn');
+      console.time('Construct rnn');
+      // rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
+      //   LOCAL_URLS.metadata, model_lstm);
+      rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
+      console.timeEnd('Construct rnn');
 
-    // // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
-    // // cause the exploration of edges, which will cost performance loss in interface
-    // rnn.rawInput = rnn[0];
-    // rnn[0] = rnn.nonPadInput;
-    rnnStore.set(rnn);
-    console.log('rnn layers are: ', rnn);
+      // // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
+      // // cause the exploration of edges, which will cost performance loss in interface
+      // rnn.rawInput = rnn[0];
+      // rnn[0] = rnn.nonPadInput;
+      rnnStore.set(rnn);
+      console.log('rnn layers are: ', rnn);
 
-    inputDim = model_lstm.layers[0].inputDim;
-    updateRNNLayerRanges(inputDim);
-    console.log("rnn layer ranges and MinMax are: ", 
-      rnnLayerRanges, rnnLayerMinMax);
+      inputDim = model_lstm.layers[0].inputDim;
+      updateRNNLayerRanges(inputDim);
+      console.log("rnn layer ranges and MinMax are: ", 
+        rnnLayerRanges, rnnLayerMinMax);
 
-    // Create and draw the RNN view
-    // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
-    // nodeMouseLeaveHandler, nodeClickHandler);
-    drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null, predictor.inputArray);
+      // Create and draw the RNN view
+      // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
+      // nodeMouseLeaveHandler, nodeClickHandler);
+      drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null, predictor.inputArray);
   });
 
 </script>
@@ -750,12 +743,11 @@
     padding-right: 2em;
   }
 
-  .cnn {
-    width: 100%;
-    padding: 0;
-    background: var(--light-gray);
-    display: flex;
+  #example-select {
+    padding-left: 2em;
+    padding-right: 2em;
   }
+
 
   .rnn {
     width: 100%;
@@ -1004,12 +996,21 @@
         </span>
       </button> -->
 
-      <select bind:value={selectedReview} id="test-example-select" class="form-control" 
-        on:blur = {disableControl ? '' : reviewOptionClicked} >
-          <option value="empty"> Please choose one example</option>
-          <option value="positive">Positive example</option>
-          <option value="negative">Negative example</option>
-      </select>
+      <div class="control is-very-small has-icons-left"
+        title="Change input using different examples">
+          <span class="icon is-left">
+            <i class="fas fa-palette"></i>
+          </span>
+
+          <div class="select">
+            <select bind:value={selectedReview} id="example-select" class="form-control" 
+            on:blur = "" >
+              <option value="empty"> Please choose one example</option>
+              <option value="positive">Positive example</option>
+              <option value="negative">Negative example</option>
+            </select>
+          </div>      
+      </div>
     </div>
 
     <div class="right-control">
@@ -1030,7 +1031,7 @@
       <div class="control is-very-small has-icons-left"
         title="Change color scale range">
         <span class="icon is-left">
-          <i class="fas fa-palette"></i>
+          <i class="fas fa-layer-group"></i>
         </span>
 
         <div class="select">
@@ -1048,10 +1049,8 @@
   </div>
 
   <div class="review">
-    <textarea id="review-text">{exampleReviews[selectedReview]}</textarea>
+    <textarea id="review-text" on:blur={disableControl ? '' : reviewOptionClicked} readonly>{exampleReviews[selectedReview]}</textarea>
   </div>
-
-  <div class="ui"></div>
 
   <div class="rnn" id="rnnView">
     <span id='ui' class="status"></span>
