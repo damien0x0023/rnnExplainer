@@ -55,7 +55,7 @@ export const rnnOverviewConfig = {
   edgeInitColor : 'rgb(230, 230, 230)',
   edgeHoverColor : 'rgb(130, 130, 130)',
   edgeHoverOuting : false,
-  edgeStrokeWidth : 0.3,
+  edgeStrokeWidth : 0.5,
   intermediateColor : 'gray',
   layerColorScales: layerColorScales_rnn,
   svgPaddings: {top: 25, bottom: 25, left: 50, right: 50},
