@@ -4,6 +4,7 @@ import { rnnOverviewConfig } from '../config.js';
 const nodeHeight = rnnOverviewConfig.nodeHeight;
 const nodeLength = rnnOverviewConfig.nodeLength;
 const inputNodeHeight = rnnOverviewConfig.inputNodeHeight;
+const embeddingLen = rnnOverviewConfig.embedddingLength;
 
 /**
  * Compute the [minimum, maximum] of a 1D or 2D array.
@@ -75,9 +76,9 @@ export const getMidCoords = (svg, elem) => {
  * Return the output knot (right boundary center)
  * @param {object} point {x: x, y:y}
  */
-export const getOutputKnotRNN = (point, deltaY) => {
+export const getOutputKnotRNN = (point, deltaX, deltaY) => {
   return {
-    x: point.x + nodeLength,
+    x: point.x + deltaX,
     y: point.y + deltaY
   };
 }
@@ -122,10 +123,11 @@ export const getLinkDataRNN = (nodeCoordinate, rnn) => {
         }
         // check if the source node in input layer exists, skip it if not
         let curSource;
+        let sourceDeltaX = rnn[l-1][n].type !== 'embedding'? nodeLength: embeddingLen;
         // the height of input elements is nodeLength /10
         let sourceDeltaY = l===1? inputNodeHeight/2 :nodeHeight /2;
         if (rnn[l-1][inputNodeIndex]){
-          curSource = getOutputKnotRNN(nodeCoordinate[l-1][inputNodeIndex], sourceDeltaY);
+          curSource = getOutputKnotRNN(nodeCoordinate[l-1][inputNodeIndex], sourceDeltaX, sourceDeltaY);
         } else {
 
           continue

@@ -14,6 +14,7 @@ import { rnnOverviewConfig } from '../config.js';
 const layerColorScales = rnnOverviewConfig.layerColorScales;
 const nodeLength = rnnOverviewConfig.nodeLength;
 const nodeHeight = rnnOverviewConfig.nodeHeight;
+const embeddingLen = rnnOverviewConfig.embedddingLength;
 const inputNodeHeight = rnnOverviewConfig.inputNodeHeight;
 const numLayers = rnnOverviewConfig.numLayers;
 const edgeOpacity = rnnOverviewConfig.edgeOpacity;
@@ -55,8 +56,8 @@ rnnLayerMinMaxStore.subscribe( value => {rnnLayerMinMax = value;} )
 let detailedMode_rnn = undefined;
 detailedModeStore_rnn.subscribe( value => {detailedMode_rnn = value;} )
 
-// There are 3 short gaps(2 left 1 right) and 3 long gaps (btw nodes)
-let n_shortGaps = 3;
+// There are 2 short gaps(1 left 1 right) and 3 long gaps (btw nodes)
+let n_shortGaps = 2;
 let n_longGaps = 3;
 // for module view
 let num_module = 2;
@@ -157,11 +158,14 @@ export const drawOutputRNN = (d, i, g, range) => {
   }
   
   if (d.type === 'input') {
-    imageDataURL = enlargeOutputImage(imageLength, imageHeight, nodeLength*3,
-      inputNodeHeight*3, bufferCanvas, bufferContext, imageSingle);
-  } else {
-    imageDataURL = enlargeOutputImage(imageLength, imageHeight, nodeLength*3,
-      nodeHeight*3, bufferCanvas, bufferContext, imageSingle);
+    imageDataURL = enlargeOutputImage(imageLength, imageHeight, nodeLength,
+      inputNodeHeight, bufferCanvas, bufferContext, imageSingle);
+  } else if(d.type == 'embedding'){
+    imageDataURL = enlargeOutputImage(imageLength, imageHeight, embeddingLen,
+      nodeHeight, bufferCanvas, bufferContext, imageSingle);
+  } else{
+    imageDataURL = enlargeOutputImage(imageLength, imageHeight, nodeLength,
+      nodeHeight, bufferCanvas, bufferContext, imageSingle);
   }
 
   d3.select(image).attr('xlink:href', imageDataURL);
@@ -282,6 +286,66 @@ const getLegendGradient = (g, colorScale, gradientName, min, max) => {
   }
 }
 
+const legendUpdate = (range, domain, levelName, layerIndex=-1,legendIndex=-1) =>{
+    let curLegendScale = d3.scaleLinear()
+      .range([0, range])
+      .domain([-domain / 2, domain / 2]);
+  
+    let curLegendAxis = d3.axisBottom()
+      .scale(curLegendScale)
+      .tickFormat(d3.format('.2f'))
+      .tickValues([-domain / 2, 0, domain / 2]);
+
+    let selector;
+    if (levelName === 'local') {
+      selector = `g#local-legend-${layerIndex}-${legendIndex}`;
+    } else if( levelName === 'module'){
+      selector = `g#module-legend-${layerIndex}`;
+    } else if (levelName === 'global') {
+      selector = `g#global-legend`;
+    }    
+
+    svg_rnn.select(selector).select('g').call(curLegendAxis);
+  }
+
+
+
+const legendDrawer = (range, domain, levelName, legends, startIndex, 
+    legendHeight, gradientParm = '', layerIndex=-1, legendIndex=-1) => {
+  let curLegendScale = d3.scaleLinear()
+    .range([0, range])
+    .domain([-domain / 2, domain / 2]);
+
+  let curLegendAxis = d3.axisBottom()
+    .scale(curLegendScale)
+    .tickFormat(d3.format('.2f'))
+    .tickValues([-domain / 2, 0, domain / 2]);
+
+  let id;
+  if (levelName === 'local') {
+    id = `local-legend-${layerIndex}-${legendIndex}`;
+  } else if( levelName === 'module'){
+    id = `module-legend-${layerIndex}`;
+  } else if (levelName === 'global') {
+    id = `global-legend`;
+  }
+
+  let curLegend = legends.append('g')
+    .attr('class', `legend ${levelName}-legend`)
+    .attr('id', id)
+    .classed('hidden', !detailedMode_rnn || selectedScaleLevel_rnn !== levelName)
+    .attr('transform', `translate(${nodeCoordinate_rnn[startIndex][0].x}, ${0})`);
+
+  curLegend.append('g')
+    .attr('transform', `translate(0, ${legendHeight - 3})`)
+    .call(curLegendAxis)
+
+  curLegend.append('rect')
+    .attr('width', range)
+    .attr('height', legendHeight)
+    .style('fill', gradientParm);
+}
+
 /**
  * Draw all legends
  * @param {object} legends Parent group
@@ -291,123 +355,37 @@ const drawAllLegends = (legends, legendHeight) => {
   // Add local legends
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
-    let range1 = rnnLayerRanges.local[start];
-    let range2 = rnnLayerRanges.local[start + 1];
 
-    let localLegendScale1 = d3.scaleLinear()
-      .range([0, 1 * nodeLength 
-        + 0 * hSpaceAroundGap_rnn- 1.2])
-      .domain([-range1 / 2, range1 / 2]);
-    
-    let localLegendScale2 = d3.scaleLinear()
-      .range([0, 1 * nodeLength 
-        + 0 * hSpaceAroundGap_rnn - 1.2])
-      .domain([-range2 / 2, range2 / 2]);
+    let range1 = 1 * embeddingLen + 0 * hSpaceAroundGap_rnn- 1.2;
+    let domain1 = rnnLayerRanges.local[start];
+    legendDrawer(range1, domain1, 'local', legends, start, legendHeight, 'url(#embeddingGradient)',i , 1);
 
-    let localLegendAxis1 = d3.axisBottom()
-      .scale(localLegendScale1)
-      .tickFormat(d3.format('.1f'))
-      .tickValues([-range1 / 2, 0, range1 / 2]);
-    
-    let localLegendAxis2 = d3.axisBottom()
-      .scale(localLegendScale2)
-      .tickFormat(d3.format('.1f'))
-      .tickValues([-range2 / 2, 0, range2 / 2]);
-
-    let localLegend1 = legends.append('g')
-      .attr('class', 'legend local-legend')
-      .attr('id', `local-legend-${i}-1`)
-      .classed('hidden', !detailedMode_rnn || selectedScaleLevel_rnn !== 'local')
-      .attr('transform', `translate(${nodeCoordinate_rnn[start][0].x}, ${0})`);
-
-    localLegend1.append('g')
-      .attr('transform', `translate(0, ${legendHeight - 3})`)
-      .call(localLegendAxis1)
-
-    localLegend1.append('rect')
-      .attr('width', (num_module -1) * nodeLength + (num_module-2) * hSpaceAroundGap_rnn)
-      .attr('height', legendHeight)
-      .style('fill', 'url(#embeddingGradient)');
-
-    let localLegend2 = legends.append('g')
-      .attr('class', 'legend local-legend')
-      .attr('id', `local-legend-${i}-2`)
-      .classed('hidden', !detailedMode_rnn || selectedScaleLevel_rnn !== 'local')
-      .attr('transform', `translate(${nodeCoordinate_rnn[start + 1][0].x}, ${0})`);
-
-    localLegend2.append('g')
-      .attr('transform', `translate(0, ${legendHeight - 3})`)
-      .call(localLegendAxis2)
-
-    localLegend2.append('rect')
-      .attr('width', (num_module -1) * nodeLength + (num_module-2) * hSpaceAroundGap_rnn)
-      .attr('height', legendHeight)
-      .style('fill', 'url(#lstmGradient)');
+    let range2 = 1 * nodeLength + 0 * hSpaceAroundGap_rnn- 1.2;
+    let domain2= rnnLayerRanges.local[start + 1];
+    legendDrawer(range2, domain2, 'local', legends, start+1, legendHeight, 'url(#lstmGradient)',i, 2);
   }
 
   // Add module legends
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
-    let range = rnnLayerRanges.module[start];
+    let domain = rnnLayerRanges.module[start];
+    let range = (num_module-1) * nodeLength + embeddingLen+ 0 * hSpaceAroundGap_rnn +
+              (num_module-1) * hSpaceAroundGap_rnn * gapRatio - 1.2;
 
-    let moduleLegendScale = d3.scaleLinear()
-      .range([0, num_module * nodeLength + 0 * hSpaceAroundGap_rnn +
-        (num_module-1) * hSpaceAroundGap_rnn * gapRatio - 1.2])
-      .domain([-range / 2, range / 2]);
-
-    let moduleLegendAxis = d3.axisBottom()
-      .scale(moduleLegendScale)
-      .tickFormat(d3.format('.2f'))
-      .tickValues([-range / 2, -(range / 4), 0, range / 4, range / 2]);
-
-    let moduleLegend = legends.append('g')
-      .attr('class', 'legend module-legend')
-      .attr('id', `module-legend-${i}`)
-      .classed('hidden', !detailedMode_rnn || selectedScaleLevel_rnn !== 'module')
-      .attr('transform', `translate(${nodeCoordinate_rnn[start][0].x}, ${0})`);
-    
-    moduleLegend.append('g')
-      .attr('transform', `translate(0, ${legendHeight - 3})`)
-      .call(moduleLegendAxis)
-
-    moduleLegend.append('rect')
-      .attr('width', num_module * nodeLength + 0 * hSpaceAroundGap_rnn +
-        (num_module-1) * hSpaceAroundGap_rnn * gapRatio)
-      .attr('height', legendHeight)
-      .style('fill', 'url(#embeddingGradient)');
+    legendDrawer(range, domain,'module', legends, start, legendHeight, 'url(#lstmGradient)',i);
   }
 
   // Add global legends
   let start = 1;
-  let range = rnnLayerRanges.global[start];
+  // let range = rnnLayerRanges.global[start];
 
-  let globalLegendScale = d3.scaleLinear()
-    .range([0, (numLayers-2) * nodeLength
-        + 0 * hSpaceAroundGap_rnn 
-        + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2])
-    .domain([-range / 2, range / 2]);
+  let domain = rnnLayerRanges.global[start];
+  let range = (numLayers-3) * nodeLength
+            + embeddingLen + 0 * hSpaceAroundGap_rnn 
+            + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2
+  
+  legendDrawer(range, domain,'global', legends, start, legendHeight, 'url(#lstmGradient)');
 
-  let globalLegendAxis = d3.axisBottom()
-    .scale(globalLegendScale)
-    .tickFormat(d3.format('.2f'))
-    .tickValues([-range / 2, -(range / 4), 0, range / 4, range / 2]);
-
-  let globalLegend = legends.append('g')
-    .attr('class', 'legend global-legend')
-    .attr('id', 'global-legend')
-    .classed('hidden', !detailedMode_rnn || selectedScaleLevel_rnn !== 'global')
-    .attr('transform', `translate(${nodeCoordinate_rnn[start][0].x}, ${0})`);
-
-  globalLegend.append('g')
-    .attr('transform', `translate(0, ${legendHeight - 3})`)
-    .call(globalLegendAxis);
-
-  globalLegend.append('rect')
-    .attr('width', (numLayers-2) * nodeLength
-       + 0 * hSpaceAroundGap_rnn +
-      (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio)
-    .attr('height', legendHeight)
-    .style('fill', 'url(#embeddingGradient)');
 
   // Add output legend
   let outputRectScale = d3.scaleLinear()
@@ -470,7 +448,7 @@ const drawAllLegends = (legends, legendHeight) => {
  * @param {number} width 
  */
 const calcHorSpaceGap = (width) => {
-  return (width - nodeLength * numLayers)  / (n_shortGaps + n_longGaps * gapRatio);
+  return (width - nodeLength * (numLayers-1) - embeddingLen)  / (n_shortGaps + n_longGaps * gapRatio);
 }
 
 /**
@@ -513,7 +491,9 @@ const addLabels = ()=> {
     .attr('id', (d, i) => `layer-detailed-label-${i}`)
     .classed('hidden', !detailedMode_rnn)
     .attr('transform', (d, i) => {
-      let x = nodeCoordinate_rnn[i][0].x + nodeLength / 2;
+      let x = !d.name.includes('embedding') 
+        ? nodeCoordinate_rnn[i][0].x + nodeLength / 2
+        : nodeCoordinate_rnn[i][0].x + embeddingLen / 2;
       let y = svgPaddings.top / 2 - 4 ;
       return `translate(${x}, ${y})`;
     })
@@ -556,7 +536,9 @@ const addLabels = ()=> {
     .attr('id', (d, i) => `layer-label-${i}`)
     .classed('hidden', detailedMode_rnn)
     .attr('transform', (d, i) => {
-      let x = nodeCoordinate_rnn[i][0].x + nodeLength / 2;
+      let x = !d.name.includes('embedding') 
+        ? nodeCoordinate_rnn[i][0].x + nodeLength / 2
+        : nodeCoordinate_rnn[i][0].x + embeddingLen / 2;
       let y = svgPaddings.top / 2 - 6 ;
       return `translate(${x}, ${y})`;
     })
@@ -676,7 +658,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
 
   nodeGroups.append('text')
     .attr('class', 'input-text')
-    .attr('x', left - nodeLength*2)
+    .attr('x', 0)
     // .attr('x', svgPaddings.left/3)
     .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
     .style('dominant-baseline', 'middle')
@@ -688,11 +670,11 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
 
   nodeGroups.append('text')
     .attr('class','input-annotation')
-    .attr('x', left-nodeLength/2)
+    .attr('x', left - 5)
     .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
     .style('dominant-baseline', 'middle')
     .style('font-size', '6px')
-    .style('fill', 'black')
+    .style('fill', 'black ')
     .style('opacity', 0.8)
     .text((d,i) => d.output);
 }
@@ -780,7 +762,7 @@ const initMiddleLayer = (nodeGroups, left, l) => {
    // Embed raster image in these groups
    nodeGroups.append('image')
    .attr('class', 'node-image')
-   .attr('width', nodeLength)
+   .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
    .attr('height', nodeHeight)
    .attr('x', left)
    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y);
@@ -788,7 +770,7 @@ const initMiddleLayer = (nodeGroups, left, l) => {
    // Add a rectangle to show the border
    nodeGroups.append('rect')
      .attr('class', 'bounding')
-     .attr('width', nodeLength)
+     .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
      .attr('height', nodeHeight)
      .attr('x', left)
      .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
@@ -823,11 +805,15 @@ const drawImageNodes = (l) => {
  */
 export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
   nodeMouseLeaveHandler, nodeClickHandler, inputTextList) => {
+
+    console.log('embedding length is: ', embeddingLen);
+
+  
   // Draw the RNN
   hSpaceAroundGap_rnn = calcHorSpaceGap(width);
   hSpaceAroundGapStore_rnn.set(hSpaceAroundGap_rnn);
   
-  let leftAccuumulatedSpace = hSpaceAroundGap_rnn;
+  let leftAccuumulatedSpace = 0;
   // clear nodeCoordinate_rnn for reloading, otherwise it will push new coords into 
   //existing array as well as generate blank array
   nodeCoordinate_rnn.length=0;
@@ -911,8 +897,8 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
         initMiddleLayer(nodeGroups, left, l);
         drawImageNodes(l);
       }
-
-    leftAccuumulatedSpace += nodeLength;
+    // add the length of node
+    leftAccuumulatedSpace += rnn[l][0].type !== 'embedding'? nodeLength: embeddingLen;;
   }
 
   // Share the nodeCoordinate
@@ -980,73 +966,32 @@ export const updateRNN = (inputTextList) => {
   // Local legends
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
-    let range1 = rnnLayerRanges.local[start];
-    let range2 = rnnLayerRanges.local[start + 1];
-
-    let localLegendScale1 = d3.scaleLinear()
-      .range([0, 1 * nodeLength + 0 * hSpaceAroundGap_rnn])
-      .domain([-range1/2, range1/2]);
+    let domain1 = rnnLayerRanges.local[start];
+    let range1 =  1 * embeddingLen + 0 * hSpaceAroundGap_rnn;
+    legendUpdate(range1, domain1,'local',i , 1);
     
-    let localLegendScale2 = d3.scaleLinear()
-      .range([0, 1 * nodeLength + 0 * hSpaceAroundGap_rnn])
-      .domain([-range2/2, range2/2]);
-
-    let localLegendAxis1 = d3.axisBottom()
-      .scale(localLegendScale1)
-      .tickFormat(d3.format('.1f'))
-      .tickValues([-range1/2, 0, range1/2]);
-    
-    let localLegendAxis2 = d3.axisBottom()
-      .scale(localLegendScale2)
-      .tickFormat(d3.format('.1f'))
-      .tickValues([-range2/2, 0, range2/2]);
-    
-    svg_rnn.select(`g#local-legend-${i}-1`).select('g').call(localLegendAxis1);
-    svg_rnn.select(`g#local-legend-${i}-2`).select('g').call(localLegendAxis2);
+    let range2 = 1 * nodeLength + 0 * hSpaceAroundGap_rnn;
+    let domain2 =  rnnLayerRanges.local[start + 1];
+    legendUpdate(range2, domain2,'local',i , 2)
   }
 
   // Module legend
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
-    let range = rnnLayerRanges.local[start];
-
-    let moduleLegendScale = d3.scaleLinear()
-      .range([0, num_module * nodeLength + 0 * hSpaceAroundGap_rnn +
-        (num_module-1) * hSpaceAroundGap_rnn * gapRatio - 1.2])
-      .domain([-range/2, range/2]);
-
-    let moduleLegendAxis = d3.axisBottom()
-      .scale(moduleLegendScale)
-      .tickFormat(d3.format('.2f'))
-      .tickValues([-range/2, -(range / 4), 0, range/4, range/2]);
-    
-    svg_rnn.select(`g#module-legend-${i}`).select('g').call(moduleLegendAxis);
+    // 1 embedding, 1 long gap and 1 lstm
+    let range = 1 * nodeLength + 1 * embeddingLen + 0 * hSpaceAroundGap_rnn +
+          1 * hSpaceAroundGap_rnn * gapRatio - 1.2;
+    let domain = rnnLayerRanges.module[start];
+    legendUpdate(range,domain,'module',i);
   }
 
   // Global legend
   let start = 1;
-  let range = rnnLayerRanges.global[start];
-
-  let globalLegendScale = d3.scaleLinear()
-    .range([0, (numLayers-2) * nodeLength 
-      + 0 * hSpaceAroundGap_rnn 
-      + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2])
-    .domain([-range/2, range/2]);
-
-  let globalLegendAxis = d3.axisBottom()
-    .scale(globalLegendScale)
-    .tickFormat(d3.format('.2f'))
-    .tickValues([-range/2, -(range / 4), 0, range/4, range/2]);
-
-  svg_rnn.select(`g#global-legend`).select('g').call(globalLegendAxis);
-
-  // // Output legend
-  // let outputLegendAxis = d3.axisBottom()
-  //   .scale(outputRectScale)
-  //   .tickFormat(d3.format('.1f'))
-  //   .tickValues([0, rnnLayerRanges.output[1]]);
-  
-  // svg_rnn.select('g#output-legend').select('g').call(outputLegendAxis);
+  // evething but input node, output node and 2 long gap
+  let range = (numLayers-3) * nodeLength + 1 * embeddingLen + 0 * hSpaceAroundGap_rnn 
+           + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2;
+  let domain = rnnLayerRanges.global[start];
+  legendUpdate(range, domain, 'global');
 }
 
 /**
