@@ -7,13 +7,14 @@ import {
 } from '../stores.js';
 import {
   getExtent, getLinkDataRNN
-} from './draw-utils.js';
+} from './drawRNN-utils.js';
 import { rnnOverviewConfig } from '../config.js';
 
 // Configs
 const layerColorScales = rnnOverviewConfig.layerColorScales;
 const nodeLength = rnnOverviewConfig.nodeLength;
 const nodeHeight = rnnOverviewConfig.nodeHeight;
+const inputNodeHeight = rnnOverviewConfig.inputNodeHeight;
 const numLayers = rnnOverviewConfig.numLayers;
 const edgeOpacity = rnnOverviewConfig.edgeOpacity;
 const edgeInitColor = rnnOverviewConfig.edgeInitColor;
@@ -23,7 +24,7 @@ const gapRatio = rnnOverviewConfig.gapRatio;
 const classLists = rnnOverviewConfig.classLists;
 const formater = d3.format('.4f');
 
- const inputNodeHeight = nodeHeight/2;
+
 
 // Shared variables
 //for rnn
@@ -601,9 +602,11 @@ const addLegends = () => {
   getLegendGradient(svg_rnn, layerColorScales.input, 'inputGradient');
   // getLegendGradient(svg_rnn, layerColorScales.dense, 'denseGradient');
 
-  let legendHeight = nodeLength / 8;
+  // same as input nodes
+  let legendHeight = inputNodeHeight;
+  // vSpaceAroundGap_rnn for each layer varies because of various number of nodes
   let legentY = svgPaddings.top + vSpaceAroundGap_rnn 
-    * (rnn[rnn.length-1].length+1) + nodeLength / 3;
+       * (rnn[rnn.length-1].length+1) + 3 * legendHeight;
 
   // y is based on the last one of vSpaceAroundGap_rnn
   let legends = svg_rnn.append('g')
@@ -638,7 +641,7 @@ const addEdges = (rnnGroup)=> {
       `edge-${d.targetLayerIndex}-${d.targetNodeIndex}-${d.sourceNodeIndex}`)
     .attr('d', d => linkGen({source: d.source, target: d.target}))
     .style('fill', 'none')
-    .style('stroke-width', d =>d.targetLayerIndex !==3 ? edgeStrokeWidth:edgeStrokeWidth*3)
+    .style('stroke-width', d =>d.targetLayerIndex !==3 ? edgeStrokeWidth:edgeStrokeWidth*4)
     .style('opacity', edgeOpacity)
     .style('stroke', edgeInitColor);
 }
@@ -706,8 +709,8 @@ const initOutputLayer = (nodeGroups, left, l) => {
         nodeGroups.append('rect')
         .attr('class', 'bounding')
         .attr('x', left)
-        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
-        .attr('height', nodeLength / 4)
+        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y )
+        .attr('height', nodeHeight)
         .attr('width', nodeLength)
         .style('fill', 'none')
         .style('stroke', 'gray')
@@ -716,8 +719,8 @@ const initOutputLayer = (nodeGroups, left, l) => {
         nodeGroups.append('rect')
           .attr('class', 'output-rect')
           .attr('x', left)
-          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
-          .attr('height', nodeLength / 4)
+          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y )
+          .attr('height', nodeHeight)
           .attr('width', nodeLength)
           .style('fill', 'gray');
         // Add annotation text to tell readers the exact output probability
@@ -725,7 +728,7 @@ const initOutputLayer = (nodeGroups, left, l) => {
           .attr('class', 'annotation-output')
           .attr('id', (d, i) => `output-prob-${i}`)
           .attr('x', left + nodeLength/4)
-          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength)
+          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
           // .style('dominant-baseline', 'middle')
           // .style('font-size', '11px')
           // .style('fill', 'black')
@@ -733,8 +736,8 @@ const initOutputLayer = (nodeGroups, left, l) => {
           // .text((d, i) => d.output.toFixed(4));
         nodeGroups.append('text')
           .attr('class', 'output-text-one')
-          .attr('x', left-nodeLength/4)
-          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 4)
+          .attr('x', left-nodeLength/5)
+          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y - nodeLength / 4)
           .style('dominant-baseline', 'middle')
           .style('font-size', '11px')
           .style('fill', 'black')
@@ -742,8 +745,8 @@ const initOutputLayer = (nodeGroups, left, l) => {
           .text((d, i) => classLists[i]);
         nodeGroups.append('text')
           .attr('class', 'output-text-two')
-          .attr('x', left+nodeLength*3/4)
-          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 4)
+          .attr('x', left+nodeLength*4/5)
+          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y - nodeLength / 4)
           .style('dominant-baseline', 'middle')
           .style('font-size', '11px')
           .style('fill', 'black')

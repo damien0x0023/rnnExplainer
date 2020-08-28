@@ -111,8 +111,7 @@ export class SentimentPredictor{
       this.inputArray = ipArray;
     }
 
-    let ipTensor = this.getInputTextTensor(this.inputArray, 
-      this.indexFrom,this.wordIndex,this.vocabularySize,this.maxLen);
+    let ipTensor = this.getInputTextTensor();
     if(!this.inputTensor){
       this.inputTensor = ipTensor;
     } else if (this.inputTensor !== ipTensor) {
@@ -145,8 +144,7 @@ export class SentimentPredictor{
     }
     console.log('input text array is: ', this.inputArray);
 
-    let ipTensor = await this.getInputTextTensor(this.inputArray, 
-      this.indexFrom,this.wordIndex,this.vocabularySize,this.maxLen);
+    let ipTensor = await this.getInputTextTensor();
     if(!this.inputTensor){
       this.inputTensor = ipTensor;
     } else if (this.inputTensor !== ipTensor) {
