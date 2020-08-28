@@ -3,7 +3,7 @@
 import { 
   svgStore_rnn, vSpaceAroundGapStore_rnn, hSpaceAroundGapStore_rnn, rnnStore,
   nodeCoordinateStore_rnn, selectedScaleLevelStore_rnn, rnnLayerRangesStore,
-  detailedModeStore_rnn, rnnLayerMinMaxStore, hoverInfoStore_rnn
+  detailedModeStore_rnn, rnnLayerMinMaxStore, hoverInfoStore_rnn, reviewArrayStore
 } from '../stores.js';
 import {
   getExtent, getLinkDataRNN
@@ -55,6 +55,9 @@ rnnLayerMinMaxStore.subscribe( value => {rnnLayerMinMax = value;} )
 
 let detailedMode_rnn = undefined;
 detailedModeStore_rnn.subscribe( value => {detailedMode_rnn = value;} )
+
+let reviewArray = undefined;
+reviewArrayStore.subscribe(value => {reviewArray = value;})
 
 // There are 2 short gaps(1 left 1 right) and 3 long gaps (btw nodes)
 let n_shortGaps = 2;
@@ -191,17 +194,17 @@ const drawOutputScore = (d, i, g, scale) => {
     .duration(800)
     .ease(d3.easeCubicIn)
     .attr('width', scale(d.output));
-  // draw and update the proba of outputs
-  group.select('text.annotation-output')
-    .transition('dense')
-    .delay(500)
-    .duration(800)
-    .ease(d3.easeCubicIn)
-    .style('dominant-baseline', 'middle')
-    .style('font-size', '11px')
-    .style('fill', 'black')
-    .style('opacity', 0.5)
-    .text((d, i) => d.output.toFixed(4));
+  // // draw and update the proba of outputs
+  // group.select('text.annotation-output')
+  //   .transition('dense')
+  //   .delay(500)
+  //   .duration(800)
+  //   .ease(d3.easeCubicIn)
+  //   .style('dominant-baseline', 'middle')
+  //   .style('font-size', '11px')
+  //   .style('fill', 'black')
+  //   .style('opacity', 0.5)
+  //   .text((d, i) => d.output.toFixed(4));
 }
 
 
@@ -635,9 +638,8 @@ const addEdges = (rnnGroup)=> {
  * @param {*} left 
  * @param {*} l 
  * @param {*} curLayer 
- * @param {*} inputTextList 
  */
-const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
+const initInputLayer = (nodeGroups, left, l, curLayer) => {
   nodeGroups.append('image')
   .attr('class', 'node-image')
   .attr('width', nodeLength)
@@ -656,27 +658,28 @@ const initInputLayer = (nodeGroups, left, l, curLayer, inputTextList) => {
     .style('stroke-width', 1)
     .classed('hidden', true);  
 
-  nodeGroups.append('text')
-    .attr('class', 'input-text')
-    .attr('x', 0)
-    // .attr('x', svgPaddings.left/3)
-    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
-    .style('dominant-baseline', 'middle')
-    .style('font-size', '6px')
-    .style('fill', 'black')
-    .style('opacity', 0.8)
-    .text((d, i) => d.output[0] === 0 
-      ? `<pad>`:`${inputTextList[i + inputTextList.length - curLayer.length]}`);
+  // nodeGroups.append('text')
+  //   .attr('class', 'input-text')
+  //   .attr('x', 0)
+  //   // .attr('x', svgPaddings.left/3)
+  //   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+  //   .style('dominant-baseline', 'middle')
+  //   .style('font-size', '6px')
+  //   .style('fill', 'black')
+  //   .style('opacity', 0.8)
+  //   .text((d, i) => d.output[0] === 0 
+  //     ? `<pad>`:`${reviewArray[i + reviewArray.length - curLayer.length]}`);
 
   nodeGroups.append('text')
     .attr('class','input-annotation')
-    .attr('x', left - 5)
-    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+    .attr('x', left - 10)
+    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y+inputNodeHeight/2)
     .style('dominant-baseline', 'middle')
     .style('font-size', '6px')
     .style('fill', 'black ')
     .style('opacity', 0.8)
-    .text((d,i) => d.output);
+    // .text((d,i) => d.output);
+    .text((d,i)=>i+1);
 }
 
 /**
@@ -706,16 +709,16 @@ const initOutputLayer = (nodeGroups, left, l) => {
           .attr('width', nodeLength)
           .style('fill', 'gray');
         // Add annotation text to tell readers the exact output probability
-        nodeGroups.append('text')
-          .attr('class', 'annotation-output')
-          .attr('id', (d, i) => `output-prob-${i}`)
-          .attr('x', left + nodeLength/4)
-          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
-          // .style('dominant-baseline', 'middle')
-          // .style('font-size', '11px')
-          // .style('fill', 'black')
-          // .style('opacity', 0.5)
-          // .text((d, i) => d.output.toFixed(4));
+        // nodeGroups.append('text')
+        //   .attr('class', 'annotation-output')
+        //   .attr('id', (d, i) => `output-prob-${i}`)
+        //   .attr('x', left + nodeLength/4)
+        //   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
+        //   // .style('dominant-baseline', 'middle')
+        //   // .style('font-size', '11px')
+        //   // .style('fill', 'black')
+        //   // .style('opacity', 0.5)
+        //   // .text((d, i) => d.output.toFixed(4));
         nodeGroups.append('text')
           .attr('class', 'output-text-one')
           .attr('x', left-nodeLength/5)
@@ -734,6 +737,13 @@ const initOutputLayer = (nodeGroups, left, l) => {
           .style('fill', 'black')
           .style('opacity', 0.5)
           .text((d, i) => classLists[i+1]);
+}
+
+const drawInputLayer = () => {
+  svg_rnn.selectAll('g.node-input').each(
+    // (d,i,g) => drawInputIndex(d,i,g)
+  );
+
 }
 
 /**
@@ -801,14 +811,10 @@ const drawImageNodes = (l) => {
  * @param {function} nodeMouseOverHandler Callback func for mouseOver
  * @param {function} nodeMouseLeaveHandler Callback func for mouseLeave
  * @param {function} nodeClickHandler Callback func for click
- * @param {[string]} inputTextList 
  */
 export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
-  nodeMouseLeaveHandler, nodeClickHandler, inputTextList) => {
-
-    console.log('embedding length is: ', embeddingLen);
-
-  
+  nodeMouseLeaveHandler, nodeClickHandler) => {
+ 
   // Draw the RNN
   hSpaceAroundGap_rnn = calcHorSpaceGap(width);
   hSpaceAroundGapStore_rnn.set(hSpaceAroundGap_rnn);
@@ -821,6 +827,7 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
   for (let l = 0; l < rnn.length; l++) {
 
     let curLayer = rnn[l];
+    let isInput = curLayer[0].layerName === 'input';
     let isOutput = curLayer[0].layerName === 'dense_Dense1';
 
     nodeCoordinate_rnn.push([]);
@@ -855,6 +862,7 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
       .on('click', nodeClickHandler)
       .on('mouseover', nodeMouseOverHandler)
       .on('mouseleave', nodeMouseLeaveHandler)
+      .classed('node-input', isInput)
       .classed('node-output', isOutput)
       .attr('id', (d, i) => {
           // Compute the coordinate
@@ -874,6 +882,21 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
         }
       );
 
+    // Overwrite the mouseover and mouseleave function 
+    // for input nodes to showhover info in the UI
+    layerGroup.selectAll('g.node-input')
+      .on('mouseover', (d, i, g) => {
+        nodeMouseOverHandler(d, i, g);
+        let word = d.output[0] === 0 ? '<pad>': reviewArray[i + reviewArray.length - curLayer.length]
+        hoverInfoStore_rnn.set( {show: true, text: `'${word}' index in vocabulary is: ${d.output[0]}`} );
+      })
+      .on('mouseleave', (d, i, g) => {
+        nodeMouseLeaveHandler(d, i, g);
+        let word = d.output[0] === 0 ? '<pad>': reviewArray[i + reviewArray.length - curLayer.length]
+        hoverInfoStore_rnn.set( {show: false, text: `'${word}' index in vocabulary is: ${d.output[0]}`} );
+      }
+    );
+
     // Overwrite the mouseover and mouseleave function for output nodes to show
     // hover info in the UI
     layerGroup.selectAll('g.node-output')
@@ -888,7 +911,7 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
     );
     
     if (curLayer[0].layerName === 'input') {
-        initInputLayer(nodeGroups, left, l, curLayer, inputTextList);
+        initInputLayer(nodeGroups, left, l, curLayer);
         drawImageNodes(l);
       } else if (curLayer[0].layerName.includes('dense')){ 
         initOutputLayer(nodeGroups, left, l);
@@ -917,7 +940,9 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
 /**
  * Update canvas values when user changes input image
  */
-export const updateRNN = (inputTextList) => {
+export const updateRNN = () => {
+  console.log('reviewArray is: ', reviewArray);
+
   // Compute the scale of the output score width (mapping the the node
   // width to the max output score)
   let outputRectScale = d3.scaleLinear()
@@ -943,13 +968,13 @@ export const updateRNN = (inputTextList) => {
           d3.select(this)
             .select('image.node-image')
             .each((d, i, g) => drawOutputRNN(d, i, g, range));
-          d3.select(this)
-            .select('text.input-annotation')
-            .text((d,i) => d.output);
-          d3.select(this)
-            .select('text.input-text')
-            .text((d,i,g) => d.output[0] === 0 
-              ? `<pad>`:`${inputTextList[d.index+inputTextList.length-rnn[l].length]}` );
+          // d3.select(this)
+          //   .select('text.input-annotation')
+          //   .text((d,i) => d.output);
+          // d3.select(this)
+          //   .select('text.input-text')
+          //   .text((d,i,g) => d.output[0] === 0 
+          //     ? `<pad>`:`${reviewArray[d.index+reviewArray.length-rnn[l].length]}` );
           d3.select(this).transition('appear')
             .duration(700)
             .ease(d3.easeCubicIn)

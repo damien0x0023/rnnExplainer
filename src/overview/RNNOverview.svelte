@@ -7,7 +7,7 @@
     nodeCoordinateStore_rnn, selectedScaleLevelStore_rnn, needRedrawStore_rnn,
     detailedModeStore_rnn, shouldIntermediateAnimateStore_rnn, isInSoftmaxStore_rnn, 
     softmaxDetailViewStore_rnn, hoverInfoStore_rnn, allowsSoftmaxAnimationStore_rnn, 
-    modalStore_rnn, intermediateLayerPositionStore_rnn
+    modalStore_rnn, intermediateLayerPositionStore_rnn, reviewArrayStore
   } from '../stores.js';
 
   // Svelte views
@@ -117,6 +117,9 @@
   let intermediateLayerPosition_rnn = undefined;
   intermediateLayerPositionStore_rnn.subscribe ( value => {
     intermediateLayerPosition_rnn = value;} )
+
+  let reviewArray = undefined;
+  reviewArrayStore.subscribe( value=> {reviewArray = value;})
 
   let width = undefined;
   let height = undefined;
@@ -264,6 +267,9 @@
     // rnn[0] = rnn.nonPadInput;
     rnnStore.set(rnn);
     console.log('rnn layers are: ', rnn);
+
+    reviewArray = predictor.inputArray;
+    reviewArrayStore.set(reviewArray);
 
     updateRNNLayerRanges(inputDim);
     console.log("rnn layer ranges and MinMax are: ", 
@@ -740,6 +746,10 @@
       rnnStore.set(rnn);
       console.log('rnn layers are: ', rnn);
 
+      reviewArray = predictor.inputArray;
+      reviewArrayStore.set(reviewArray);
+
+
       inputDim = model_lstm.layers[0].inputDim;
       updateRNNLayerRanges(inputDim);
       console.log("rnn layer ranges and MinMax are: ", 
@@ -1048,17 +1058,6 @@
 
       </div> -->
 
-      <!-- <button class="button is-very-small is-link is-light"
-        id="hover-label"
-        style="opacity:{hoverInfo_rnn.show ? 1 : 0}">
-        <span class="icon" style="margin-right: 5px;">
-          <i class="fas fa-crosshairs "></i>
-        </span>
-        <span id="hover-label-text">
-          {hoverInfo_rnn.text}
-        </span>
-      </button> -->
-
       <div class="control is-very-small has-icons-left"
         title="Change input using different examples">
           <span class="icon is-left">
@@ -1075,6 +1074,17 @@
             </select>
           </div>      
       </div>
+
+      <button class="button is-very-small is-link is-light"
+        id="hover-label"
+        style="opacity:{hoverInfo_rnn.show ? 1 : 0}">
+        <span class="icon" style="margin-right: 5px;">
+          <i class="fas fa-crosshairs "></i>
+        </span>
+        <span id="hover-label-text">
+          {hoverInfo_rnn.text}
+        </span>
+      </button>
     </div>
 
     <div class="right-control">

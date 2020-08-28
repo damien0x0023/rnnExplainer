@@ -57,5 +57,6 @@ export const allowsSoftmaxAnimationStore_rnn = writable(false);
 export const hoverInfoStore_rnn = writable({});
 
 export const modalStore_rnn = writable({});
+export const reviewArrayStore = writable({});
 
 export const intermediateLayerPositionStore_rnn = writable({});

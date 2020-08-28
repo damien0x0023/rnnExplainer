@@ -33,12 +33,6 @@ export class SentimentPredictor{
     this.urls= urls;
     this.model = await loadTrainedModel_rnn(urls.model);
     this.metadata = await this.loadMetadata(urls.metadata);
-    // this.inputArray;
-    // this.inputTensor;
-    // this.indexFrom;
-    // this.maxLen;
-    // this.wordIndex;
-    // this.vocabularySize;
 
     return this;
   }
@@ -86,7 +80,7 @@ export class SentimentPredictor{
     
       // Perform truncation and padding.
       this.paddedSequence = padSequences([sequence], this.maxLen);
-      console.log('paddedSequence is: ', this.paddedSequence);
+      // console.log('paddedSequence is: ', this.paddedSequence);
       let tensor = tf.tensor2d(this.paddedSequence, [1, this.maxLen]);
     
       return tensor
@@ -142,7 +136,7 @@ export class SentimentPredictor{
     } else if (this.inputArray !== ipArray){
       this.inputArray = ipArray;
     }
-    console.log('input text array is: ', this.inputArray);
+    // console.log('input text array is: ', this.inputArray);
 
     let ipTensor = await this.getInputTextTensor();
     if(!this.inputTensor){
@@ -186,34 +180,6 @@ export class SentimentPredictor{
   }
 }
 
-// /**
-//  * Load metadata file.
-//  *
-//  * @return An object containing metadata as key-value pairs.
-//  */
-// const loadMetadata = async (url) => {
-//   console.log('Loading metadata from ' + url)
-//   try {
-//     const metadataJson = await fetch(url);
-//     const metadata = await metadataJson.json();
-//     console.log('Done loading metadata from '+url);
-
-//     indexFrom = metadata['index_from'];
-//     maxLen = metadata['max_len'];
-//     wordIndex = metadata['word_index'];
-//     vocabularySize = metadata['vocabulary_size'];
-//     console.log('indexFrom = ' , indexFrom);
-//     console.log('maxLen = ' , maxLen);
-//     // console.log('wordIndex = ' , wordIndex);
-//     console.log('vocabularySize = ', vocabularySize);
-
-//     return metadata;
-//   } catch(err) {
-//     console.error(err);
-//     console.log('Loading metadata failed.');
-//   }
-// }
-
 /**
  * Get the 1D value array of the given review content.
  * 
@@ -226,45 +192,6 @@ const getInputTextArray = (inputReview) => {
       .replace(/(\.|\,|\!|\?|\\|\/|\-|\@|\#|\$|\%|\^|\&|\*|\(|\)|\+|\_|\=|\<|\>|\:|\;)/g, ' ')
       .replace(/\s+/g, ' ').split(' ');
 }
-
-// const getInputTextTensor = (inputArray, indexFrom, 
-//   wordIndex, vocabularySize, maxLen) => {
-//   // Convert the words to a sequence of word indices.
-//   let sequence = inputArray.map(word => {
-//       let this_wordIndex = wordIndex[word] + indexFrom;
-//       // the issue: 'OOV' to NaN has been solved: 'OOV' and 
-//       // other words outside the dictionary to 2 now
-//       if (!this_wordIndex || this_wordIndex > vocabularySize) {
-//         this_wordIndex = OOV_INDEX;
-//       }
-//       return this_wordIndex;
-//   });
-
-//   // Perform truncation and padding.
-//   let paddedSequence = padSequences([sequence], maxLen);
-//   console.log('paddedSequence is: ', paddedSequence);
-//   let tensor = tf.tensor2d(paddedSequence, [1,maxLen]);
-
-//   return tensor
-// }
-
-// /**
-//  * return a object of elapsed time and final score
-//  * 
-//  * @param {Tensor} input Loaded input text tensor.
-//  * @param {Model} model Loaded tf.js model.
-//  */
-// export const predictResult = async (inputMovieReview, model) => {
-//   let inputTextTensor = await getInputTextArray(inputMovieReview);
-  
-//   let beginMs = performance.now();
-//   let predictOut = model.predict(inputTextTensor);
-//   let score = predictOut.dataSync()[0];
-//   predictOut.dispose();
-//   let endMs = performance.now();
-
-//   return {score: score, elapsed: (endMs - beginMs)};
-// }
 
 /**
  * Construct layer architecture of a RNN with given extracted outputs from every layer.
@@ -538,54 +465,6 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
   rnn.nonPadInput = nonPadInputLayer;
   return rnn;
 }
-
-// /**
-//  * Construct a RNN with given metadata, model and input.
-//  * 
-//  * @param {string} inputMovieReview movie review.
-//  * @param {string} metadataFile filename and path of metadata.
-//  * @param {Model} model Loaded tf.js model.
-//  */
-// export const constructRNN = async (inputMovieReview, metadataFile, model) => {
-//   // load metadata of the pretrained model
-//   let sentimentMetadata = await loadMetadata(metadataFile);
-
-//   console.log('input review is: ', inputMovieReview)
-//   let inputTextTensor = await getInputTextArray(inputMovieReview);
-
-//   // let inputTextTensorBatch = tf.stack([inputTextTensor]);
-//   console.log('input text tensor is: ', inputTextTensor);
-
-//   let preTensor = inputTextTensor; 
-//   let outputs = [];
-
-//   for (let l = 0; l< model.layers.length; l++) {
-//     console.log('current layer name is: ', model.layers[l].name);
-//     let curTensor = model.layers[l].apply(preTensor);
-//     // console.log(curTensor);
-
-//     // Set the squeeze dim is 0 to unpack the batch otherwise it will 
-//     // ignore the final outcome if there is only one value.
-//     let output = curTensor.squeeze([0]);
-//     // let output = curTensor.squeeze();
-
-
-//     if (output.shape.length === 2) {
-//       console.log(output.shape);
-//       output = output.transpose([1, 0]);
-//     } 
-//     console.log(output.shape);
-//     outputs.push(output);
-
-//     preTensor = curTensor;
-//   }
-//   console.log('final rnn outputs is ' )
-//   console.log(outputs);
-//   console.log('rnn result is ' + outputs[2])
-
-//   let rnn = constructRNNFromOutputs(outputs, model, inputTextTensor);
-//   return rnn;
-// }
 
 /**
  * Wrapper to load a model.
