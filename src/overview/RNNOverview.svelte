@@ -176,9 +176,9 @@
   ];
   let selectedImage = imageOptions[1].file;
 
-
+  const defaultInputContent = 'Please input your review within 100 words.';
   const exampleReviews = {
-    'input': 'Please input your review in 100 words.',
+    'input': defaultInputContent,
     'empty': 'Helpless Waiting... The text here is for testing as rendering 100 words representation will cost much time I will seek to improve the response speed later',
     'positive':
       `die hard mario fan and i loved this game br br this game starts slightly boring but trust me it\'s worth it as soon as you start your hooked the levels are fun and exiting they will hook you OOV your mind turns to mush i\'m not kidding this game is also orchestrated and is beautifully done br br to keep this spoiler free i have to keep my mouth shut about details but please try this game it\'ll be worth it br br story 9 9 action 10 1 it\'s that good OOV 10 attention OOV 10 average 10`,
@@ -254,67 +254,63 @@
     }
   }
 
+  // update RNN and Interface
+  const updateRNNbasedonStoredReview = async () => {
+    console.time('Construct rnn');
+    rnn = await predictor.constructNN(exampleReviews[selectedReview], model_lstm);
+    console.timeEnd('Construct rnn');
+
+    // rnn.rawInput = rnn[0];
+    // rnn[0] = rnn.nonPadInput;
+    rnnStore.set(rnn);
+    console.log('rnn layers are: ', rnn);
+
+    updateRNNLayerRanges(inputDim);
+    console.log("rnn layer ranges and MinMax are: ", 
+      rnnLayerRanges, rnnLayerMinMax);
+
+    updateRNN(predictor.inputArray); 
+  } 
+
+  // clear the content when focus into textarea div
+  const focusReviewContent = async() => {
+    if (reviewContent === defaultInputContent) {
+      reviewContent = '';
+    } 
+  }
+
+  // update RNN and interface when review content changed by users
   const reviewContentChanged = async ()=>{
-      if (selectedReview ==='input' && reviewContent.trim() !== exampleReviews[selectedReview]){
+      if (reviewContent.trim() !== exampleReviews[selectedReview]){
         exampleReviews[selectedReview] = reviewContent.trim();
 
-        console.time('Construct rnn');
-        rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`);
-        console.timeEnd('Construct rnn');
-
-        // rnn.rawInput = rnn[0];
-        // rnn[0] = rnn.nonPadInput;
-        rnnStore.set(rnn);
-        console.log('rnn layers are: ', rnn);
-
-        updateRNNLayerRanges(inputDim);
-        console.log("rnn layer ranges and MinMax are: ", 
-          rnnLayerRanges, rnnLayerMinMax);
-
-        updateRNN(predictor.inputArray);
+        updateRNNbasedonStoredReview();
       } else {
         console.log('The current Review content does not change');
       }
   }
 
-  const restoreDefaultInput = async () => {
-    // exampleReviews['input'] = 'Please input your review in 100 words.';
-    d3.select('#review-content')
-        .attr('contenteditable', 'false'); 
-  }
-
+  // update RNN and interface when choose other options
   const reviewOptionClicked = async ()=>{
     if (selectedReview === previousSelectedReview) {
-      console.log('The current Review Option does not change');
-    // } else if (selectedReview === 'input') {
-    //   previousSelectedReview = selectedReview; 
-    //   let tr =  d3.select('#review-content')
-    //               .attr('contenteditable', 'true')                
+      console.log('The current Review Option does not change');           
     } else {
-      previousSelectedReview = selectedReview; 
+      previousSelectedReview = selectedReview;
+      reviewContent = exampleReviews[selectedReview]; 
       console.log('The current Review is: ', selectedReview);
+      console.log('The reviewContent is: ', reviewContent);
 
       if (selectedReview !== 'input'){   
-        restoreDefaultInput();
-
-        console.time('Construct rnn');
-        rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
-        console.timeEnd('Construct rnn');
-
-        // rnn.rawInput = rnn[0];
-        // rnn[0] = rnn.nonPadInput;
-        rnnStore.set(rnn);
-        console.log('rnn layers are: ', rnn);
-
-        updateRNNLayerRanges(inputDim);
-        console.log("rnn layer ranges and MinMax are: ", 
-          rnnLayerRanges, rnnLayerMinMax);
-
-        updateRNN(predictor.inputArray); 
+        d3.select('#review-content')
+          .attr('contenteditable', 'false'); 
+        updateRNNbasedonStoredReview();
 
       } else {
         d3.select('#review-content')
           .attr('contenteditable', 'true'); 
+          if (reviewContent !== defaultInputContent) {
+            updateRNNbasedonStoredReview();
+          }
       }      
     }
   }
@@ -1070,7 +1066,7 @@
 
           <div class="select">
             <select bind:value="{selectedReview}" id="example-select" class="form-control" 
-            on:blur = "{disableControl ? '' : reviewOptionClicked}" >
+            on:change= "{disableControl ? '' : reviewOptionClicked}">
               <option value="empty"> Please choose one example</option>
               <option value="positive">Positive example</option>
               <option value="negative">Negative example</option>
@@ -1116,10 +1112,12 @@
   </div>
 
   <div class="review">
-    <div bind:textContent={reviewContent} 
-          class="textarea" id="review-content" 
-          contenteditable="false" on:blur="{reviewContentChanged}">
-      {exampleReviews[selectedReview]}
+    <div 
+      bind:textContent={reviewContent} 
+      class="textarea" id="review-content" contenteditable="false" 
+      on:focus="{focusReviewContent}"
+      on:blur="{reviewContentChanged}">
+        {exampleReviews[selectedReview]}
     </div>
     <!-- <textarea id="review-text" on:blur="{disableControl ? '' : reviewOptionClicked}" maxlength = "100o">{exampleReviews[selectedReview]}</textarea> -->
     <!-- <p class="text-count"><span id="textCount">0</span>/100</p> -->
