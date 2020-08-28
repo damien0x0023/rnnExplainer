@@ -282,7 +282,7 @@
   // update RNN and interface when review content changed by users
   const reviewContentChanged = async ()=>{
       if (reviewContent.trim()===''){
-        console.log('The current review content is empty, please write down your review.');
+        console.log('The current review content is empty, please write down your review.')
       } else if (reviewContent.trim() === exampleReviews[selectedReview]){
         console.log('The current Review content does not change');
       } else {

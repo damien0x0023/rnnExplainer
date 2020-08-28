@@ -221,8 +221,10 @@ export class SentimentPredictor{
  * @returns A promise with the corresponding 1D array
  */
 const getInputTextArray = (inputReview) => {
-  // Convert to lower case and remove all punctuations.
-  return inputReview.trim().toLowerCase().replace(/(\.|\,|\!)/g, '').split(' ');
+  // Convert to lower case and remove all punctuations and more spaces.
+  return inputReview.trim().toLowerCase()
+      .replace(/(\.|\,|\!|\?|\\|\/|\-|\@|\#|\$|\%|\^|\&|\*|\(|\)|\+|\_|\=|\<|\>|\:|\;)/g, ' ')
+      .replace(/\s+/g, ' ').split(' ');
 }
 
 // const getInputTextTensor = (inputArray, indexFrom, 
