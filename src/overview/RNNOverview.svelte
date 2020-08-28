@@ -178,10 +178,11 @@
 
 
   const exampleReviews = {
-  'empty': 'Helpless Waiting... The text here is for testing as rendering 100 words representation will cost much time I will seek to improve the response speed later',
-  'positive':
+    'input': 'Please input your review in 100 words.',
+    'empty': 'Helpless Waiting... The text here is for testing as rendering 100 words representation will cost much time I will seek to improve the response speed later',
+    'positive':
       `die hard mario fan and i loved this game br br this game starts slightly boring but trust me it\'s worth it as soon as you start your hooked the levels are fun and exiting they will hook you OOV your mind turns to mush i\'m not kidding this game is also orchestrated and is beautifully done br br to keep this spoiler free i have to keep my mouth shut about details but please try this game it\'ll be worth it br br story 9 9 action 10 1 it\'s that good OOV 10 attention OOV 10 average 10`,
-  'negative':
+    'negative':
       `the mother in this movie is reckless with her children to the point of neglect i wish i wasn\'t so angry about her and her actions because i would have otherwise enjoyed the flick what a number she was take my advise and fast forward through everything you see her do until the end also is anyone else getting sick of watching movies that are filmed so dark anymore one can hardly see what is being filmed as an audience we are impossibly involved with the actions on the screen so then why the hell can\'t we have night vision`
   };
   let selectedReview = 'negative';
@@ -203,6 +204,7 @@
     let val = d3.select('#review-text').text;
     return val.length;
   }
+
   const selectedScaleLevelChanged = () => {
     if (svg_rnn !== undefined) {
       if (!scaleLevelSet.add(selectedScaleLevel)) {
@@ -252,31 +254,68 @@
     }
   }
 
-  const reviewOptionClicked = async ()=>{
-    // let newReview = exampleReviews[selectedReview];
+  const reviewContentChanged = async ()=>{
+      if (selectedReview ==='input' && reviewContent.trim() !== exampleReviews[selectedReview]){
+        exampleReviews[selectedReview] = reviewContent.trim();
 
-    if (reviewContent !== previousSelectedReview) {
+        console.time('Construct rnn');
+        rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`);
+        console.timeEnd('Construct rnn');
+
+        // rnn.rawInput = rnn[0];
+        // rnn[0] = rnn.nonPadInput;
+        rnnStore.set(rnn);
+        console.log('rnn layers are: ', rnn);
+
+        updateRNNLayerRanges(inputDim);
+        console.log("rnn layer ranges and MinMax are: ", 
+          rnnLayerRanges, rnnLayerMinMax);
+
+        updateRNN(predictor.inputArray);
+      } else {
+        console.log('The current Review content does not change');
+      }
+  }
+
+  const restoreDefaultInput = async () => {
+    // exampleReviews['input'] = 'Please input your review in 100 words.';
+    d3.select('#review-content')
+        .attr('contenteditable', 'false'); 
+  }
+
+  const reviewOptionClicked = async ()=>{
+    if (selectedReview === previousSelectedReview) {
+      console.log('The current Review Option does not change');
+    // } else if (selectedReview === 'input') {
+    //   previousSelectedReview = selectedReview; 
+    //   let tr =  d3.select('#review-content')
+    //               .attr('contenteditable', 'true')                
+    } else {
       previousSelectedReview = selectedReview; 
       console.log('The current Review is: ', selectedReview);
 
-      console.time('Construct rnn');
-      // rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
-      //   LOCAL_URLS.metadata, model_lstm);
-      rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
-      console.timeEnd('Construct rnn');
+      if (selectedReview !== 'input'){   
+        restoreDefaultInput();
 
-      // rnn.rawInput = rnn[0];
-      // rnn[0] = rnn.nonPadInput;
-      rnnStore.set(rnn);
-      console.log('rnn layers are: ', rnn);
+        console.time('Construct rnn');
+        rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
+        console.timeEnd('Construct rnn');
 
-      updateRNNLayerRanges(inputDim);
-      console.log("rnn layer ranges and MinMax are: ", 
-        rnnLayerRanges, rnnLayerMinMax);
+        // rnn.rawInput = rnn[0];
+        // rnn[0] = rnn.nonPadInput;
+        rnnStore.set(rnn);
+        console.log('rnn layers are: ', rnn);
 
-      updateRNN(predictor.inputArray);
-    } else {
-      console.log('The current Review does not change')
+        updateRNNLayerRanges(inputDim);
+        console.log("rnn layer ranges and MinMax are: ", 
+          rnnLayerRanges, rnnLayerMinMax);
+
+        updateRNN(predictor.inputArray); 
+
+      } else {
+        d3.select('#review-content')
+          .attr('contenteditable', 'true'); 
+      }      
     }
   }
 
@@ -553,7 +592,7 @@
         .ease(d3.easeCubicOut)
         .duration(200)
         .style('stroke', edgeInitColor)
-        .style('stroke-width', edgeStrokeWidth)
+        .style('stroke-width',  d =>d.targetLayerIndex !==3 ? edgeStrokeWidth:edgeStrokeWidth*4)
         .style('opacity', edgeOpacity);
       
       if (d.type !== 'dense') {
@@ -767,7 +806,7 @@
     border:1pxsolid#a0b3d6;
     font-size:12px;
     line-height:24px;
-    padding:0px;
+    padding:2px;
     word-wrap:break-word;
     overflow-x:hidden;
     overflow-y:auto;
@@ -1035,6 +1074,7 @@
               <option value="empty"> Please choose one example</option>
               <option value="positive">Positive example</option>
               <option value="negative">Negative example</option>
+              <option value="input">Input your review</option>
             </select>
           </div>      
       </div>
@@ -1076,7 +1116,11 @@
   </div>
 
   <div class="review">
-    <div bind:innerHTML={reviewContent} class="textarea" contenteditable="false">{exampleReviews[selectedReview]}</div>
+    <div bind:textContent={reviewContent} 
+          class="textarea" id="review-content" 
+          contenteditable="false" on:blur="{reviewContentChanged}">
+      {exampleReviews[selectedReview]}
+    </div>
     <!-- <textarea id="review-text" on:blur="{disableControl ? '' : reviewOptionClicked}" maxlength = "100o">{exampleReviews[selectedReview]}</textarea> -->
     <!-- <p class="text-count"><span id="textCount">0</span>/100</p> -->
   </div>
