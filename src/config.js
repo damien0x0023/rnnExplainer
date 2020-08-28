@@ -47,7 +47,7 @@ let nodeLength_rnn = 100;
 export const rnnOverviewConfig = {
   nodeLength : nodeLength_rnn,
   nodeHeight : nodeLength_rnn / 10, // 10
-  embedddingLength : nodeLength_rnn * 10, // 1000
+  embedddingLength : nodeLength_rnn * 5, // 500
   inputNodeHeight : nodeLength_rnn / 20, // 5
   plusSymbolRadius : nodeLength_rnn/5,
   numLayers : 4,
