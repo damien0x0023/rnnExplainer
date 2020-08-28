@@ -254,6 +254,7 @@
     }
   }
 
+  // issue to fix:may have issue when lose focus without input
   const reviewContentChanged = async ()=>{
       if (selectedReview ==='input' && reviewContent.trim() !== exampleReviews[selectedReview]){
         exampleReviews[selectedReview] = reviewContent.trim();
@@ -298,7 +299,7 @@
         restoreDefaultInput();
 
         console.time('Construct rnn');
-        rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
+        rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`);
         console.timeEnd('Construct rnn');
 
         // rnn.rawInput = rnn[0];
