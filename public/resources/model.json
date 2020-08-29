@@ -8,7 +8,7 @@
                     "class_name": "Embedding",
                     "config": {
                         "input_dim": 10000,
-                        "output_dim": 32,
+                        "output_dim": 64,
                         "embeddings_initializer": {
                             "class_name": "RandomUniform",
                             "config": {
@@ -120,14 +120,14 @@
                     "name": "embedding_Embedding1/embeddings",
                     "shape": [
                         10000,
-                        32
+                        64
                     ],
                     "dtype": "float32"
                 },
                 {
                     "name": "lstm_LSTM1/kernel",
                     "shape": [
-                        32,
+                        64,
                         128
                     ],
                     "dtype": "float32"
