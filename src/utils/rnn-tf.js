@@ -163,7 +163,7 @@ export class SentimentPredictor{
 
 
       if (output.shape.length === 2) {
-        console.log(output.shape);
+        // console.log(output.shape);
         output = output.transpose([1, 0]);
       } 
       console.log(output.shape);

@@ -58,7 +58,7 @@ export const rnnOverviewConfig = {
   edgeStrokeWidth : 0.25,
   intermediateColor : 'gray',
   layerColorScales: layerColorScales_rnn,
-  svgPaddings: {top: 25, bottom: 25, left: 50, right: 50},
+  svgPaddings: {top: 25, bottom: 25, left: 25, right: 25},
   kernelRectLength: 8/3,
   gapRatio: 4,
   overlayRectOffset: 12,

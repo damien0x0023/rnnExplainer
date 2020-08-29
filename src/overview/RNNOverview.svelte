@@ -10,6 +10,8 @@
     modalStore_rnn, intermediateLayerPositionStore_rnn, reviewArrayStore
   } from '../stores.js';
 
+  // import { Jumper } from 'svelte-loading-spinners';
+
   // Svelte views
   import ConvolutionView from '../detail-view/Convolutionview.svelte';
   import ActivationView from '../detail-view/Activationview.svelte';
@@ -135,8 +137,8 @@
   let disableControl = false;
 
   // Wait to load
-  // let cnn = undefined;
   let rnn = undefined;
+  let isRNNloaded = false;
 
   let detailedViewAbsCoords = {
     1 : [600, 270, 490, 290],
@@ -193,13 +195,11 @@
   let previousSelectedReview = selectedReview;
   let predictor;
   let inputDim;
-  let isFirstMount = true;
 
   let nodeData;
   let selectedNodeIndex = -1;
   let isExitedFromDetailedView = true;
   let isExitedFromCollapse = true;
-  let customImageURL = null;
 
   // Helper functions
 
@@ -259,9 +259,11 @@
 
   // update RNN and Interface
   const updateRNNbasedonStoredReview = async () => {
+    isRNNloaded = false;
     console.time('Construct rnn');
     rnn = await predictor.constructNN(exampleReviews[selectedReview], model_lstm);
     console.timeEnd('Construct rnn');
+    isRNNloaded = true;
 
     // rnn.rawInput = rnn[0];
     // rnn[0] = rnn.nonPadInput;
@@ -275,7 +277,7 @@
     console.log("rnn layer ranges and MinMax are: ", 
       rnnLayerRanges, rnnLayerMinMax);
 
-    updateRNN(predictor.inputArray); 
+    updateRNN(); 
   } 
 
   // clear the content when focus into textarea div
@@ -320,38 +322,6 @@
           }
       }      
     }
-  }
-
-  // // cannot load the image to cannot load the text
-  // const handleModalCanceled = (event) => {
-  //   // User cancels the modal without a successful image, so we restore the
-  //   // previous selected image as input
-  //   selectedImage = event.detail.preImage;
-  // }
-
-  // change custom image to custom review
-  const handleCustomImage = async (event) => {
-    // User gives a valid image URL
-    customImageURL = event.detail.url;
-
-    // Re-compute the CNN using the new input image
-    // rnn = await constructCNN(customImageURL, model);
-    rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
-        LOCAL_URLS.metadata, model_lstm);
-    // Ignore the flatten layer for now
-    // let flatten = cnn[cnn.length - 2];
-    // cnn.splice(cnn.length - 2, 1);
-    // cnn.flatten = flatten;
-    rnnStore.set(rnn);
-
-    // Update the UI
-    let customImageSlot = d3.select(rnnOverviewComponent)
-      .select('.custom-image').node();
-    drawCustomReivew(customImageSlot, rnn[0]);
-
-    // Update all scales used in the RNN view
-    updateRNNLayerRanges();
-    updateRNN();
   }
 
   const handleCustomReview = async () => {
@@ -723,9 +693,6 @@
         .style('stroke-width', 2)
         .attr("d", "M-5,-10L10,0L-5,10");
 
-      // model_lstm = await loadTrainedModel_rnn(LOCAL_URLS.model);
-      // console.log("The rnn model is: ",model_lstm);
-
       predictor = await new SentimentPredictor().init(LOCAL_URLS);
       model_lstm = predictor.model;
       console.log("The rnn model is: ", model_lstm);
@@ -734,11 +701,9 @@
       directPredict(`${exampleReviews[selectedReview]}`, model_lstm);
 
       console.time('Construct rnn');
-      // rnn = await constructRNN(`${exampleReviews[selectedReview]}`, 
-      //   LOCAL_URLS.metadata, model_lstm);
       rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
       console.timeEnd('Construct rnn');
-
+      isRNNloaded = true;
       // // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
       // // cause the exploration of edges, which will cost performance loss in interface
       // rnn.rawInput = rnn[0];
@@ -758,9 +723,8 @@
       // Create and draw the RNN view
       // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
       // nodeMouseLeaveHandler, nodeClickHandler);
-      drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null, predictor.inputArray);
+      drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null);
   });
-
 </script>
 
 <style>
@@ -1024,39 +988,7 @@
 
   <div class="control-container">
 
-    <div class="left-control">
-      <!-- {#each imageOptions as image, i}
-        <div class="image-container"
-          on:click={disableControl ? () => {} : imageOptionClicked}
-          class:inactive={selectedImage !== image.file}
-          class:disabled={disableControl}
-          data-imageName={image.file}>
-          <img src="PUBLIC_URL/assets/img/{image.file}"
-            alt="image option"
-            title="{image.class}"
-            data-imageName={image.file}/>
-        </div>
-      {/each} -->
-
-      <!-- <div class="image-container"
-          class:inactive={selectedImage !== 'custom'}
-          class:disabled={disableControl}
-          data-imageName={'custom'}
-          on:click={disableControl ? () => {} : customImageClicked}>
-
-          <img class="custom-image"
-            src="PUBLIC_URL/assets/img/plus.svg"
-            alt="plus button"
-            title="Add new input image"
-            data-imageName="custom"/>
-
-          <span class="fa-stack edit-icon"
-            class:hidden={customImageURL === null}>
-            <i class="fas fa-circle fa-stack-2x"></i>
-            <i class="fas fa-pen fa-stack-1x fa-inverse"></i>
-          </span>
-
-      </div> -->
+    <div class="left-control">  
 
       <div class="control is-very-small has-icons-left"
         title="Change input using different examples">
@@ -1085,6 +1017,7 @@
           {hoverInfo_rnn.text}
         </span>
       </button>
+
     </div>
 
     <div class="right-control">
@@ -1134,22 +1067,23 @@
     <!-- <p class="text-count"><span id="textCount">0</span>/100</p> -->
   </div>
 
+
   <div class="rnn" id="rnnView">
-    <span id='ui' class="status"></span>
+    {#if  isRNNloaded}
+      ' '
+    {:else}
+    <p>Loading...</p>
+    {/if}
     <svg id="rnn-svg"></svg>
   </div>
 
-  <!-- <div class="cnn">
-    <svg id="cnn-svg"></svg>
-  </div> -->
+
 
 </div>
 
 <!-- <ArticleRNN/> -->
 
 <div id='detailview'>
- 
 </div>
 
-<!-- <Modal on:xClicked={handleModalCanceled}
-  on:urlTyped={handleCustomImage}/> -->
+<!-- <Jumper size="60" color="#FF3E00" unit="px"></Jumper> -->

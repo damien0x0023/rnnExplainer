@@ -612,7 +612,7 @@ const addEdges = (rnnGroup)=> {
     .y(d => d.y);
 
   let linkData = getLinkDataRNN(nodeCoordinate_rnn, rnn);
-  console.log('linkData is: ', linkData);
+  // console.log('linkData is: ', linkData);
   let edgeGroup = rnnGroup.append('g')
     .attr('class', 'edge-group');
 
