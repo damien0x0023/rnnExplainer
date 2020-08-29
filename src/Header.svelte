@@ -23,7 +23,7 @@
 		display: flex;
 		padding: 0 20px;
 		align-items: stretch;
-		background: rgb(10, 162, 186);
+		background: rgb(0, 120, 174);
     	justify-content: space-between;
 	}
 
