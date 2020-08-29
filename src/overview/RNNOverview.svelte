@@ -10,7 +10,7 @@
     modalStore_rnn, intermediateLayerPositionStore_rnn, reviewArrayStore
   } from '../stores.js';
 
-  // import { Jumper } from 'svelte-loading-spinners';
+  import { Jumper } from 'svelte-loading-spinners';
 
   // Svelte views
   import ConvolutionView from '../detail-view/Convolutionview.svelte';
@@ -57,6 +57,7 @@
   let selectedScaleLevel = 'local';
   selectedScaleLevelStore_rnn.set(selectedScaleLevel);
   let previousSelectedScaleLevel = selectedScaleLevel;
+  let overview = undefined;
   let wholeSvg_rnn = undefined;
   let svg_rnn = undefined;
 
@@ -138,7 +139,7 @@
 
   // Wait to load
   let rnn = undefined;
-  let isRNNloaded = false;
+  // let isRNNloaded = false;
 
   let detailedViewAbsCoords = {
     1 : [600, 270, 490, 290],
@@ -259,11 +260,11 @@
 
   // update RNN and Interface
   const updateRNNbasedonStoredReview = async () => {
-    isRNNloaded = false;
+    // isRNNloaded = false;
     console.time('Construct rnn');
     rnn = await predictor.constructNN(exampleReviews[selectedReview], model_lstm);
     console.timeEnd('Construct rnn');
-    isRNNloaded = true;
+    // isRNNloaded = true;
 
     // rnn.rawInput = rnn[0];
     // rnn[0] = rnn.nonPadInput;
@@ -627,6 +628,10 @@
   onMount(async () => {
       // Create RNN
       console.log(`-----------Creating RNN---------------`);
+      overview = d3.select(rnnOverviewComponent);
+      width = Number(overview.style('width').replace('px', '')) -
+        svgPaddings.left - svgPaddings.right;
+
       wholeSvg_rnn = d3.select(rnnOverviewComponent)
         .select('#rnn-svg');
       svg_rnn = wholeSvg_rnn.append('g')
@@ -635,8 +640,8 @@
 
       svgStore_rnn.set(svg_rnn);
 
-      width = Number(wholeSvg_rnn.style('width').replace('px', '')) -
-        svgPaddings.left - svgPaddings.right;
+      // width = Number(wholeSvg_rnn.style('width').replace('px', '')) -
+      //   svgPaddings.left - svgPaddings.right;
       height = Number(wholeSvg_rnn.style('height').replace('px', '')) -
         svgPaddings.top - svgPaddings.bottom;
 
@@ -703,7 +708,7 @@
       console.time('Construct rnn');
       rnn = await predictor.constructNN(`${exampleReviews[selectedReview]}`, model_lstm);
       console.timeEnd('Construct rnn');
-      isRNNloaded = true;
+      // isRNNloaded = true;
       // // Ignore the rawInput layer for now, because too many <pad> node in input layer will 
       // // cause the exploration of edges, which will cost performance loss in interface
       // rnn.rawInput = rnn[0];
@@ -793,12 +798,25 @@
     display: flex;
   }
 
+  .spinner-item {
+	  min-width: 250px;
+	  min-height: 250px;
+	  display: flex;
+	  justify-content: center;
+	  align-items: center;
+    position: absolute;
+    top: 50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+  }
+
   svg {
     margin: 0 auto;
-    min-height: 490px;
-    max-height: 700px;
+    min-height: 500px;
+    max-height: 800px;
     height: calc(100vh - 100px);
     width: 100vw;
+    display:flex
   }
 
   .is-very-small {
@@ -1067,17 +1085,14 @@
     <!-- <p class="text-count"><span id="textCount">0</span>/100</p> -->
   </div>
 
-
   <div class="rnn" id="rnnView">
-    {#if  isRNNloaded}
-      ' '
-    {:else}
-    <p>Loading...</p>
+    {#if  !rnn}
+      <div class="spinner-item" title="Jumper">
+        <Jumper size="120" color="#0abab5" />
+      </div>
     {/if}
     <svg id="rnn-svg"></svg>
   </div>
-
-
 
 </div>
 
@@ -1085,5 +1100,3 @@
 
 <div id='detailview'>
 </div>
-
-<!-- <Jumper size="60" color="#FF3E00" unit="px"></Jumper> -->
