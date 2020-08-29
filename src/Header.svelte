@@ -40,7 +40,7 @@
 		dominant-baseline: baseline;
 		margin-right: 10px;
 		text-align: left;
-        border: 1px dotted black;
+        /* border: 1px dotted black; */
         width: 25%;
 
 	}
@@ -49,7 +49,12 @@
 		width:50%;
 		height:35px;
 		text-align: center;
-        border: 1px dotted black;
+        /* border: 1px dotted black; */
+	}
+
+	.svg-logo{
+		/* display:inline-block; */
+		text-align: center;
 	}
 
 	#svg-logo-tagline {
@@ -58,8 +63,6 @@
 		text-align: center;
 		width: 50%;
 		font-family: 'Neucha';
-		position:absolute;
-		bottom:0;
 	}
 
 	.icons {
@@ -91,7 +94,7 @@
 
 	.control {
         text-align: right;
-        border: 1px dotted black;
+        /* border: 1px dotted black; */
         width: 25%;
 	}
 	.control > .select > #NN-select {
@@ -118,7 +121,7 @@
 			{selectedNN.alis} Explainer
     	</div>
 
-		<svg class="logo-svg" >
+		<svg class="logo-svg">
 			<defs>
 				<filter x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox" id="chalk-texture">
 					<feTurbulence type="fractalNoise" baseFrequency="2" numOctaves="5" stitchTiles="stitch" result="f1">
@@ -130,8 +133,8 @@
 				</filter>
 			</defs>
 
-			<g class="svg-logo" filter="url(#chalk-texture)" transform="translate(0,30)">				
-				<text id="svg-logo-tagline">
+			<g class="svg-logo" filter="url(#chalk-texture)" >				
+				<text id="svg-logo-tagline" x=20% y=80%>
 					Learn {selectedNN.name} ({selectedNN.alis}) in your browser!
 				</text>
 			</g>
