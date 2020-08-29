@@ -351,6 +351,128 @@
       .classed('hidden', detailedMode_rnn);
   }
 
+  const enterDetailView = (curLayerIndex, i) => {
+    isInActPoolDetailView = true;
+    actPoolDetailViewNodeIndex = i;
+    actPoolDetailViewLayerIndex = curLayerIndex;
+
+    // Dynamically position the detail view
+    let wholeSvg = d3.select('#rnn-svg');
+    let svgYMid = +wholeSvg.style('height').replace('px', '') / 2;
+    let svgWidth = +wholeSvg.style('width').replace('px', '');
+    let detailViewTop = 100 + svgYMid - 260 / 2;
+
+    let posX = 0;
+    if (curLayerIndex > 5) {
+      posX = nodeCoordinate_rnn[curLayerIndex - 1][0].x + 50;
+      posX = posX / 2 - 500 / 2;
+    } else {
+      posX = (svgWidth - nodeCoordinate_rnn[curLayerIndex][0].x - nodeLength) / 2;
+      posX = nodeCoordinate_rnn[curLayerIndex][0].x + nodeLength + posX - 500 / 2;
+
+    }
+
+    const detailview = document.getElementById('detailview');
+    detailview.style.top = `${detailViewTop}px`;
+    detailview.style.left = `${posX}px`;
+    detailview.style.position = 'absolute';
+
+    // Hide all edges
+    let unimportantEdges = svg_rnn.select('g.edge-group')
+      .selectAll('.edge')
+      .filter(d => {
+        return d.targetLayerIndex !== curLayerIndex;
+      })
+      .style('visibility', 'hidden');
+    
+    // Disable UI
+    disableControl = true;
+    
+    // Hide input annotaitons
+    svg_rnn.select('.input-annotation')
+      .classed('hidden', true);
+
+    // Hide legends
+    svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+      .classed('hidden', true);
+    svg_rnn.selectAll('.input-legend').classed('hidden', true);
+    svg_rnn.selectAll('.output-legend').classed('hidden', true);
+    svg_rnn.select(`#${layerLegendDict[curLayerIndex][selectedScaleLevel]}`)
+      .classed('hidden', false);
+
+    // Add overlay rects
+    let leftX = nodeCoordinate_rnn[curLayerIndex - 1][i].x;
+    // +5 to cover the detailed mode long label
+    let rightStart = nodeCoordinate_rnn[curLayerIndex][i].x + nodeLength + 5;
+
+    // Compute the left and right overlay rect width
+    let rightWidth = width - rightStart - overlayRectOffset / 2;
+    let leftWidth = leftX - nodeCoordinate_rnn[0][0].x;
+
+    // The overlay rects should be symmetric
+    if (rightWidth > leftWidth) {
+      let stops = [{offset: '0%', color: 'rgb(250, 250, 250)', opacity: 0.85},
+        {offset: '50%', color: 'rgb(250, 250, 250)', opacity: 0.9},
+        {offset: '100%', color: 'rgb(250, 250, 250)', opacity: 1}];
+      addOverlayGradient('overlay-gradient-right', stops);
+      
+      let leftEndOpacity = 0.85 + (0.95 - 0.85) * (leftWidth / rightWidth);
+      stops = [{offset: '0%', color: 'rgb(250, 250, 250)', opacity: leftEndOpacity},
+        {offset: '100%', color: 'rgb(250, 250, 250)', opacity: 0.85}];
+      addOverlayGradient('overlay-gradient-left', stops);
+    } else {
+      let stops = [{offset: '0%', color: 'rgb(250, 250, 250)', opacity: 1},
+        {offset: '50%', color: 'rgb(250, 250, 250)', opacity: 0.9},
+        {offset: '100%', color: 'rgb(250, 250, 250)', opacity: 0.85}];
+      addOverlayGradient('overlay-gradient-left', stops);
+
+      let rightEndOpacity = 0.85 + (0.95 - 0.85) * (rightWidth / leftWidth);
+      stops = [{offset: '0%', color: 'rgb(250, 250, 250)', opacity: 0.85},
+        {offset: '100%', color: 'rgb(250, 250, 250)', opacity: rightEndOpacity}];
+      addOverlayGradient('overlay-gradient-right', stops);
+    }
+    
+    addOverlayRect('overlay-gradient-right',
+      rightStart + overlayRectOffset / 2 + 0.5,
+      0, rightWidth, height + svgPaddings.top);
+    
+    addOverlayRect('overlay-gradient-left',
+      nodeCoordinate_rnn[0][0].x - overlayRectOffset / 2,
+      0, leftWidth, height + svgPaddings.top);
+
+    svg_rnn.selectAll('rect.overlay')
+      .on('click', emptySpaceClicked);
+    
+    // Add underneath rectangles
+    let underGroup = svg_rnn.select('g.underneath');
+    let padding = 7;
+    for (let n = 0; n < rnn[curLayerIndex - 1].length; n++) {
+      underGroup.append('rect')
+        .attr('class', 'underneath-gateway')
+        .attr('id', `underneath-gateway-${n}`)
+        .attr('x', nodeCoordinate_rnn[curLayerIndex - 1][n].x - padding)
+        .attr('y', nodeCoordinate_rnn[curLayerIndex - 1][n].y - padding)
+        .attr('width', (2 * nodeLength + hSpaceAroundGap) + 2 * padding)
+        .attr('height', nodeLength + 2 * padding)
+        .attr('rx', 10)
+        .style('fill', 'rgba(160, 160, 160, 0.3)')
+        .style('opacity', 0);
+      
+      // Update the event functions for these two layers
+      svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${n}`)
+        .style('pointer-events', 'all')
+        .style('cursor', 'pointer')
+        .on('mouseover', actPoolDetailViewPreNodeMouseOverHandler)
+        .on('mouseleave', actPoolDetailViewPreNodeMouseLeaveHandler)
+        .on('click', actPoolDetailViewPreNodeClickHandler);
+    }
+    underGroup.lower();
+
+    // Highlight the selcted pair
+    underGroup.select(`#underneath-gateway-${i}`)
+      .style('opacity', 1);
+  }
+
   const nodeClickHandler = (d, i, g) => {
     d3.event.stopPropagation();
     let nodeIndex = d.index;
@@ -363,7 +485,8 @@
     selectedNode.domG = g;
 
     // Record data for detailed view.
-    if (d.type === 'conv' || d.type === 'relu' || d.type === 'pool') {
+    if (d.type === 'conv' || d.type === 'relu' || d.type === 'pool'|| 
+    d.type ==='embedding'||d.type === 'lstm') {
       let data = [];
       for (let j = 0; j < d.inputLinks.length; j++) {
         data.push({
@@ -380,7 +503,7 @@
 
     let curLayerIndex = layerIndexDict[d.layerName];
 
-    if (d.type == 'relu' || d.type == 'pool') {
+    if (d.type == 'relu' || d.type == 'pool'|| d.type == 'embedding') {
       isExitedFromDetailedView = false;
       if (!isInActPoolDetailView) {
         // Enter the act pool detail view
@@ -566,7 +689,7 @@
         .ease(d3.easeCubicOut)
         .duration(200)
         .style('stroke', edgeInitColor)
-        .style('stroke-width',  d =>d.targetLayerIndex !==3 ? edgeStrokeWidth:edgeStrokeWidth*4)
+        .style('stroke-width',  d =>d.targetLayerIndex ===2 ? edgeStrokeWidth:edgeStrokeWidth*4)
         .style('opacity', edgeOpacity);
       
       if (d.type !== 'dense') {
@@ -813,7 +936,7 @@
   svg {
     margin: 0 auto;
     min-height: 500px;
-    max-height: 900px;
+    max-height: 1000px;
     height: calc(100vh - 100px);
     width: 100vw;
     display:flex

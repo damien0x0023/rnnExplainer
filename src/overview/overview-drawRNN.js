@@ -164,8 +164,8 @@ export const drawOutputRNN = (d, i, g, range) => {
     imageDataURL = enlargeOutputImage(imageLength, imageHeight, nodeLength,
       inputNodeHeight, bufferCanvas, bufferContext, imageSingle);
   } else if(d.type == 'embedding'){
-    imageDataURL = enlargeOutputImage(imageLength, imageHeight, embeddingLen,
-      inputNodeHeight, bufferCanvas, bufferContext, imageSingle);
+    imageDataURL = enlargeOutputImage(imageLength, imageHeight, 3*embeddingLen,
+      3*inputNodeHeight, bufferCanvas, bufferContext, imageSingle);
   } else{
     imageDataURL = enlargeOutputImage(imageLength, imageHeight, nodeLength,
       nodeHeight, bufferCanvas, bufferContext, imageSingle);
@@ -574,7 +574,7 @@ const addEdges = (rnnGroup)=> {
       `edge-${d.targetLayerIndex}-${d.targetNodeIndex}-${d.sourceNodeIndex}`)
     .attr('d', d => linkGen({source: d.source, target: d.target}))
     .style('fill', 'none')
-    .style('stroke-width', d =>d.targetLayerIndex !==3 ? edgeStrokeWidth:edgeStrokeWidth*4)
+    .style('stroke-width', d =>d.targetLayerIndex ===2 ? edgeStrokeWidth:edgeStrokeWidth*4)
     .style('opacity', edgeOpacity)
     .style('stroke', edgeInitColor);
 }
@@ -597,6 +597,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
 
   nodeGroups.append('rect')
     .attr('class', 'input-rect')
+    .attr('class','bounding')
     .attr('width', nodeLength)
     .attr('height', inputNodeHeight)
     .attr('x', left)
@@ -619,15 +620,25 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
   //     ? `<pad>`:`${reviewArray[i + reviewArray.length - curLayer.length]}`);
 
   nodeGroups.append('text')
-    .attr('class','input-annotation')
-    .attr('x', left - 10)
+    .attr('class', 'input-text-index')
+    .attr('x', left - 20)
     .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y+inputNodeHeight/2)
     .style('dominant-baseline', 'middle')
     .style('font-size', '6px')
-    .style('fill', 'black ')
+    .style('fill', 'black')
+    .style('opacity', 0.8)
+    .text((d, i) => `#${i+1}`);
+
+  nodeGroups.append('text')
+    .attr('class','input-annotation')
+    .attr('x', left + nodeLength/2)
+    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y+inputNodeHeight/2)
+    .style('dominant-baseline', 'middle')
+    .style('font-size', '6px')
+    .style('fill', 'rgb(255,165,42)')
     .style('opacity', 0.8)
     // .text((d,i) => d.output);
-    .text((d,i)=>i+1);
+    .text((d,i)=>d.output[0]);
 }
 
 /**
@@ -685,13 +696,6 @@ const initOutputLayer = (nodeGroups, left, l) => {
           .style('fill', 'black')
           .style('opacity', 0.5)
           .text((d, i) => classLists[i+1]);
-}
-
-const drawInputLayer = () => {
-  svg_rnn.selectAll('g.node-input').each(
-    // (d,i,g) => drawInputIndex(d,i,g)
-  );
-
 }
 
 /**
@@ -917,9 +921,9 @@ export const updateRNN = () => {
           d3.select(this)
             .select('image.node-image')
             .each((d, i, g) => drawOutputRNN(d, i, g, range));
-          // d3.select(this)
-          //   .select('text.input-annotation')
-          //   .text((d,i) => d.output);
+          d3.select(this)
+            .select('text.input-annotation')
+            .text((d,i) => d.output);
           // d3.select(this)
           //   .select('text.input-text')
           //   .text((d,i,g) => d.output[0] === 0 

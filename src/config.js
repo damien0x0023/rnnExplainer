@@ -42,20 +42,20 @@ const layerColorScales_rnn = {
   logit: d3.interpolateOranges
 };
 
-let nodeLength_rnn = 100;
+let nodeLength_rnn = 64;
 
 export const rnnOverviewConfig = {
   nodeLength : nodeLength_rnn,
   nodeHeight : nodeLength_rnn / 10, // 10
-  embedddingLength : nodeLength_rnn * 32 / 10, // 160 a bit large may be better 320
+  embedddingLength : nodeLength_rnn * 32 / 10, // a bit large may be better
   inputNodeHeight : nodeLength_rnn / 20, // 5
   plusSymbolRadius : nodeLength_rnn/5,
   numLayers : 4,
-  edgeOpacity : 0.6,
+  edgeOpacity : 0.8,
   edgeInitColor : 'rgb(230, 230, 230)',
   edgeHoverColor : 'rgb(130, 130, 130)',
   edgeHoverOuting : false,
-  edgeStrokeWidth : 0.25,
+  edgeStrokeWidth : 0.4,
   intermediateColor : 'gray',
   layerColorScales: layerColorScales_rnn,
   svgPaddings: {top: 25, bottom: 25, left: 25, right: 25},
