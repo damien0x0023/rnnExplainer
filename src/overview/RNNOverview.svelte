@@ -48,7 +48,7 @@
   } from './flatten-draw.js';
 
   import {
-    drawOutputRNN, drawRNN, updateRNN, updateRNNLayerRanges, drawCustomReivew
+    drawOutputRNN, drawRNN, updateRNN, updateRNNLayerRanges
   } from './overview-drawRNN.js';
 
   // View bindings
@@ -813,7 +813,7 @@
   svg {
     margin: 0 auto;
     min-height: 500px;
-    max-height: 800px;
+    max-height: 900px;
     height: calc(100vh - 100px);
     width: 100vw;
     display:flex

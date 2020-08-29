@@ -146,7 +146,7 @@ export class SentimentPredictor{
     }
 
     // let inputTensorBatch = tf.stack([inputTensor]);
-    console.log(ipTensor);
+    console.log(this.inputTensor);
 
     let preTensor = this.inputTensor; 
     let outputs = [];
@@ -162,10 +162,10 @@ export class SentimentPredictor{
       // let output = curTensor.squeeze();
 
 
-      if (output.shape.length === 2) {
-        // console.log(output.shape);
-        output = output.transpose([1, 0]);
-      } 
+      // if (output.shape.length === 2) {
+      //   // console.log(output.shape);
+      //   output = output.transpose([1, 0]);
+      // } 
       console.log(output.shape);
       outputs.push(output);
 
@@ -190,7 +190,7 @@ const getInputTextArray = (inputReview) => {
   // Convert to lower case and remove all punctuations and more spaces.
   return inputReview.trim().toLowerCase()
       .replace(/(\.|\,|\!|\?|\\|\/|\-|\@|\#|\$|\%|\^|\&|\*|\(|\)|\+|\_|\=|\<|\>|\:|\;)/g, ' ')
-      .replace(/\s+/g, ' ').split(' ');
+      .replace(/\s+/g, ' ').trim().split(' ');
 }
 
 /**
@@ -376,22 +376,30 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
       }
       case nodeType.EMBEDDING: {
         let bias = 0;
+
+        let weights = layer.embeddings.val.arraySync();
        
-        // The new order is [output_dim, input_dim]
-        let weights = layer.embeddings.val.transpose([1,0]).arraySync();
+        // // The new order is [output_dim, input_dim]
+        // let weights = layer.embeddings.val.transpose([1,0]).arraySync();
 
         for (let i=0; i<outputs.length; i++) {
           let node = new Node(layer.name, i, curLayerType, 
             bias, outputs[i]);
+          // Embedding layer have weights according to the word toke (input Node[i].output)
+          let preNode = rnn[curLayerIndex-1][i];
+          let curLink = new Link(preNode,node, weights[preNode.output]);
+          preNode.outputLinks.push(curLink);
+          node.inputLinks.push(curLink);
+
           
-          // One-to-multiple links
-          for (let j = 0; j < rnn[curLayerIndex -1].length; j++){
-            let preNode = rnn[curLayerIndex -1][j];
-            // todo: double check j and the values of weights
-            let curLink = new Link(preNode, node, weights[i][j]);
-            preNode.outputLinks.push(curLink);
-            node.inputLinks.push(curLink);
-          }
+          // // One-to-one links
+          // for (let j = 0; j < rnn[curLayerIndex -1].length; j++){
+          //   let preNode = rnn[curLayerIndex -1][j];
+          //   // todo: double check j and the values of weights
+          //   let curLink = new Link(preNode, node, weights[i][j]);
+          //   preNode.outputLinks.push(curLink);
+          //   node.inputLinks.push(curLink);
+          // }
           
           curLayerNodes.push(node);
         }

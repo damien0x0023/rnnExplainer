@@ -60,8 +60,8 @@ let reviewArray = undefined;
 reviewArrayStore.subscribe(value => {reviewArray = value;})
 
 // There are 2 short gaps(1 left 1 right) and 3 long gaps (btw nodes)
-let n_shortGaps = 2;
-let n_longGaps = 3;
+let n_shortGaps = 3;
+let n_longGaps = 2;
 // for module view
 let num_module = 2;
 let num_stack = 1;
@@ -165,7 +165,7 @@ export const drawOutputRNN = (d, i, g, range) => {
       inputNodeHeight, bufferCanvas, bufferContext, imageSingle);
   } else if(d.type == 'embedding'){
     imageDataURL = enlargeOutputImage(imageLength, imageHeight, embeddingLen,
-      nodeHeight, bufferCanvas, bufferContext, imageSingle);
+      inputNodeHeight, bufferCanvas, bufferContext, imageSingle);
   } else{
     imageDataURL = enlargeOutputImage(imageLength, imageHeight, nodeLength,
       nodeHeight, bufferCanvas, bufferContext, imageSingle);
@@ -205,58 +205,6 @@ const drawOutputScore = (d, i, g, scale) => {
   //   .style('fill', 'black')
   //   .style('opacity', 0.5)
   //   .text((d, i) => d.output.toFixed(4));
-}
-
-
-export const drawCustomReivew = (image, inputLayer) => {
-
-  let imageWidth = image.width;
-  // Set up a second convas in order to resize image
-  let imageLength = inputLayer[0].output.length;
-  let bufferCanvas = document.createElement("canvas");
-  let bufferContext = bufferCanvas.getContext("2d");
-  bufferCanvas.width = imageLength;
-  bufferCanvas.height = imageLength;
-
-  // Fill image pixel array
-  let imageSingle = bufferContext.getImageData(0, 0, imageLength, imageLength);
-  let imageSingleArray = imageSingle.data;
-
-  for (let i = 0; i < imageSingleArray.length; i+=4) {
-    let pixeIndex = Math.floor(i / 4);
-    let row = Math.floor(pixeIndex / imageLength);
-    let column = pixeIndex % imageLength;
-
-    let red = inputLayer[0].output[row][column];
-    let green = inputLayer[1].output[row][column];
-    let blue = inputLayer[2].output[row][column];
-
-    imageSingleArray[i] = red * 255;
-    imageSingleArray[i + 1] = green * 255;
-    imageSingleArray[i + 2] = blue * 255;
-    imageSingleArray[i + 3] = 255;
-  }
-
-  // canvas.toDataURL() only exports image in 96 DPI, so we can hack it to have
-  // higher DPI by rescaling the image using canvas magic
-  let largeCanvas = document.createElement('canvas');
-  largeCanvas.width = imageWidth * 3;
-  largeCanvas.height = imageWidth * 3;
-  let largeCanvasContext = largeCanvas.getContext('2d');
-
-  // Use drawImage to resize the original pixel array, and put the new image
-  // (canvas) into corresponding canvas
-  bufferContext.putImageData(imageSingle, 0, 0);
-  largeCanvasContext.drawImage(bufferCanvas, 0, 0, imageLength, imageLength,
-    0, 0, imageWidth * 3, imageWidth * 3);
-  
-  let imageDataURL = largeCanvas.toDataURL();
-  // d3.select(image).attr('xlink:href', imageDataURL);
-  image.src = imageDataURL;
-
-  // Destory the buffer canvas
-  bufferCanvas.remove();
-  largeCanvas.remove();
 }
 
 /**
@@ -384,8 +332,8 @@ const drawAllLegends = (legends, legendHeight) => {
 
   let domain = rnnLayerRanges.global[start];
   let range = (numLayers-3) * nodeLength
-            + embeddingLen + 0 * hSpaceAroundGap_rnn 
-            + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2
+            + embeddingLen + (n_shortGaps-3) * hSpaceAroundGap_rnn 
+            + (n_longGaps-1) * hSpaceAroundGap_rnn * gapRatio - 1.2
   
   legendDrawer(range, domain,'global', legends, start, legendHeight, 'url(#lstmGradient)');
 
@@ -773,7 +721,7 @@ const initMiddleLayer = (nodeGroups, left, l) => {
    nodeGroups.append('image')
    .attr('class', 'node-image')
    .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
-   .attr('height', nodeHeight)
+   .attr('height', (d, i) => d.type!=='embedding'? nodeHeight:inputNodeHeight)
    .attr('x', left)
    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y);
 
@@ -781,7 +729,7 @@ const initMiddleLayer = (nodeGroups, left, l) => {
    nodeGroups.append('rect')
      .attr('class', 'bounding')
      .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
-     .attr('height', nodeHeight)
+     .attr('height', (d, i) => d.type!=='embedding'? nodeHeight:inputNodeHeight)
      .attr('x', left)
      .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
      .style('fill', 'none')
@@ -833,8 +781,8 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
     nodeCoordinate_rnn.push([]);
 
     // Compute the x coordinate of the whole layer
-    // Output (dense), embedding and lstm layer has long gaps
-    if (isOutput || curLayer[0].type === 'embedding' || curLayer[0].type ==='lstm') {
+    // Output (dense) and lstm layer has long gaps
+    if (isOutput || curLayer[0].type ==='lstm') {
       leftAccuumulatedSpace += hSpaceAroundGap_rnn * gapRatio;
     } else {
       leftAccuumulatedSpace += hSpaceAroundGap_rnn;
@@ -843,7 +791,8 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
     // All nodes share the same x coordiante (left in div style)
     let left = leftAccuumulatedSpace;
 
-    vSpaceAroundGap_rnn = curLayer[0].layerName !== 'input' 
+    let curLayerName = curLayer[0].layerName;
+    vSpaceAroundGap_rnn = curLayerName !== 'input' && !curLayerName.includes('embbeding')
         ? calcVerSpaceGap(height, curLayer.length, nodeHeight) 
         : calcVerSpaceGap(height, curLayer.length, inputNodeHeight);
     vSpaceAroundGapStore_rnn.set(vSpaceAroundGap_rnn);
@@ -888,12 +837,12 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
       .on('mouseover', (d, i, g) => {
         nodeMouseOverHandler(d, i, g);
         let word = d.output[0] === 0 ? '<pad>': reviewArray[i + reviewArray.length - curLayer.length]
-        hoverInfoStore_rnn.set( {show: true, text: `'${word}' index in vocabulary is: ${d.output[0]}`} );
+        hoverInfoStore_rnn.set( {show: true, text: `'${word}' token in vocabulary is: ${d.output[0]}`} );
       })
       .on('mouseleave', (d, i, g) => {
         nodeMouseLeaveHandler(d, i, g);
         let word = d.output[0] === 0 ? '<pad>': reviewArray[i + reviewArray.length - curLayer.length]
-        hoverInfoStore_rnn.set( {show: false, text: `'${word}' index in vocabulary is: ${d.output[0]}`} );
+        hoverInfoStore_rnn.set( {show: false, text: `'${word}' token in vocabulary is: ${d.output[0]}`} );
       }
     );
 
@@ -1013,8 +962,8 @@ export const updateRNN = () => {
   // Global legend
   let start = 1;
   // evething but input node, output node and 2 long gap
-  let range = (numLayers-3) * nodeLength + 1 * embeddingLen + 0 * hSpaceAroundGap_rnn 
-           + (n_longGaps-2) * hSpaceAroundGap_rnn * gapRatio - 1.2;
+  let range = (numLayers-3) * nodeLength + 1 * embeddingLen + (n_shortGaps-3) * hSpaceAroundGap_rnn 
+           + (n_longGaps-1) * hSpaceAroundGap_rnn * gapRatio - 1.2;
   let domain = rnnLayerRanges.global[start];
   legendUpdate(range, domain, 'global');
 }
