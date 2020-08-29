@@ -42,12 +42,12 @@ const layerColorScales_rnn = {
   logit: d3.interpolateOranges
 };
 
-let nodeLength_rnn = 64;
+let nodeLength_rnn = 96;
 
 export const rnnOverviewConfig = {
   nodeLength : nodeLength_rnn,
   nodeHeight : nodeLength_rnn / 10, // 10
-  embedddingLength : nodeLength_rnn * 32 / 10, // a bit large may be better
+  embedddingLength : nodeLength_rnn / 20 * 64, // a bit large may be better
   inputNodeHeight : nodeLength_rnn / 20, // 5
   plusSymbolRadius : nodeLength_rnn/5,
   numLayers : 4,
