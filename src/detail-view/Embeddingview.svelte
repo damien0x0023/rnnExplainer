@@ -100,7 +100,7 @@
       <div class="control-pannel">
 
         <div class="title-text">
-          Embeding
+          Word Embedding
         </div>
 
         <div class="buttons">

@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { array1d, getMatrixSliceFromOutputHighlights,
-    getVisualizationSizeConstraint, getMatrixSliceFromInputHighlights, gridData
+    getVisualizationSizeConstraint, getRNNMatrixSliceFromHighlights, gridData
   } from './DetailviewUtils.js';
   import Dataview from './Dataview.svelte';
   import DataviewRNN from './DataviewRNN.svelte';
@@ -14,53 +14,56 @@
 
   const dispatch = createEventDispatcher();
   const padding = 0;
+  let dimIndex;
   let padded_input_size = image.length + padding * 2;
   $: padded_input_size = image.length + padding * 2;
 
   let gridInputMatrixSlice = gridData([[0]]);
   let gridOutputMatrixSlice = gridData([[0]]);
-  let inputHighlights = array1d(image.length * image.length, (i) => true);
-  let outputHighlights = array1d(output.length * output.length, (i) => true);
+  let inputHighlights = array1d(image.length * image[0].length, (i) => true);
+  let outputHighlights = array1d(output.length * output[0].length, (i) => true);
   let interval;
   $ : {
-    let inputHighlights = array1d(image.length * image.length, (i) => true);
-    let outputHighlights = array1d(output.length * output.length, (i) => true);
+    let inputHighlights = array1d(image.length * image[0].length, (i) => true);
+    let outputHighlights = array1d(output.length * output[0].length, (i) => true);
     let interval;
   }
 
   let counter;
 
   // lots of replication between mouseover and start-relu. TODO: fix this.
-  function startRelu() {
+  function startEmbedding() {
     counter = 0;
     if (interval) clearInterval(interval);
     interval = setInterval(() => {
       if (isPaused) return;
-      const flat_animated = counter % (output.length * output.length);
-      outputHighlights = array1d(output.length * output.length, (i) => false);
-      inputHighlights = array1d(image.length * image.length, (i) => undefined);
-      const animatedH = Math.floor(flat_animated / output.length);
-      const animatedW = flat_animated % output.length;
-      outputHighlights[animatedH * output.length + animatedW] = true;
-      inputHighlights[animatedH * output.length + animatedW] = true;
-      const inputMatrixSlice = getMatrixSliceFromInputHighlights(image, inputHighlights, 1);
-      gridInputMatrixSlice = gridData(inputMatrixSlice);
-      const outputMatrixSlice = getMatrixSliceFromOutputHighlights(output, outputHighlights);
+      const flat_animated = counter % (output.length * output[0].length);
+      outputHighlights = array1d(output.length * output[0].length, (i) => false);
+      // inputHighlights = array1d(image.length * image[0].length, (i) => undefined);
+      const animatedH = Math.floor(flat_animated / output[0].length);
+      const animatedW = flat_animated % output[0].length;
+      dimIndex = animatedH * output[0].length + animatedW
+      outputHighlights[dimIndex] = true;
+      // inputHighlights[animatedH * image[0].length] = true;
+      // const inputMatrixSlice = getRNNMatrixSliceFromHighlights(image, inputHighlights, 1);
+      // gridInputMatrixSlice = gridData(inputMatrixSlice);
+      const outputMatrixSlice = getRNNMatrixSliceFromHighlights(output, outputHighlights);
       gridOutputMatrixSlice = gridData(outputMatrixSlice);
       counter++;
     }, 250)
   }
 
   function handleMouseover(event) {
-    outputHighlights = array1d(output.length * output.length, (i) => false);
+    outputHighlights = array1d(output.length * output[0].length, (i) => false);
     const animatedH = event.detail.hoverH;
     const animatedW = event.detail.hoverW;
-    outputHighlights[animatedH * output.length + animatedW] = true;
-    inputHighlights = array1d(image.length * image.length, (i) => undefined);
-    inputHighlights[animatedH * output.length + animatedW] = true;
-    const inputMatrixSlice = getMatrixSliceFromInputHighlights(image, inputHighlights, 1);
-    gridInputMatrixSlice = gridData(inputMatrixSlice);
-    const outputMatrixSlice = getMatrixSliceFromOutputHighlights(output, outputHighlights);
+    dimIndex = animatedH * output[0].length + animatedW;
+    outputHighlights[dimIndex] = true;
+    // inputHighlights = array1d(image.length * image[0].length, (i) => undefined);
+    // inputHighlights[animatedH * image[0].length +animatedW] = true;
+    // const inputMatrixSlice = getRNNMatrixSliceFromHighlights(image, inputHighlights, 1);
+    // gridInputMatrixSlice = gridData(inputMatrixSlice);
+    const outputMatrixSlice = getRNNMatrixSliceFromHighlights(output, outputHighlights);
     gridOutputMatrixSlice = gridData(outputMatrixSlice);
     isPaused = true;
     dispatch('message', {
@@ -68,12 +71,12 @@
     });
   }
 
-  startRelu();
+  startEmbedding();
   let gridImage = gridData(image);
   // let gridEmbed = gridData(kernel);
   let gridOutput = gridData(output, getVisualizationSizeConstraint(output[0].length));
   $ : {
-    startRelu();
+    startEmbedding();
     gridImage = gridData(image)
     // gridEmbed = gridData(kernel);
     gridOutput = gridData(output, getVisualizationSizeConstraint(output[0].length));
@@ -91,34 +94,21 @@
     Token 
     <!-- ({image.length}, {image[0].length}) -->
   </div>
-  <Dataview on:message={handleMouseover} data={gridImage} highlights={inputHighlights} outputLength={output.length}
+  <DataviewRNN on:message={handleMouseover} data={gridImage} highlights={inputHighlights} outputLength={output.length}
       isKernelMath={true} constraint={getVisualizationSizeConstraint(image.length)} dataRange={dataRange} stride={1}/>  
 </div>
 <div class="column has-text-centered">
   <span>
-    <!-- max(
-    <Dataview data={gridData([[0]])} highlights={outputHighlights} isKernelMath={true} 
-    constraint={20} dataRange={dataRange}/>
-    ,
-    <Dataview data={gridInputMatrixSlice} highlights={outputHighlights} isKernelMath={true} 
-    constraint={20} dataRange={dataRange}/>
-    ) -->
-    =>
-    <!-- <Dataview data={gridOutputMatrixSlice} highlights={outputHighlights} isKernelMath={true} 
-      constraint={20} dataRange={dataRange}/> -->
+    Vocab[{image[0][0]}][{dimIndex+1}]
+    =
+    <DataviewRNN data={gridOutputMatrixSlice} highlights={outputHighlights} isKernelMath={true} 
+      constraint={20} dataRange={dataRange}/>
   </span> 
 </div>
-<!-- <div class="column has-text-centered">
-  <div class="header-text">
-    Embedding ({kernel.length}, {kernel[0].length})
-  </div>
-  <Dataview on:message={handleMouseover} data={gridEmbed} highlights={outputHighlights} isKernelMath={false} 
-      outputLength={kernel.length} constraint={getVisualizationSizeConstraint(kernel.length)} dataRange={dataRange} stride={1}/>
-</div> -->
 <div class="column has-text-centered">
   <div class="header-text">
     Output ({output.length}, {output[0].length})
   </div>
   <DataviewRNN on:message={handleMouseover} data={gridOutput} highlights={outputHighlights} isKernelMath={false} 
-      outputLength={output.length} constraint={getVisualizationSizeConstraint(output[0].length)} dataRange={dataRange} stride={1}/>
+      outputLength={output[0].length} constraint={getVisualizationSizeConstraint(output[0].length)*3} dataRange={dataRange} stride={1}/>
 </div>

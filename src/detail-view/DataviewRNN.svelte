@@ -40,10 +40,12 @@
       .data(function(d) { return d; })
       .enter().append("rect")
       .attr("class","square")
-      .attr("x", function(d) { return d.x; })
+      .attr("x", function(d) { return d.x*3; })
       .attr("y", function(d) { return d.y; })
-      .attr("width", function(d) { return d.width; })
-      .attr("height", function(d) { return d.height; })
+      // .attr("y", function(d) { return 0; })
+      .attr("width", function(d) { return d.width*3; })
+      // .attr("height", function(d) { return 20; })
+      .attr("height", function(d) { return d.height*3; })
       .style("opacity", 0.8)
       .style("fill", function(d) { 
         let normalizedValue = d.text;

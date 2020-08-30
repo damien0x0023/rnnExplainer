@@ -55,6 +55,17 @@ export function getMatrixSliceFromOutputHighlights(matrix, highlights) {
   return matrixSlice(matrix, Math.floor(indices[0] / matrix.length), Math.floor(indices[0] / matrix.length) + 1, indices[0] % matrix.length, indices[0] % matrix.length + 1);
 }
 
+// editted for 1d matrix
+export function getRNNMatrixSliceFromHighlights(matrix, highlights, stride=1) {
+  var indices = highlights.reduce((total, value, index) => {
+  if (value != false) total.push(index);
+    return total;
+  }, []);
+  let matLen = matrix.length;
+  let matWid = matrix[0].length;
+  return matrixSlice(matrix, Math.floor(indices[0] / matWid), Math.floor(indices[0] / matWid) + stride, indices[0] % matWid, indices[0] % matWid + stride);
+}
+
 // Edit these values to change size of low-level conv visualization.
 export function getVisualizationSizeConstraint(imageLength) {
   let sizeOfGrid = 150;
