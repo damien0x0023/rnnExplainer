@@ -6,11 +6,6 @@ import {Node, Link} from './class';
 // Network input image size
 const networkInputSize = 64;
 
-let indexFrom;
-let maxLen;
-let wordIndex;
-let vocabularySize;
-
 // Enum of node types
 const nodeType = {
   INPUT: 'input',
@@ -385,8 +380,9 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
         for (let i=0; i<outputs.length; i++) {
           let node = new Node(layer.name, i, curLayerType, 
             bias, outputs[i]);
-          // Embedding layer have weights according to the word toke (input Node[i].output)
+          // Embedding layer have weights according to the word token (input Node[i].output)
           let preNode = rnn[curLayerIndex-1][i];
+          // same as node.output
           let curLink = new Link(preNode,node, weights[preNode.output]);
           preNode.outputLinks.push(curLink);
           node.inputLinks.push(curLink);

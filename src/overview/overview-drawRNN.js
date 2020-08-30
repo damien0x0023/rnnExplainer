@@ -796,9 +796,15 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
     let left = leftAccuumulatedSpace;
 
     let curLayerName = curLayer[0].layerName;
-    vSpaceAroundGap_rnn = curLayerName !== 'input' && !curLayerName.includes('embbeding')
-        ? calcVerSpaceGap(height, curLayer.length, nodeHeight) 
-        : calcVerSpaceGap(height, curLayer.length, inputNodeHeight);
+    // vSpaceAroundGap_rnn = curLayerName !== 'input' && !curLayerName.includes('embbeding')
+    //     ? calcVerSpaceGap(height, curLayer.length, nodeHeight) 
+    //     : calcVerSpaceGap(height, curLayer.length, inputNodeHeight);
+    if (curLayerName === 'input' ||curLayerName.includes('embedding')) {
+      vSpaceAroundGap_rnn =calcVerSpaceGap(height, curLayer.length, inputNodeHeight);
+    } else {
+      vSpaceAroundGap_rnn = calcVerSpaceGap(height, curLayer.length, nodeHeight);
+    }
+
     vSpaceAroundGapStore_rnn.set(vSpaceAroundGap_rnn);
 
     let layerGroup = rnnGroup.append('g')
@@ -823,10 +829,10 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
           // bug on webkit (safari)
           // https://bugs.webkit.org/show_bug.cgi?id=23113
           let top;
-          if (d.type !=='input'){
-              top = i * nodeHeight + (i + 1) * vSpaceAroundGap_rnn;
-            } else{
+          if (d.type ==='input'|| d.type === 'embedding'){
               top = i * inputNodeHeight + (i + 1) * vSpaceAroundGap_rnn;
+            } else{
+              top = i * nodeHeight + (i + 1) * vSpaceAroundGap_rnn;
             }
 
           top += svgPaddings.top;

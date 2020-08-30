@@ -20,6 +20,8 @@
   import Modal from './Modal.svelte'
   import ArticleRNN from '../article/ArticleRNN.svelte';
 
+  import EmbeddingView from '../detail-view/Embeddingview.svelte';
+
   const HOSTED_URLS = {
     model:
         'https://storage.googleapis.com/tfjs-models/tfjs/sentiment_cnn_v1/model.json',
@@ -34,14 +36,14 @@
 
   // Overview functions
   import { loadTrainedModel_rnn, SentimentPredictor } from '../utils/rnn-tf.js';
-  // import { loadTrainedModel, constructCNN } from '../utils/cnn-tf.js';
+
   import { rnnOverviewConfig } from '../config.js';
 
   import {
     addOverlayRect, drawConv1, drawConv2, drawConv3, drawConv4
-  } from './intermediate-draw.js';
+  } from './intermediate-drawRNN.js';
 
-  import { moveLayerX, addOverlayGradient } from './intermediate-utils.js';
+  import { moveLayerX, addOverlayGradient } from './intermediateRNN-utils.js';
 
   import {
     drawFlatten, softmaxDetailViewMouseOverHandler, softmaxDetailViewMouseLeaveHandler
@@ -69,6 +71,8 @@
   // Configs
   const layerColorScales = rnnOverviewConfig.layerColorScales;
   const nodeLength = rnnOverviewConfig.nodeLength;
+  const embbedingLength = rnnOverviewConfig.embedddingLength;
+  const inputNodeHeight = rnnOverviewConfig.inputNodeHeight;
   const plusSymbolRadius = rnnOverviewConfig.plusSymbolRadius;
   const numLayers = rnnOverviewConfig.numLayers;
   const edgeOpacity = rnnOverviewConfig.edgeOpacity;
@@ -97,8 +101,8 @@
   let rnnLayerMinMax = undefined;
   rnnLayerMinMaxStore.subscribe( value => {rnnLayerMinMax = value;} )
 
-  let detailedMode_rnn = undefined;
-  detailedModeStore_rnn.subscribe( value => {detailedMode_rnn = value;} )
+  let detailedMode = undefined;
+  detailedModeStore_rnn.subscribe( value => {detailedMode = value;} )
 
   let shouldIntermediateAnimate_rnn = undefined;
   shouldIntermediateAnimateStore_rnn.subscribe(value => {
@@ -110,6 +114,14 @@
 
   let hSpaceAroundGap_rnn = undefined;
   hSpaceAroundGapStore_rnn.subscribe( value => {hSpaceAroundGap_rnn = value;} )
+
+  let isInSoftmax = undefined;
+  isInSoftmaxStore_rnn.subscribe( value => {isInSoftmax = value;} )
+
+  let softmaxDetailViewInfo = undefined;
+  softmaxDetailViewStore_rnn.subscribe( value => {
+    softmaxDetailViewInfo = value;
+  } )
 
   let modalInfo_rnn = undefined;
   modalStore_rnn.subscribe( value => {modalInfo_rnn = value;} )
@@ -251,7 +263,7 @@
 
         // Show selected legends
         svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
-          .classed('hidden', !detailedMode_rnn);
+          .classed('hidden', !detailedMode);
       }
       previousSelectedScaleLevel = selectedScaleLevel;
       selectedScaleLevelStore_rnn.set(selectedScaleLevel);
@@ -331,25 +343,276 @@
 
   // handle the event when click the detail button
   const detailedButtonClicked = () => {
-    detailedMode_rnn = !detailedMode_rnn;
-    detailedModeStore_rnn.set(detailedMode_rnn);
+    detailedMode = !detailedMode;
+    detailedModeStore_rnn.set(detailedMode);
 
     if (!isInIntermediateView){
       // Show the legend
       svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
-        .classed('hidden', !detailedMode_rnn);
+        .classed('hidden', !detailedMode);
       
-      svg_rnn.selectAll('.input-legend').classed('hidden', !detailedMode_rnn);
-      svg_rnn.selectAll('.output-legend').classed('hidden', !detailedMode_rnn);
+      svg_rnn.selectAll('.input-legend').classed('hidden', !detailedMode);
+      svg_rnn.selectAll('.output-legend').classed('hidden', !detailedMode);
     }
     
     // Switch the layer name
     svg_rnn.selectAll('.layer-detailed-label')
-      .classed('hidden', !detailedMode_rnn);
+      .classed('hidden', !detailedMode);
     
     svg_rnn.selectAll('.layer-label')
-      .classed('hidden', detailedMode_rnn);
+      .classed('hidden', detailedMode);
   }
+
+    // The order of the if/else statements in this function is very critical
+  const emptySpaceClicked = () => {
+    // If detail view -> rewind to intermediate view
+    if (detailedViewNum !== undefined) {
+          // Setting this for testing purposes currently.
+      selectedNodeIndex = -1; 
+      // User clicks this node again -> rewind
+      svg_rnn.select(`rect#underneath-gateway-${detailedViewNum}`)
+        .style('opacity', 0);
+      detailedViewNum = undefined;
+    }
+
+    // If softmax view -> rewind to flatten layer view
+    else if (isInSoftmax) {
+      svg_rnn.select('.softmax-symbol')
+        .dispatch('click');
+    }
+
+    // If intermediate view -> rewind to overview
+    else if (isInIntermediateView) {
+      let curLayerIndex = layerIndexDict[selectedNode.layerName];
+      quitIntermediateView(curLayerIndex, selectedNode.domG, selectedNode.domI);
+      d3.select(selectedNode.domG[selectedNode.domI])
+        .dispatch('mouseleave');
+    }
+
+    // If pool/act detail view -> rewind to overview
+    else if (isInActPoolDetailView) {
+      quitActPoolDetailView();
+    }
+  }
+
+
+  const quitIntermediateView = (curLayerIndex, g, i) => {
+    // If it is the softmax detail view, quit that view first
+    if (isInSoftmax) {
+      svg_rnn.select('.logit-layer').remove();
+      svg_rnn.select('.logit-layer-lower').remove();
+      svg_rnn.selectAll('.plus-symbol-clone').remove();
+
+      // Instead of removing the paths, we hide them, so it is faster to load in
+      // the future
+      svg_rnn.select('.underneath')
+        .selectAll('.logit-lower')
+        .style('opacity', 0);
+
+      softmaxDetailViewStore_rnn.set({
+          show: false,
+          logits: []
+      })
+
+      allowsSoftmaxAnimationStore.set(false);
+    }
+    isInSoftmaxStore.set(false);
+    isInIntermediateView = false;
+
+    // Show the legend
+    svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+      .classed('hidden', !detailedMode);
+    svg_rnn.selectAll('.input-legend').classed('hidden', !detailedMode);
+    svg_rnn.selectAll('.output-legend').classed('hidden', !detailedMode);
+
+    // Recover control panel UI
+    disableControl = false;
+
+    // Recover the input layer node's event
+    for (let n = 0; n < rnn[curLayerIndex - 1].length; n++) {
+      svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${n}`)
+        .on('mouseover', nodeMouseOverHandler)
+        .on('mouseleave', nodeMouseLeaveHandler)
+        .on('click', nodeClickHandler);
+    }
+
+    // Clean up the underneath rects
+    svg_rnn.select('g.underneath')
+      .selectAll('rect')
+      .remove();
+    detailedViewNum = undefined;
+
+    // Highlight the previous layer and this node
+    svg_rnn.select(`g#rnn-layer-group-${curLayerIndex - 1}`)
+      .selectAll('rect.bounding')
+      .style('stroke-width', 1);
+    
+    d3.select(g[i])
+      .select('rect.bounding')
+      .style('stroke-width', 1);
+
+    // Highlight the labels
+    svg_rnn.selectAll(`g#layer-label-${curLayerIndex - 1},
+      g#layer-detailed-label-${curLayerIndex - 1},
+      g#layer-label-${curLayerIndex},
+      g#layer-detailed-label-${curLayerIndex}`)
+      .style('font-weight', 'normal');
+
+    // Also unclick the node
+    // Record the current clicked node
+    selectedNode.layerName = '';
+    selectedNode.index = -1;
+    selectedNode.data = null;
+    isExitedFromCollapse = true;
+
+    // Remove the intermediate layer
+    let intermediateLayer = svg_rnn.select('g.intermediate-layer');
+
+    // Kill the infinite animation loop
+    shouldIntermediateAnimateStore.set(false);
+
+    intermediateLayer.transition('remove')
+      .duration(500)
+      .ease(d3.easeCubicInOut)
+      .style('opacity', 0)
+      .on('end', (d, i, g) => { d3.select(g[i]).remove()});
+    
+    // Remove the output node overlay mask
+    svg_rnn.selectAll('.overlay-group').remove();
+    
+    // Remove the overlay rect
+    svg_rnn.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation')
+      .transition('remove')
+      .duration(500)
+      .ease(d3.easeCubicInOut)
+      .style('opacity', 0)
+      .on('end', (d, i, g) => {
+        svg_rnn.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation').remove();
+        svg_rnn.selectAll('defs.overlay-gradient').remove();
+      });
+    
+    // Recover the layer if we have drdrawn it
+    if (needRedraw[0] !== undefined) {
+      let redrawRange = cnnLayerRanges[selectedScaleLevel][needRedraw[0]];
+      if (needRedraw[1] !== undefined) {
+        svg_rnn.select(`g#layer-${needRedraw[0]}-node-${needRedraw[1]}`)
+          .select('image.node-image')
+          .each((d, i, g) => drawOutput(d, i, g, redrawRange));
+      } else {
+        svg_rnn.select(`g#rnn-layer-group-${needRedraw[0]}`)
+          .selectAll('image.node-image')
+          .each((d, i, g) => drawOutput(d, i, g, redrawRange));
+      }
+    }
+    
+    // Move all layers to their original place
+    for (let i = 0; i < numLayers; i++) {
+      moveLayerX({layerIndex: i, targetX: nodeCoordinate[i][0].x,
+        disable:false, delay:500, opacity: 1});
+    }
+
+    moveLayerX({layerIndex: numLayers - 2,
+      targetX: nodeCoordinate[numLayers - 2][0].x, opacity: 1,
+      disable:false, delay:500, onEndFunc: () => {
+        // Show all edges on the last moving animation end
+        svg_rnn.select('g.edge-group')
+          .style('visibility', 'visible');
+
+        // Recover the input annotation
+        svg_rnn.select('.input-annotation')
+          .classed('hidden', false);
+      }});
+  }
+
+
+  const quitActPoolDetailView = () => {
+    isInActPoolDetailView = false;
+    actPoolDetailViewNodeIndex = -1;
+
+    let layerIndex = layerIndexDict[selectedNode.layerName];
+    let nodeIndex = selectedNode.index;
+    svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+      .select('rect.bounding')
+      .classed('hidden', true);
+
+    selectedNode.data.inputLinks.forEach(link => {
+      let layerIndex = layerIndexDict[link.source.layerName];
+      let nodeIndex = link.source.index;
+      svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+        .select('rect.bounding')
+        .classed('hidden', true);
+    })
+
+    // Clean up the underneath rects
+    svg_rnn.select('g.underneath')
+      .selectAll('rect')
+      .remove();
+
+    // Show all edges
+    let unimportantEdges = svg_rnn.select('g.edge-group')
+      .selectAll('.edge')
+      .filter(d => {
+        return d.targetLayerIndex !== actPoolDetailViewLayerIndex;
+      })
+      .style('visibility', null);
+    
+    // Recover control UI
+    disableControl = false;
+
+    // Show legends if in detailed mode
+    svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+      .classed('hidden', !detailedMode);
+    svg_rnn.selectAll('.input-legend').classed('hidden', !detailedMode);
+    svg_rnn.selectAll('.output-legend').classed('hidden', !detailedMode);
+
+    // Also dehighlight the edge
+    let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+    edgeGroup.selectAll(`path.edge-${layerIndex}-${nodeIndex}`)
+      .transition()
+      .ease(d3.easeCubicOut)
+      .duration(200)
+      .style('stroke', edgeInitColor)
+      .style('stroke-width', edgeStrokeWidth)
+      .style('opacity', edgeOpacity);
+
+    // Remove the overlay rect
+    svg_rnn.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation')
+      .transition('remove')
+      .duration(500)
+      .ease(d3.easeCubicInOut)
+      .style('opacity', 0)
+      .on('end', (d, i, g) => {
+        svg_rnn.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation').remove();
+        svg_rnn.selectAll('defs.overlay-gradient').remove();
+        svg_rnn.select('.input-annotation').classed('hidden', false);
+      });
+
+    // Turn the fade out nodes back
+    svg_rnn.select(`g#rnn-layer-group-${layerIndex}`)
+      .selectAll('g.node-group')
+      .each((sd, si, sg) => {
+        d3.select(sg[si])
+          .style('pointer-events', 'all');
+    });
+
+    svg_rnn.select(`g#rnn-layer-group-${layerIndex - 1}`)
+      .selectAll('g.node-group')
+      .each((sd, si, sg) => {
+        // Recover the old events
+        d3.select(sg[si])
+          .style('pointer-events', 'all')
+          .on('mouseover', nodeMouseOverHandler)
+          .on('mouseleave', nodeMouseLeaveHandler)
+          .on('click', nodeClickHandler);
+    });
+
+    // Deselect the node
+    selectedNode.layerName = '';
+    selectedNode.index = -1;
+    selectedNode.data = null;
+
+    actPoolDetailViewLayerIndex = -1;
+  } 
 
   const enterDetailView = (curLayerIndex, i) => {
     isInActPoolDetailView = true;
@@ -363,7 +626,8 @@
     let detailViewTop = 100 + svgYMid - 260 / 2;
 
     let posX = 0;
-    if (curLayerIndex > 5) {
+    // maybe 2 for rnn
+    if (curLayerIndex > 2) {
       posX = nodeCoordinate_rnn[curLayerIndex - 1][0].x + 50;
       posX = posX / 2 - 500 / 2;
     } else {
@@ -404,6 +668,10 @@
     let leftX = nodeCoordinate_rnn[curLayerIndex - 1][i].x;
     // +5 to cover the detailed mode long label
     let rightStart = nodeCoordinate_rnn[curLayerIndex][i].x + nodeLength + 5;
+    // embbedingLength for embbedding layer
+    if (curLayerIndex ===1){
+      rightStart = rightStart -nodeLength + embbedingLength;
+    }
 
     // Compute the left and right overlay rect width
     let rightWidth = width - rightStart - overlayRectOffset / 2;
@@ -445,15 +713,15 @@
     
     // Add underneath rectangles
     let underGroup = svg_rnn.select('g.underneath');
-    let padding = 7;
+    let padding = 1;
     for (let n = 0; n < rnn[curLayerIndex - 1].length; n++) {
       underGroup.append('rect')
         .attr('class', 'underneath-gateway')
         .attr('id', `underneath-gateway-${n}`)
         .attr('x', nodeCoordinate_rnn[curLayerIndex - 1][n].x - padding)
         .attr('y', nodeCoordinate_rnn[curLayerIndex - 1][n].y - padding)
-        .attr('width', (2 * nodeLength + hSpaceAroundGap) + 2 * padding)
-        .attr('height', nodeLength + 2 * padding)
+        .attr('width', (1 * nodeLength + 1*embbedingLength + hSpaceAroundGap_rnn) + 2 * padding)
+        .attr('height', inputNodeHeight + 2 * padding)
         .attr('rx', 10)
         .style('fill', 'rgba(160, 160, 160, 0.3)')
         .style('opacity', 0);
@@ -471,6 +739,76 @@
     // Highlight the selcted pair
     underGroup.select(`#underneath-gateway-${i}`)
       .style('opacity', 1);
+  }
+
+  const actPoolDetailViewPreNodeMouseOverHandler = (d, i, g) => {
+    // Highlight the edges
+    let layerIndex = layerIndexDict[d.layerName];
+    let nodeIndex = d.index;
+    let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+    
+    edgeGroup.selectAll(`path.edge-${actPoolDetailViewLayerIndex}-${nodeIndex}`)
+      .raise()
+      .transition()
+      .ease(d3.easeCubicInOut)
+      .duration(400)
+      .style('stroke', edgeHoverColor)
+      .style('stroke-width', '1')
+      .style('opacity', 1);
+    
+    // Highlight its border
+    d3.select(g[i]).select('rect.bounding')
+      .classed('hidden', false);
+    
+    // Highlight node's pair
+    let associatedLayerIndex = layerIndex - 1;
+    if (layerIndex === actPoolDetailViewLayerIndex - 1) {
+      associatedLayerIndex = layerIndex + 1;
+    }
+
+    svg_rnn.select(`g#layer-${associatedLayerIndex}-node-${nodeIndex}`)
+      .select('rect.bounding')
+      .classed('hidden', false);
+  }
+
+  const actPoolDetailViewPreNodeMouseLeaveHandler = (d, i, g) => {
+    // De-highlight the edges
+    let layerIndex = layerIndexDict[d.layerName];
+    let nodeIndex = d.index;
+    let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+
+    edgeGroup.selectAll(`path.edge-${actPoolDetailViewLayerIndex}-${nodeIndex}`)
+      .transition()
+      .ease(d3.easeCubicOut)
+      .duration(200)
+      .style('stroke', edgeInitColor)
+      .style('stroke-width', edgeStrokeWidth)
+      .style('opacity', edgeOpacity);
+    
+    // De-highlight its border
+    d3.select(g[i]).select('rect.bounding')
+      .classed('hidden', true);
+    
+    // De-highlight node's pair
+    let associatedLayerIndex = layerIndex - 1;
+    if (layerIndex === actPoolDetailViewLayerIndex - 1) {
+      associatedLayerIndex = layerIndex + 1;
+    }
+
+    svg_rnn.select(`g#layer-${associatedLayerIndex}-node-${nodeIndex}`)
+      .select('rect.bounding')
+      .classed('hidden', true);
+  }
+
+  const actPoolDetailViewPreNodeClickHandler = (d, i, g) => {
+    let layerIndex = layerIndexDict[d.layerName];
+    let nodeIndex = d.index;
+
+    // Click the pre-layer node in detail view has the same effect as clicking
+    // the cur-layer node, which is to open a new detail view window
+    svg_rnn.select(`g#layer-${layerIndex + 1}-node-${nodeIndex}`)
+      .node()
+      .dispatchEvent(new Event('click'));
   }
 
   const nodeClickHandler = (d, i, g) => {
@@ -849,10 +1187,46 @@
         rnnLayerRanges, rnnLayerMinMax);
 
       // Create and draw the RNN view
-      // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
-      // nodeMouseLeaveHandler, nodeClickHandler);
-      drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null);
+      drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
+      nodeMouseLeaveHandler, nodeClickHandler);
+      // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null);
   });
+
+
+  function handleExitFromDetiledConvView(event) {
+    if (event.detail.text) {
+      detailedViewNum = undefined;
+      svg.select(`rect#underneath-gateway-${selectedNodeIndex}`)
+        .style('opacity', 0);
+      selectedNodeIndex = -1; 
+    }
+  }
+
+  function handleExitFromDetiledPoolView(event) {
+    if (event.detail.text) {
+      quitActPoolDetailView();
+      isExitedFromDetailedView = true;
+    }
+  }
+
+  function handleExitFromDetiledActivationView(event) {
+    if (event.detail.text) {
+      quitActPoolDetailView();
+      isExitedFromDetailedView = true;
+    }
+  }
+
+  function handleExitFromDetiledEmbeddingView(event) {
+    if (event.detail.text) {
+      quitActPoolDetailView();
+      isExitedFromDetailedView = true;
+    }
+  }
+
+  function handleExitFromDetiledSoftmaxView(event) {
+    softmaxDetailViewInfo.show = false;
+    softmaxDetailViewStore_rnn.set(softmaxDetailViewInfo);
+  }
 </script>
 
 <style>
@@ -936,7 +1310,7 @@
   svg {
     margin: 0 auto;
     min-height: 500px;
-    max-height: 1000px;
+    max-height: 1200px;
     height: calc(100vh - 100px);
     width: 100vw;
     display:flex
@@ -966,71 +1340,6 @@
     text-overflow: ellipsis;
     pointer-events: none;
     margin-left: 5px;
-  }
-
-  .image-container {
-    width: 40px;
-    height: 40px;
-    border-radius: 4px;
-    display: inline-block;
-    position: relative;
-    border: 2.5px solid #1E1E1E;
-    margin-right: 10px;
-    cursor: pointer;
-    pointer-events: all;
-    transition: border 300ms ease-in-out;
-  }
-
-  .image-container img {
-    object-fit: cover;
-    max-width: 100%;
-    max-height: 100%;
-    z-index: -1;
-    transition: opacity 300ms ease-in-out;
-  }
-
-  .image-container.inactive {
-    border: 2.5px solid rgb(220, 220, 220);
-  }
-
-  .image-container.inactive > img {
-    opacity: 0.3;
-  }
-
-  .image-container.inactive:hover > img {
-    opacity: 0.6;
-  }
-
-  .image-container.inactive.disabled {
-    border: 2.5px solid rgb(220, 220, 220);
-    cursor: not-allowed;
-  }
-
-  .image-container.inactive.disabled:hover {
-    border: 2.5px solid rgb(220, 220, 220);
-    cursor: not-allowed;
-  }
-
-  .image-container.inactive.disabled > img {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-
-  .image-container.inactive.disabled:hover > img {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-
-  .image-container.inactive > .edit-icon {
-    color: #BABABA;
-  }
-
-  .image-container.inactive:hover > .edit-icon {
-    color: #777777;
-  }
-
-  .image-container.inactive:hover {
-    border: 2.5px solid #1E1E1E;
   }
 
   .review {
@@ -1166,7 +1475,7 @@
       <button class="button is-very-small"
         id="detailed-button"
         disabled={disableControl}
-        class:is-activated={detailedMode_rnn}
+        class:is-activated={detailedMode}
         on:click={detailedButtonClicked}>
         <span class="icon">
           <i class="fas fa-eye"></i>
@@ -1222,4 +1531,39 @@
 <!-- <ArticleRNN/> -->
 
 <div id='detailview'>
+  {#if selectedNode.data && selectedNode.data.type === 'conv' && selectedNodeIndex != -1}
+    <ConvolutionView on:message={handleExitFromDetiledConvView} input={nodeData[selectedNodeIndex].input} 
+                      kernel={nodeData[selectedNodeIndex].kernel}
+                      dataRange={nodeData.colorRange}
+                      colorScale={nodeData.inputIsInputLayer ?
+                        layerColorScales.input[0] : layerColorScales.conv}
+                      isInputInputLayer={nodeData.inputIsInputLayer}
+                      isExited={isExitedFromCollapse}/>  
+  {:else if selectedNode.data && selectedNode.data.type === 'embedding'}
+    <EmbeddingView on:message={handleExitFromDetiledEmbeddingView} input={[nodeData[0].input]} 
+                    kernel={nodeData[0].kernel} output={[nodeData[0].output]}
+                    dataRange={nodeData.colorRange}
+                    isExited={isExitedFromDetailedView}/>
+  {:else if selectedNode.data && selectedNode.data.type === 'relu'}
+    <ActivationView on:message={handleExitFromDetiledActivationView} input={nodeData[0].input} 
+                    output={nodeData[0].output}
+                    dataRange={nodeData.colorRange}
+                    isExited={isExitedFromDetailedView}/>
+  {:else if selectedNode.data && selectedNode.data.type === 'pool'}
+    <PoolView on:message={handleExitFromDetiledPoolView} input={nodeData[0].input} 
+              kernelLength={2}
+              dataRange={nodeData.colorRange}
+              isExited={isExitedFromDetailedView}/>
+  {:else if softmaxDetailViewInfo.show}
+    <SoftmaxView logits={softmaxDetailViewInfo.logits}
+                 logitColors={softmaxDetailViewInfo.logitColors}
+                 selectedI={softmaxDetailViewInfo.selectedI}
+                 highlightI={softmaxDetailViewInfo.highlightI}
+                 outputName={softmaxDetailViewInfo.outputName}
+                 outputValue={softmaxDetailViewInfo.outputValue}
+                 startAnimation={softmaxDetailViewInfo.startAnimation}
+                 on:xClicked={handleExitFromDetiledSoftmaxView}
+                 on:mouseOver={softmaxDetailViewMouseOverHandler}
+                 on:mouseLeave={softmaxDetailViewMouseLeaveHandler}/>
+  {/if}
 </div>
