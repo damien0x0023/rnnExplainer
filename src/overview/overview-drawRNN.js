@@ -471,7 +471,7 @@ const addLabels = ()=> {
     .style('dominant-baseline', 'middle')
     .append('tspan')
     .style('font-size', '12px')
-    .text(d => d.name)
+    .text(d => d.name !=='dense_Dense1'? d.name:'output')
     .append('tspan')
     .style('font-size', '8px')
     .style('font-weight', 'normal')

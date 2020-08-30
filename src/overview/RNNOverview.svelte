@@ -46,8 +46,8 @@
   import { moveLayerX, addOverlayGradient } from './intermediateRNN-utils.js';
 
   import {
-    drawFlatten, softmaxDetailViewMouseOverHandler, softmaxDetailViewMouseLeaveHandler
-  } from './flatten-draw.js';
+    drawDense, softmaxDetailViewMouseOverHandler, softmaxDetailViewMouseLeaveHandler
+  } from './Dense-draw.js';
 
   import {
     drawOutputRNN, drawRNN, updateRNN, updateRNNLayerRanges
@@ -89,11 +89,11 @@
 
   // Shared properties
   // for rnn
-  let needRedraw_rnn = [undefined, undefined];
-  needRedrawStore_rnn.subscribe( value => {needRedraw_rnn = value;} );
+  let needRedraw = [undefined, undefined];
+  needRedrawStore_rnn.subscribe( value => {needRedraw = value;} );
 
-  let nodeCoordinate_rnn = undefined;
-  nodeCoordinateStore_rnn.subscribe( value => {nodeCoordinate_rnn = value;} )
+  let nodeCoordinate = undefined;
+  nodeCoordinateStore_rnn.subscribe( value => {nodeCoordinate = value;} )
 
   let rnnLayerRanges = undefined;
   rnnLayerRangesStore.subscribe( value => {rnnLayerRanges = value;} )
@@ -278,6 +278,8 @@
     console.timeEnd('Construct rnn');
     // isRNNloaded = true;
 
+    let flatten_like = rnn[rnn.length -2];
+    rnn.flatten = flatten_like;
     // rnn.rawInput = rnn[0];
     // rnn[0] = rnn.nonPadInput;
     rnnStore.set(rnn);
@@ -363,7 +365,7 @@
       .classed('hidden', detailedMode);
   }
 
-    // The order of the if/else statements in this function is very critical
+  // The order of the if/else statements in this function is very critical
   const emptySpaceClicked = () => {
     // If detail view -> rewind to intermediate view
     if (detailedViewNum !== undefined) {
@@ -395,7 +397,6 @@
     }
   }
 
-
   const quitIntermediateView = (curLayerIndex, g, i) => {
     // If it is the softmax detail view, quit that view first
     if (isInSoftmax) {
@@ -416,7 +417,7 @@
 
       allowsSoftmaxAnimationStore.set(false);
     }
-    isInSoftmaxStore.set(false);
+    isInSoftmaxStore_rnn.set(false);
     isInIntermediateView = false;
 
     // Show the legend
@@ -469,7 +470,7 @@
     let intermediateLayer = svg_rnn.select('g.intermediate-layer');
 
     // Kill the infinite animation loop
-    shouldIntermediateAnimateStore.set(false);
+    shouldIntermediateAnimateStore_rnn.set(false);
 
     intermediateLayer.transition('remove')
       .duration(500)
@@ -493,7 +494,7 @@
     
     // Recover the layer if we have drdrawn it
     if (needRedraw[0] !== undefined) {
-      let redrawRange = cnnLayerRanges[selectedScaleLevel][needRedraw[0]];
+      let redrawRange = rnnLayerRanges[selectedScaleLevel][needRedraw[0]];
       if (needRedraw[1] !== undefined) {
         svg_rnn.select(`g#layer-${needRedraw[0]}-node-${needRedraw[1]}`)
           .select('image.node-image')
@@ -523,7 +524,6 @@
           .classed('hidden', false);
       }});
   }
-
 
   const quitActPoolDetailView = () => {
     isInActPoolDetailView = false;
@@ -614,6 +614,50 @@
     actPoolDetailViewLayerIndex = -1;
   } 
 
+  const prepareToEnterIntermediateView = (d, g, i, curLayerIndex) => {
+    isInIntermediateView = true;
+    // Hide all legends
+    svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+      .classed('hidden', true);
+    svg_rnn.selectAll('.input-legend').classed('hidden', true);
+    svg_rnn.selectAll('.output-legend').classed('hidden', true);
+
+    // Hide the input annotation
+    svg_rnn.select('.input-annotation')
+      .classed('hidden', true);
+
+    // Highlight the previous layer and this node
+    svg_rnn.select(`g#rnn-layer-group-${curLayerIndex - 1}`)
+      .selectAll('rect.bounding')
+      .style('stroke-width', 2);
+    
+    d3.select(g[i])
+      .select('rect.bounding')
+      .style('stroke-width', 2);
+    
+    // Disable control panel UI
+    // d3.select('#level-select').property('disabled', true);
+    // d3.selectAll('.image-container')
+    //   .style('cursor', 'not-allowed')
+    //   .on('mouseclick', () => {});
+    disableControl = true;
+    
+    // Allow infinite animation loop
+    shouldIntermediateAnimateStore_rnn.set(true);
+
+    // Highlight the labels
+    svg_rnn.selectAll(`g#layer-label-${curLayerIndex - 1},
+      g#layer-detailed-label-${curLayerIndex - 1},
+      g#layer-label-${curLayerIndex},
+      g#layer-detailed-label-${curLayerIndex}`)
+      .style('font-weight', '800');
+    
+    // Register a handler on the svg element so user can click empty space to quit
+    // the intermediate view
+    d3.select('#rnn-svg')
+      .on('click', emptySpaceClicked);
+  }
+
   const enterDetailView = (curLayerIndex, i) => {
     isInActPoolDetailView = true;
     actPoolDetailViewNodeIndex = i;
@@ -628,11 +672,11 @@
     let posX = 0;
     // maybe 2 for rnn
     if (curLayerIndex > 2) {
-      posX = nodeCoordinate_rnn[curLayerIndex - 1][0].x + 50;
+      posX = nodeCoordinate[curLayerIndex - 1][0].x + 50;
       posX = posX / 2 - 500 / 2;
     } else {
-      posX = (svgWidth - nodeCoordinate_rnn[curLayerIndex][0].x - nodeLength) / 2;
-      posX = nodeCoordinate_rnn[curLayerIndex][0].x + nodeLength + posX - 500 / 2;
+      posX = (svgWidth - nodeCoordinate[curLayerIndex][0].x - nodeLength) / 2;
+      posX = nodeCoordinate[curLayerIndex][0].x + nodeLength + posX - 500 / 2;
 
     }
 
@@ -665,9 +709,9 @@
       .classed('hidden', false);
 
     // Add overlay rects
-    let leftX = nodeCoordinate_rnn[curLayerIndex - 1][i].x;
+    let leftX = nodeCoordinate[curLayerIndex - 1][i].x;
     // +5 to cover the detailed mode long label
-    let rightStart = nodeCoordinate_rnn[curLayerIndex][i].x + nodeLength + 5;
+    let rightStart = nodeCoordinate[curLayerIndex][i].x + nodeLength + 5;
     // embbedingLength for embbedding layer
     if (curLayerIndex ===1){
       rightStart = rightStart -nodeLength + embbedingLength;
@@ -675,7 +719,7 @@
 
     // Compute the left and right overlay rect width
     let rightWidth = width - rightStart - overlayRectOffset / 2;
-    let leftWidth = leftX - nodeCoordinate_rnn[0][0].x;
+    let leftWidth = leftX - nodeCoordinate[0][0].x;
 
     // The overlay rects should be symmetric
     if (rightWidth > leftWidth) {
@@ -705,7 +749,7 @@
       0, rightWidth, height + svgPaddings.top);
     
     addOverlayRect('overlay-gradient-left',
-      nodeCoordinate_rnn[0][0].x - overlayRectOffset / 2,
+      nodeCoordinate[0][0].x - overlayRectOffset / 2,
       0, leftWidth, height + svgPaddings.top);
 
     svg_rnn.selectAll('rect.overlay')
@@ -718,8 +762,8 @@
       underGroup.append('rect')
         .attr('class', 'underneath-gateway')
         .attr('id', `underneath-gateway-${n}`)
-        .attr('x', nodeCoordinate_rnn[curLayerIndex - 1][n].x - padding)
-        .attr('y', nodeCoordinate_rnn[curLayerIndex - 1][n].y - padding)
+        .attr('x', nodeCoordinate[curLayerIndex - 1][n].x - padding)
+        .attr('y', nodeCoordinate[curLayerIndex - 1][n].y - padding)
         .attr('width', (1 * nodeLength + 1*embbedingLength + hSpaceAroundGap_rnn) + 2 * padding)
         .attr('height', inputNodeHeight + 2 * padding)
         .attr('rx', 10)
@@ -810,6 +854,86 @@
       .node()
       .dispatchEvent(new Event('click'));
   }
+
+
+  const intermediateNodeMouseOverHandler = (d, i, g) => {
+    if (detailedViewNum !== undefined) { return; }
+    svg_rnn.select(`rect#underneath-gateway-${d.index}`)
+      .style('opacity', 1);
+  }
+
+  const intermediateNodeMouseLeaveHandler = (d, i, g) => {
+    // return;
+    if (detailedViewNum !== undefined) { return; }
+    svg_rnn.select(`rect#underneath-gateway-${d.index}`)
+      .style('opacity', 0);
+  }
+
+  const intermediateNodeClicked = (d, i, g, selectedI, curLayerIndex) => {
+    d3.event.stopPropagation();
+    isExitedFromCollapse = false;
+    // Use this event to trigger the detailed view
+    if (detailedViewNum === d.index) {
+      // Setting this for testing purposes currently.
+      selectedNodeIndex = -1; 
+      // User clicks this node again -> rewind
+      detailedViewNum = undefined;
+      svg_rnn.select(`rect#underneath-gateway-${d.index}`)
+        .style('opacity', 0);
+    } 
+    // We need to show a new detailed view (two cases: if we need to close the
+    // old detailed view or not)
+    else {
+      // Setting this for testing purposes currently.
+      selectedNodeIndex = d.index;
+      let inputMatrix = d.output;
+      let kernelMatrix = d.outputLinks[selectedI].weight;
+      // let interMatrix = singleConv(inputMatrix, kernelMatrix);
+      let colorScale = layerColorScales.conv;
+
+      // Compute the color range
+      let rangePre = rnnLayerRanges[selectedScaleLevel][curLayerIndex - 1];
+      let rangeCur = rnnLayerRanges[selectedScaleLevel][curLayerIndex];
+      let range = Math.max(rangePre, rangeCur);
+
+      // User triggers a different detailed view
+      if (detailedViewNum !== undefined) {
+        // Change the underneath highlight
+        svg_rnn.select(`rect#underneath-gateway-${detailedViewNum}`)
+          .style('opacity', 0);
+        svg_rnn.select(`rect#underneath-gateway-${d.index}`)
+          .style('opacity', 1);
+      }
+      
+      // Dynamically position the detail view
+      let wholeSvg = d3.select('#rnn-svg');
+      let svgYMid = +wholeSvg.style('height').replace('px', '') / 2;
+      let svgWidth = +wholeSvg.style('width').replace('px', '');
+      let detailViewTop = 100 + svgYMid - 250 / 2;
+      let positionX = intermediateLayerPosition[Object.keys(layerIndexDict)[curLayerIndex]];
+
+      let posX = 0;
+      if (curLayerIndex > 6) {
+        posX = (positionX - svgPaddings.left) / 2;
+        posX = svgPaddings.left + posX - 486 / 2;
+      } else {
+        posX = (svgWidth + svgPaddings.right - positionX) / 2;
+        posX = positionX + posX - 486 / 2;
+      }
+
+      const detailview = document.getElementById('detailview');
+      detailview.style.top = `${detailViewTop}px`;
+      detailview.style.left = `${posX}px`;
+      detailview.style.position = 'absolute';
+
+      detailedViewNum = d.index;
+
+      // Send the currently used color range to detailed view
+      nodeData.colorRange = range;
+      nodeData.inputIsInputLayer = curLayerIndex <= 1;
+    }
+  }
+
 
   const nodeClickHandler = (d, i, g) => {
     d3.event.stopPropagation();
@@ -933,15 +1057,15 @@
       else if (d.layerName === 'flatten') {
         drawFlatten(curLayerIndex, d, nodeIndex, width, height);
       } 
-      else if (d.layerName === 'embedding_Embedding1'){
-        // // todo:
-        // drawEmbedding(curLayerIndex, d, nodeIndex, width, height,
-        //   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
-        //   intermediateNodeClicked);
+      else if (d.layerName === 'dense_Dense1'){
+        // todo:
+        drawDense(curLayerIndex, d, nodeIndex, width, height,
+          intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
+          intermediateNodeClicked);
       }
       else if (d.layerName === 'lstm_LSTM1'){
         // // todo:
-        // drawEmbedding(curLayerIndex, d, nodeIndex, width, height,
+        // drawLSTM(curLayerIndex, d, nodeIndex, width, height,
         //   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
         //   intermediateNodeClicked);
       }
@@ -1174,6 +1298,8 @@
       // // cause the exploration of edges, which will cost performance loss in interface
       // rnn.rawInput = rnn[0];
       // rnn[0] = rnn.nonPadInput;
+      let flatten_like = rnn[rnn.length -2];
+      rnn.flatten = flatten_like;
       rnnStore.set(rnn);
       console.log('rnn layers are: ', rnn);
 

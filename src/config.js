@@ -49,7 +49,7 @@ export const rnnOverviewConfig = {
   nodeHeight : nodeLength_rnn / 10, // 10
   embedddingLength : nodeLength_rnn / 20 * 64, // a bit large may be better
   inputNodeHeight : nodeLength_rnn / 20, // 5
-  plusSymbolRadius : nodeLength_rnn/5,
+  plusSymbolRadius : nodeLength_rnn / 10,
   numLayers : 4,
   edgeOpacity : 0.8,
   edgeInitColor : 'rgb(230, 230, 230)',

@@ -6,6 +6,7 @@ import { rnnOverviewConfig } from '../config.js';
 // Configs
 const layerColorScales = rnnOverviewConfig.layerColorScales;
 const nodeLength = rnnOverviewConfig.nodeLength;
+const embeddingNodeLen = rnnOverviewConfig.embedddingLength;
 const intermediateColor = rnnOverviewConfig.intermediateColor;
 const svgPaddings = rnnOverviewConfig.svgPaddings;
 
@@ -41,7 +42,7 @@ export const moveLayerX = (arg) => {
   let duration = arg.duration === undefined ? 500 : arg.duration;
 
   // Move the selected layer
-  let curLayer = svg_rnn.select(`g#cnn-layer-group-${layerIndex}`);
+  let curLayer = svg_rnn.select(`g#rnn-layer-group-${layerIndex}`);
   curLayer.selectAll('g.node-group').each((d, i, g) => {
     d3.select(g[i])
       .style('cursor', disable && i !== specialIndex ? 'default' : 'pointer')
@@ -74,9 +75,10 @@ export const moveLayerX = (arg) => {
     .ease(d3.easeCubicInOut)
     .delay(delay)
     .duration(duration)
-    .attr('transform', () => {
-      let x = targetX + nodeLength / 2;
-      let y = (svgPaddings.top + vSpaceAroundGap_rnn) / 2 + 5;
+    .attr('transform', (d,i) => {
+      let x = d.type !=='embedding' ? targetX + nodeLength / 2:targetX + embeddingNodeLen;
+      // let y = (svgPaddings.top + vSpaceAroundGap_rnn) / 2 + 5;
+      let y = svgPaddings.top / 2 - 4 ;
       return `translate(${x}, ${y})`;
     })
     .on('end', onEndFunc);
@@ -86,9 +88,10 @@ export const moveLayerX = (arg) => {
     .ease(d3.easeCubicInOut)
     .delay(delay)
     .duration(duration)
-    .attr('transform', () => {
-      let x = targetX + nodeLength / 2;
-      let y = (svgPaddings.top + vSpaceAroundGap_rnn) / 2 - 6;
+    .attr('transform', (d,i) => {
+      let x = d.type !=='embedding' ? targetX + nodeLength / 2:targetX + embeddingNodeLen;
+      // let y = (svgPaddings.top + vSpaceAroundGap_rnn) / 2 - 6;
+      let y = svgPaddings.top / 2 - 4 ;
       return `translate(${x}, ${y})`;
     })
     .on('end', onEndFunc);
