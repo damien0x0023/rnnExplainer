@@ -4,7 +4,6 @@ public/bundle.*
 public/assets/js/bundle.*
 public/assets/css/bundle.*
 *.swp
-dist/
 deploy-gh-page.sh
 local-build/
 tiny-vgg/data/
