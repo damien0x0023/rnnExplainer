@@ -14,7 +14,7 @@ yarn build
 
 mkdir dist
 copy -r ./public/* ./dist
-sed -i 's/\/assets/\/cnn-explainer\/assets/g' ./dist/index.html
+sed -i 's/\/assets/\/rnnExplainer\/assets/g' ./dist/index.html
 
 git add dist
 git commit -m "Deploy gh-pages from Travis"
