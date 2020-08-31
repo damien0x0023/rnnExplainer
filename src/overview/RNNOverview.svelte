@@ -5,21 +5,15 @@
     rnnStore, rnnLayerMinMaxStore, rnnLayerRangesStore, 
     svgStore_rnn, vSpaceAroundGapStore_rnn, hSpaceAroundGapStore_rnn,
     nodeCoordinateStore_rnn, selectedScaleLevelStore_rnn, needRedrawStore_rnn,
-    detailedModeStore_rnn, shouldIntermediateAnimateStore_rnn, isInSoftmaxStore_rnn, 
-    softmaxDetailViewStore_rnn, hoverInfoStore_rnn, allowsSoftmaxAnimationStore_rnn, 
-    modalStore_rnn, intermediateLayerPositionStore_rnn, reviewArrayStore
+    detailedModeStore_rnn, shouldIntermediateAnimateStore_rnn, isInSigmoidStore_rnn, 
+    sigmoidDetailViewStore_rnn, hoverInfoStore_rnn, allowsSigmoidAnimationStore_rnn, 
+    intermediateLayerPositionStore_rnn, reviewArrayStore
   } from '../stores.js';
 
   import { Jumper } from 'svelte-loading-spinners';
 
   // Svelte views
-  import ConvolutionView from '../detail-view/Convolutionview.svelte';
-  import ActivationView from '../detail-view/Activationview.svelte';
-  import PoolView from '../detail-view/Poolview.svelte';
-  import SoftmaxView from '../detail-view/Softmaxview.svelte';
-  import Modal from './Modal.svelte'
-  import ArticleRNN from '../article/ArticleRNN.svelte';
-
+  import SigmoidView from '../detail-view/Sigmoidview.svelte';
   import EmbeddingView from '../detail-view/Embeddingview.svelte';
 
   const HOSTED_URLS = {
@@ -46,7 +40,7 @@
   import { moveLayerX, addOverlayGradient } from './intermediateRNN-utils.js';
 
   import {
-    drawDense, softmaxDetailViewMouseOverHandler, softmaxDetailViewMouseLeaveHandler
+    drawDense, sigmoidDetailViewMouseOverHandler, sigmoidDetailViewMouseLeaveHandler
   } from './Dense-draw.js';
 
   import {
@@ -115,16 +109,13 @@
   let hSpaceAroundGap_rnn = undefined;
   hSpaceAroundGapStore_rnn.subscribe( value => {hSpaceAroundGap_rnn = value;} )
 
-  let isInSoftmax = undefined;
-  isInSoftmaxStore_rnn.subscribe( value => {isInSoftmax = value;} )
+  let isInSigmoid = undefined;
+  isInSigmoidStore_rnn.subscribe( value => {isInSigmoid = value;} )
 
-  let softmaxDetailViewInfo = undefined;
-  softmaxDetailViewStore_rnn.subscribe( value => {
-    softmaxDetailViewInfo = value;
+  let sigmoidDetailViewInfo = undefined;
+  sigmoidDetailViewStore_rnn.subscribe( value => {
+    sigmoidDetailViewInfo = value;
   } )
-
-  let modalInfo_rnn = undefined;
-  modalStore_rnn.subscribe( value => {modalInfo_rnn = value;} )
 
   let hoverInfo_rnn = undefined;
   hoverInfoStore_rnn.subscribe( value => {hoverInfo_rnn = value;} )
@@ -180,20 +171,6 @@
     3: {local: 'output-legend', module: 'output-legend', global: 'output-legend'}
   }
 
-  let imageOptions = [
-    {file: 'boat_1.jpeg', class: 'lifeboat'},
-    {file: 'bug_1.jpeg', class: 'ladybug'},
-    {file: 'pizza_1.jpeg', class: 'pizza'},
-    {file: 'pepper_1.jpeg', class: 'bell pepper'},
-    {file: 'bus_1.jpeg', class: 'bus'},
-    {file: 'koala_1.jpeg', class: 'koala'},
-    {file: 'espresso_1.jpeg', class: 'espresso'},
-    {file: 'panda_1.jpeg', class: 'red panda'},
-    {file: 'orange_1.jpeg', class: 'orange'},
-    {file: 'car_1.jpeg', class: 'sport car'}
-  ];
-  let selectedImage = imageOptions[1].file;
-
   const defaultInputContent = 'Please input your review within 100 words.';
   const exampleReviews = {
     'input': defaultInputContent,
@@ -215,12 +192,6 @@
   let isExitedFromCollapse = true;
 
   // Helper functions
-
-  const textCount= () => {
-    let val = d3.select('#review-text').text;
-    return val.length;
-  }
-
   const selectedScaleLevelChanged = () => {
     if (svg_rnn !== undefined) {
       if (!scaleLevelSet.add(selectedScaleLevel)) {
@@ -278,8 +249,8 @@
     console.timeEnd('Construct rnn');
     // isRNNloaded = true;
 
-    let flatten_like = rnn[rnn.length -2];
-    rnn.flatten = flatten_like;
+    let lstm = rnn[rnn.length -2];
+    rnn.lstm = lstm;
     // rnn.rawInput = rnn[0];
     // rnn[0] = rnn.nonPadInput;
     rnnStore.set(rnn);
@@ -339,10 +310,6 @@
     }
   }
 
-  const handleCustomReview = async () => {
-    let newReview
-  }
-
   // handle the event when click the detail button
   const detailedButtonClicked = () => {
     detailedMode = !detailedMode;
@@ -377,9 +344,9 @@
       detailedViewNum = undefined;
     }
 
-    // If softmax view -> rewind to flatten layer view
-    else if (isInSoftmax) {
-      svg_rnn.select('.softmax-symbol')
+    // If sigmoid view -> rewind to flatten layer view
+    else if (isInSigmoid) {
+      svg_rnn.select('.sigmoid-symbol')
         .dispatch('click');
     }
 
@@ -398,8 +365,8 @@
   }
 
   const quitIntermediateView = (curLayerIndex, g, i) => {
-    // If it is the softmax detail view, quit that view first
-    if (isInSoftmax) {
+    // If it is the sigmoid detail view, quit that view first
+    if (isInSigmoid) {
       svg_rnn.select('.logit-layer').remove();
       svg_rnn.select('.logit-layer-lower').remove();
       svg_rnn.selectAll('.plus-symbol-clone').remove();
@@ -410,14 +377,14 @@
         .selectAll('.logit-lower')
         .style('opacity', 0);
 
-      softmaxDetailViewStore_rnn.set({
+      sigmoidDetailViewStore_rnn.set({
           show: false,
           logits: []
       })
 
-      allowsSoftmaxAnimationStore.set(false);
+      allowsSigmoidAnimationStore.set(false);
     }
-    isInSoftmaxStore_rnn.set(false);
+    isInSigmoidStore_rnn.set(false);
     isInIntermediateView = false;
 
     // Show the legend
@@ -855,7 +822,6 @@
       .dispatchEvent(new Event('click'));
   }
 
-
   const intermediateNodeMouseOverHandler = (d, i, g) => {
     if (detailedViewNum !== undefined) { return; }
     svg_rnn.select(`rect#underneath-gateway-${d.index}`)
@@ -934,7 +900,6 @@
     }
   }
 
-
   const nodeClickHandler = (d, i, g) => {
     d3.event.stopPropagation();
     let nodeIndex = d.index;
@@ -947,8 +912,7 @@
     selectedNode.domG = g;
 
     // Record data for detailed view.
-    if (d.type === 'conv' || d.type === 'relu' || d.type === 'pool'|| 
-    d.type ==='embedding'||d.type === 'lstm') {
+    if (d.type ==='embedding'||d.type === 'lstm') {
       let data = [];
       for (let j = 0; j < d.inputLinks.length; j++) {
         data.push({
@@ -965,7 +929,9 @@
 
     let curLayerIndex = layerIndexDict[d.layerName];
 
-    if (d.type == 'relu' || d.type == 'pool'|| d.type == 'embedding') {
+    if (d.type === 'embedding'
+      //  || d.type === 'lstm'
+    ) {
       isExitedFromDetailedView = false;
       if (!isInActPoolDetailView) {
         // Enter the act pool detail view
@@ -974,91 +940,66 @@
         if (d.index === actPoolDetailViewNodeIndex) {
           // Quit the act pool detail view
           quitActPoolDetailView();
-        } else {
-          // Switch the detail view input to the new clicked pair
+        } 
+        // else {
+        //   // Switch the detail view input to the new clicked pair
 
-          // Remove the previous selection effect
-          svg_rnn.select(`g#layer-${curLayerIndex}-node-${actPoolDetailViewNodeIndex}`)
-            .select('rect.bounding')
-            .classed('hidden', true);
+        //   // Remove the previous selection effect
+        //   svg_rnn.select(`g#layer-${curLayerIndex}-node-${actPoolDetailViewNodeIndex}`)
+        //     .select('rect.bounding')
+        //     .classed('hidden', true);
 
-          svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${actPoolDetailViewNodeIndex}`)
-            .select('rect.bounding')
-            .classed('hidden', true);
+        //   svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${actPoolDetailViewNodeIndex}`)
+        //     .select('rect.bounding')
+        //     .classed('hidden', true);
           
-          let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+        //   let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
       
-          edgeGroup.selectAll(`path.edge-${curLayerIndex}-${actPoolDetailViewNodeIndex}`)
-            .transition()
-            .ease(d3.easeCubicOut)
-            .duration(200)
-            .style('stroke', edgeInitColor)
-            .style('stroke-width', edgeStrokeWidth)
-            .style('opacity', edgeOpacity);
+        //   edgeGroup.selectAll(`path.edge-${curLayerIndex}-${actPoolDetailViewNodeIndex}`)
+        //     .transition()
+        //     .ease(d3.easeCubicOut)
+        //     .duration(200)
+        //     .style('stroke', edgeInitColor)
+        //     .style('stroke-width', edgeStrokeWidth)
+        //     .style('opacity', edgeOpacity);
           
-          let underGroup = svg_rnn.select('g.underneath');
-          underGroup.select(`#underneath-gateway-${actPoolDetailViewNodeIndex}`)
-            .style('opacity', 0);
+        //   let underGroup = svg_rnn.select('g.underneath');
+        //   underGroup.select(`#underneath-gateway-${actPoolDetailViewNodeIndex}`)
+        //     .style('opacity', 0);
         
-          // Add selection effect on the new selected pair
-          svg_rnn.select(`g#layer-${curLayerIndex}-node-${nodeIndex}`)
-            .select('rect.bounding')
-            .classed('hidden', false);
+        //   // Add selection effect on the new selected pair
+        //   svg_rnn.select(`g#layer-${curLayerIndex}-node-${nodeIndex}`)
+        //     .select('rect.bounding')
+        //     .classed('hidden', false);
 
-          svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${nodeIndex}`)
-            .select('rect.bounding')
-            .classed('hidden', false);
+        //   svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${nodeIndex}`)
+        //     .select('rect.bounding')
+        //     .classed('hidden', false);
 
-          edgeGroup.selectAll(`path.edge-${curLayerIndex}-${nodeIndex}`)
-            .raise()
-            .transition()
-            .ease(d3.easeCubicInOut)
-            .duration(400)
-            .style('stroke', edgeHoverColor)
-            .style('stroke-width', '1')
-            .style('opacity', 1);
+        //   edgeGroup.selectAll(`path.edge-${curLayerIndex}-${nodeIndex}`)
+        //     .raise()
+        //     .transition()
+        //     .ease(d3.easeCubicInOut)
+        //     .duration(400)
+        //     .style('stroke', edgeHoverColor)
+        //     .style('stroke-width', '1')
+        //     .style('opacity', 1);
 
-          underGroup.select(`#underneath-gateway-${nodeIndex}`)
-            .style('opacity', 1);
+        //   underGroup.select(`#underneath-gateway-${nodeIndex}`)
+        //     .style('opacity', 1);
 
-          actPoolDetailViewNodeIndex = nodeIndex;
-        }
+        //   actPoolDetailViewNodeIndex = nodeIndex;
+        // }
       }
     }
 
     // Enter the second view (layer-view) when user clicks a conv node
-    if ((d.type === 'conv' || d.layerName === 'dense_Dense1') && !isInIntermediateView) {
+    if ((
+      // d.type === 'lstm' || 
+      d.layerName === 'dense_Dense1') && !isInIntermediateView) {
       prepareToEnterIntermediateView(d, g, nodeIndex, curLayerIndex);
 
-      if (d.layerName === 'conv_1_1') {
-        drawConv1(curLayerIndex, d, nodeIndex, width, height,
-          intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
-          intermediateNodeClicked);
-      }
-
-      else if (d.layerName === 'conv_1_2') {
-        drawConv2(curLayerIndex, d, nodeIndex, width, height,
-          intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
-          intermediateNodeClicked);
-      }
-
-      else if (d.layerName === 'conv_2_1') {
-        drawConv3(curLayerIndex, d, nodeIndex, width, height,
-          intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
-          intermediateNodeClicked);
-      }
-      
-      else if (d.layerName === 'conv_2_2') {
-        drawConv4(curLayerIndex, d, nodeIndex, width, height,
-          intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
-          intermediateNodeClicked);
-      }
-    
-      else if (d.layerName === 'flatten') {
-        drawFlatten(curLayerIndex, d, nodeIndex, width, height);
-      } 
-      else if (d.layerName === 'dense_Dense1'){
-        // todo:
+      if (d.layerName === 'dense_Dense1'){
         drawDense(curLayerIndex, d, nodeIndex, width, height,
           intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
           intermediateNodeClicked);
@@ -1071,7 +1012,9 @@
       }
     }
     // Quit the layerview
-    else if ((d.type === 'conv' || d.layerName === 'dense_Dense1') && isInIntermediateView) {
+    else if ((
+      // d.type === 'lstm' || 
+      d.layerName === 'dense_Dense1') && isInIntermediateView) {
       quitIntermediateView(curLayerIndex, g, i);
     }
   }
@@ -1298,14 +1241,13 @@
       // // cause the exploration of edges, which will cost performance loss in interface
       // rnn.rawInput = rnn[0];
       // rnn[0] = rnn.nonPadInput;
-      let flatten_like = rnn[rnn.length -2];
-      rnn.flatten = flatten_like;
+      let lstm = rnn[rnn.length -2];
+      rnn.lstm = lstm;
       rnnStore.set(rnn);
       console.log('rnn layers are: ', rnn);
 
       reviewArray = predictor.inputArray;
       reviewArrayStore.set(reviewArray);
-
 
       inputDim = model_lstm.layers[0].inputDim;
       updateRNNLayerRanges(inputDim);
@@ -1315,7 +1257,6 @@
       // Create and draw the RNN view
       drawRNN(width, height, rnnGroup, nodeMouseOverHandler, 
       nodeMouseLeaveHandler, nodeClickHandler);
-      // drawRNN(width, height, rnnGroup, nodeMouseOverHandler, nodeMouseLeaveHandler, null);
   });
 
 
@@ -1328,20 +1269,6 @@
     }
   }
 
-  function handleExitFromDetiledPoolView(event) {
-    if (event.detail.text) {
-      quitActPoolDetailView();
-      isExitedFromDetailedView = true;
-    }
-  }
-
-  function handleExitFromDetiledActivationView(event) {
-    if (event.detail.text) {
-      quitActPoolDetailView();
-      isExitedFromDetailedView = true;
-    }
-  }
-
   function handleExitFromDetiledEmbeddingView(event) {
     if (event.detail.text) {
       quitActPoolDetailView();
@@ -1349,9 +1276,9 @@
     }
   }
 
-  function handleExitFromDetiledSoftmaxView(event) {
-    softmaxDetailViewInfo.show = false;
-    softmaxDetailViewStore_rnn.set(softmaxDetailViewInfo);
+  function handleExitFromDetiledSigmoidView(event) {
+    sigmoidDetailViewInfo.show = false;
+    sigmoidDetailViewStore_rnn.set(sigmoidDetailViewInfo);
   }
 </script>
 
@@ -1482,15 +1409,6 @@
     height: 50px;
   }
 
-  .edit-icon {
-    position: absolute;
-    bottom: -6px;
-    right: -7px;
-    font-size: 7px;
-    color: #1E1E1E;
-    transition: color 300ms ease-in-out;
-  }
-
   :global(canvas) {
     image-rendering: crisp-edges;
   }
@@ -1573,9 +1491,12 @@
           </span>
 
           <div class="select">
-            <select bind:value="{selectedReview}" id="example-select" class="form-control" 
-            on:change= "{disableControl ? '' : reviewOptionClicked}">
-              <option value="empty"> Please choose one example</option>
+            <select bind:value="{selectedReview}"
+              disabled={disableControl}
+              id="example-select" 
+              class="form-control" 
+              on:change= "{disableControl ? '' : reviewOptionClicked}">
+              <!-- <option value="empty"> Please choose one example</option> -->
               <option value="positive">Positive example</option>
               <option value="negative">Negative example</option>
               <option value="input">Input your review</option>
@@ -1634,13 +1555,14 @@
   <div class="review">
     <div 
       bind:textContent={reviewContent} 
-      class="textarea" id="review-content" contenteditable="false" 
+      class="textarea" id="review-content" 
+      disabled={disableControl}
+      contenteditable="false" 
       on:focus="{focusReviewContent}"
       on:blur="{reviewContentChanged}">
         {exampleReviews[selectedReview]}
     </div>
     <!-- <textarea id="review-text" on:blur="{disableControl ? '' : reviewOptionClicked}" maxlength = "100o">{exampleReviews[selectedReview]}</textarea> -->
-    <!-- <p class="text-count"><span id="textCount">0</span>/100</p> -->
   </div>
 
   <div class="rnn" id="rnnView">
@@ -1654,42 +1576,22 @@
 
 </div>
 
-<!-- <ArticleRNN/> -->
-
 <div id='detailview'>
-  {#if selectedNode.data && selectedNode.data.type === 'conv' && selectedNodeIndex != -1}
-    <ConvolutionView on:message={handleExitFromDetiledConvView} input={nodeData[selectedNodeIndex].input} 
-                      kernel={nodeData[selectedNodeIndex].kernel}
-                      dataRange={nodeData.colorRange}
-                      colorScale={nodeData.inputIsInputLayer ?
-                        layerColorScales.input[0] : layerColorScales.conv}
-                      isInputInputLayer={nodeData.inputIsInputLayer}
-                      isExited={isExitedFromCollapse}/>  
-  {:else if selectedNode.data && selectedNode.data.type === 'embedding'}
+  {#if selectedNode.data && selectedNode.data.type === 'embedding'}
     <EmbeddingView on:message={handleExitFromDetiledEmbeddingView} input={[nodeData[0].input]} 
                     kernel={nodeData[0].kernel} output={[nodeData[0].output]}
                     dataRange={nodeData.colorRange}
                     isExited={isExitedFromDetailedView}/>
-  {:else if selectedNode.data && selectedNode.data.type === 'relu'}
-    <ActivationView on:message={handleExitFromDetiledActivationView} input={nodeData[0].input} 
-                    output={nodeData[0].output}
-                    dataRange={nodeData.colorRange}
-                    isExited={isExitedFromDetailedView}/>
-  {:else if selectedNode.data && selectedNode.data.type === 'pool'}
-    <PoolView on:message={handleExitFromDetiledPoolView} input={nodeData[0].input} 
-              kernelLength={2}
-              dataRange={nodeData.colorRange}
-              isExited={isExitedFromDetailedView}/>
-  {:else if softmaxDetailViewInfo.show}
-    <SoftmaxView logits={softmaxDetailViewInfo.logits}
-                 logitColors={softmaxDetailViewInfo.logitColors}
-                 selectedI={softmaxDetailViewInfo.selectedI}
-                 highlightI={softmaxDetailViewInfo.highlightI}
-                 outputName={softmaxDetailViewInfo.outputName}
-                 outputValue={softmaxDetailViewInfo.outputValue}
-                 startAnimation={softmaxDetailViewInfo.startAnimation}
-                 on:xClicked={handleExitFromDetiledSoftmaxView}
-                 on:mouseOver={softmaxDetailViewMouseOverHandler}
-                 on:mouseLeave={softmaxDetailViewMouseLeaveHandler}/>
+  {:else if sigmoidDetailViewInfo.show}
+    <SigmoidView logits={sigmoidDetailViewInfo.logits}
+                 logitColors={sigmoidDetailViewInfo.logitColors}
+                 selectedI={sigmoidDetailViewInfo.selectedI}
+                 highlightI={sigmoidDetailViewInfo.highlightI}
+                 outputName={sigmoidDetailViewInfo.outputName}
+                 outputValue={sigmoidDetailViewInfo.outputValue}
+                 startAnimation={sigmoidDetailViewInfo.startAnimation}
+                 on:xClicked={handleExitFromDetiledSigmoidView}
+                 on:mouseOver={sigmoidDetailViewMouseOverHandler}
+                 on:mouseLeave={sigmoidDetailViewMouseLeaveHandler}/>
   {/if}
 </div>

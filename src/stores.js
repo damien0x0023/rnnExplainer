@@ -50,9 +50,9 @@ export const detailedModeStore_rnn = writable(true);
 export const shouldIntermediateAnimateStore_rnn = writable(false);
 
 //may not use in the rnn
-export const isInSoftmaxStore_rnn = writable(false);
-export const softmaxDetailViewStore_rnn = writable({});
-export const allowsSoftmaxAnimationStore_rnn = writable(false);
+export const isInSigmoidStore_rnn = writable(false);
+export const sigmoidDetailViewStore_rnn = writable({});
+export const allowsSigmoidAnimationStore_rnn = writable(false);
 
 export const hoverInfoStore_rnn = writable({});
 

@@ -3,8 +3,8 @@
 import {
   svgStore_rnn, vSpaceAroundGapStore_rnn, hSpaceAroundGapStore_rnn, rnnStore,
   nodeCoordinateStore_rnn, selectedScaleLevelStore_rnn, rnnLayerRangesStore,
-  rnnLayerMinMaxStore, isInSoftmaxStore_rnn, softmaxDetailViewStore_rnn,
-  hoverInfoStore_rnn, allowsSoftmaxAnimationStore_rnn, detailedModeStore_rnn,
+  rnnLayerMinMaxStore, isInSigmoidStore_rnn, sigmoidDetailViewStore_rnn,
+  hoverInfoStore_rnn, allowsSigmoidAnimationStore_rnn, detailedModeStore_rnn,
   shouldIntermediateAnimateStore_rnn
 } from '../stores.js';
 import {
@@ -56,14 +56,14 @@ rnnLayerRangesStore.subscribe( value => {rnnLayerRanges = value;} )
 let rnnLayerMinMax = undefined;
 rnnLayerMinMaxStore.subscribe( value => {rnnLayerMinMax = value;} )
 
-let isInSoftmax = undefined;
-isInSoftmaxStore_rnn.subscribe( value => {isInSoftmax = value;} )
+let isInSigmoid = undefined;
+isInSigmoidStore_rnn.subscribe( value => {isInSigmoid = value;} )
 
-let allowsSoftmaxAnimation = undefined;
-allowsSoftmaxAnimationStore_rnn.subscribe( value => {allowsSoftmaxAnimation = value;} )
+let allowsSigmoidAnimation = undefined;
+allowsSigmoidAnimationStore_rnn.subscribe( value => {allowsSigmoidAnimation = value;} )
 
-let softmaxDetailViewInfo = undefined;
-softmaxDetailViewStore_rnn.subscribe( value => {softmaxDetailViewInfo = value;} )
+let sigmoidDetailViewInfo = undefined;
+sigmoidDetailViewStore_rnn.subscribe( value => {sigmoidDetailViewInfo = value;} )
 
 let hoverInfo = undefined;
 hoverInfoStore_rnn.subscribe( value => {hoverInfo = value;} )
@@ -83,9 +83,12 @@ const layerIndexDict = {
   'dense_Dense1': 3
 }
 
+let legendY;
+let labelY = svgPaddings.top / 2 - 4;
+let legendHeight =5;
 let hasInitialized = false;
 let logits = [];
-let flattenFactoredFDict = {};
+let lstmFactoredFDict = {};
 
 const animateEdge = (d, i, g, dashoffset) => {
   let curPath = d3.select(g[i]);
@@ -108,7 +111,7 @@ const moveLegend = (d, i, g, moveX, duration, restore) => {
     let previousLegendX = +previousTransform.replace(/.*\(([\d\.]+),.*/, '$1');
     let previousLegendY = +previousTransform.replace(/.*,\s([\d\.]+)\)/, '$1');
   
-    legend.transition('softmax')
+    legend.transition('sigmoid')
       .duration(duration)
       .ease(d3.easeCubicInOut)
       .attr('transform', `translate(${previousLegendX - moveX}, ${previousLegendY})`);
@@ -121,7 +124,7 @@ const moveLegend = (d, i, g, moveX, duration, restore) => {
     let previousLegendX = +legend.attr('data-preX');
     let previousLegendY = +legend.attr('data-preY');
 
-    legend.transition('softmax')
+    legend.transition('sigmoid')
       .duration(duration)
       .ease(d3.easeCubicInOut)
       .attr('transform', `translate(${previousLegendX}, ${previousLegendY})`);
@@ -136,8 +139,8 @@ const logitCircleMouseOverHandler = (i) => {
   })
 
   // Highlight the text in the detail view
-  softmaxDetailViewInfo.highlightI = i;
-  softmaxDetailViewStore.set(softmaxDetailViewInfo);
+  sigmoidDetailViewInfo.highlightI = i;
+  sigmoidDetailViewStore_rnn.set(sigmoidDetailViewInfo);
 
   let logitLayer = svg.select('.logit-layer');
   let logitLayerLower = svg.select('.underneath');
@@ -157,11 +160,11 @@ const logitCircleMouseOverHandler = (i) => {
   logitLayerLower.select(`#logit-lower-${i}`).raise();
 
   // Highlight the associated edges
-  logitLayerLower.selectAll(`.softmax-abstract-edge-${i}`)
+  logitLayerLower.selectAll(`.sigmoid-abstract-edge-${i}`)
     .style('stroke-width', 0.8)
     .style('stroke', '#E0E0E0');
 
-  logitLayerLower.selectAll(`.softmax-edge-${i}`)
+  logitLayerLower.selectAll(`.sigmoid-edge-${i}`)
     .style('stroke-width', 1)
     .style('stroke', '#E0E0E0');
   
@@ -185,8 +188,8 @@ const logitCircleMouseLeaveHandler = (i) => {
   })
 
   // Dehighlight the text in the detail view
-  softmaxDetailViewInfo.highlightI = -1;
-  softmaxDetailViewStore.set(softmaxDetailViewInfo);
+  sigmoidDetailViewInfo.highlightI = -1;
+  sigmoidDetailViewStore_rnn.set(sigmoidDetailViewInfo);
 
   let logitLayer = svg.select('.logit-layer');
   let logitLayerLower = svg.select('.underneath');
@@ -201,11 +204,11 @@ const logitCircleMouseLeaveHandler = (i) => {
     .style('opacity', 0.2);
 
   // Restore the associated edges
-  logitLayerLower.selectAll(`.softmax-abstract-edge-${i}`)
+  logitLayerLower.selectAll(`.sigmoid-abstract-edge-${i}`)
     .style('stroke-width', 0.2)
     .style('stroke', '#EDEDED');
 
-  logitLayerLower.selectAll(`.softmax-edge-${i}`)
+  logitLayerLower.selectAll(`.sigmoid-edge-${i}`)
     .style('stroke-width', 0.2)
     .style('stroke', '#F1F1F1');
 
@@ -219,19 +222,19 @@ const logitCircleMouseLeaveHandler = (i) => {
 }
 
 // This function is binded to the detail view in Overview.svelte
-export const softmaxDetailViewMouseOverHandler = (event) => {
+export const sigmoidDetailViewMouseOverHandler = (event) => {
   logitCircleMouseOverHandler(event.detail.curI);
 }
 
 // This function is binded to the detail view in Overview.svelte
-export const softmaxDetailViewMouseLeaveHandler = (event) => {
+export const sigmoidDetailViewMouseLeaveHandler = (event) => {
   logitCircleMouseLeaveHandler(event.detail.curI);
 }
 
 const drawLogitLayer = (arg) => {
   let curLayerIndex = arg.curLayerIndex,
     moveX = arg.moveX,
-    softmaxLeftMid = arg.softmaxLeftMid,
+    sigmoidLeftMid = arg.sigmoidLeftMid,
     selectedI = arg.selectedI,
     intermediateX1 = arg.intermediateX1,
     intermediateX2 = arg.intermediateX2,
@@ -239,12 +242,12 @@ const drawLogitLayer = (arg) => {
     pixelHeight = arg.pixelHeight,
     topY = arg.topY,
     bottomY = arg.bottomY,
-    softmaxX = arg.softmaxX,
+    sigmoidX = arg.sigmoidX,
     middleGap = arg.middleGap,
     middleRectHeight = arg.middleRectHeight,
     symbolGroup = arg.symbolGroup,
     symbolX = arg.symbolX,
-    flattenRange = arg.flattenRange;
+    lstmRange = arg.lstmRange;
 
   let logitLayer = svg.select('.intermediate-layer')
     .append('g')
@@ -253,12 +256,12 @@ const drawLogitLayer = (arg) => {
   
   // Minotr layer ordering change
   let tempClone = svg.select('.intermediate-layer')
-    .select('.flatten-layer')
+    .select('.dense-layer')
     .select('.plus-symbol')
     .clone(true)
     .attr('class', 'temp-clone-plus-symbol')
     .attr('transform', `translate(${symbolX - moveX},
-      ${nodeCoordinate[curLayerIndex][selectedI].y + nodeLength / 2})`)
+      ${nodeCoordinate[curLayerIndex][selectedI].y + nodeHeight / 2})`)
     // Cool hack -> d3 clone doesnt clone events, make the front object pointer
     // event transparent so users can trigger the underlying object's event!
     .style('pointer-events', 'none')
@@ -266,7 +269,7 @@ const drawLogitLayer = (arg) => {
 
   let tempPlusSymbol = logitLayer.append(() => tempClone.node());
   
-  svg.select('.softmax-symbol').raise();
+  svg.select('.sigmoid-symbol').raise();
 
   let logitLayerLower = svg.select('.underneath')
     .append('g')
@@ -274,12 +277,13 @@ const drawLogitLayer = (arg) => {
     .lower();
   
   // Use circles to encode logit values
-  let centerX = softmaxLeftMid - moveX * 4 / 5;
+  let centerX = sigmoidLeftMid - moveX * 4 / 5;
 
   // Get all logits
   logits = [];
-  for (let i = 0; i < rnn[layerIndexDict['output']].length; i++) {
-    logits.push(rnn[layerIndexDict['output']][i].logit);
+  let outputs = rnn[layerIndexDict['dense_Dense1']];
+  for (let i = 0; i < outputs.length; i++) {
+    logits.push(outputs[i].logit);
   }
 
   // Construct a color scale for the logit values
@@ -293,7 +297,7 @@ const drawLogitLayer = (arg) => {
     .attr('class', 'logit-circle')
     .attr('id', `logit-circle-${selectedI}`)
     .attr('cx', centerX)
-    .attr('cy', nodeCoordinate[curLayerIndex - 1][selectedI].y + nodeLength / 2)
+    .attr('cy', nodeCoordinate[curLayerIndex][selectedI].y + nodeHeight / 2)
     .attr('r', logitRadius)
     .style('fill', layerColorScales.logit(logitColorScale(logits[selectedI])))
     .style('cursor', 'crosshair')
@@ -304,43 +308,47 @@ const drawLogitLayer = (arg) => {
     .on('click', () => { d3.event.stopPropagation() });
   
   // Show the logit circle corresponding label
-  let softmaxDetailAnnotation = svg.select('.intermediate-layer-annotation')
-    .select('.softmax-detail-annoataion');
+  let sigmoidDetailAnnotation = svg.select('.intermediate-layer-annotation')
+    .select('.sigmoid-detail-annoataion');
 
-  softmaxDetailAnnotation.select(`#logit-text-${selectedI}`)
+  sigmoidDetailAnnotation.select(`#logit-text-${selectedI}`)
     .style('opacity', 1);
 
   tempPlusSymbol.raise();
 
-  // Draw another line from plus symbol to softmax symbol
+  // Draw another line from plus symbol to sigmoid symbol
   logitLayer.append('line')
     .attr('class', `logit-output-edge-${selectedI}`)
     .attr('x1', intermediateX2 - moveX + plusSymbolRadius * 2)
-    .attr('x2', softmaxX)
-    .attr('y1', nodeCoordinate[curLayerIndex - 1][selectedI].y + nodeLength / 2)
-    .attr('y2', nodeCoordinate[curLayerIndex - 1][selectedI].y + nodeLength / 2)
+    .attr('x2', sigmoidX)
+    .attr('y1', nodeCoordinate[curLayerIndex][selectedI].y + nodeHeight / 2)
+    .attr('y2', nodeCoordinate[curLayerIndex][selectedI].y + nodeHeight / 2)
     .style('fill', 'none')
     .style('stroke', '#EAEAEA')
     .style('stroke-width', '1.2')
     .lower();
 
-  // Add the flatten to logit links
+  // Add the dense to logit links
   let linkData = [];
-  // let flattenLength = rnn.flatten.length / rnn[1].length;
-  let flattenLength = rnn.flatten.length;
-  let underneathIs = [...Array(rnn[layerIndexDict['output']].length).keys()]
+  let lstmLength = rnn.lstm.length;
+  let underneathIs = [...Array(outputs.length).keys()]
     .filter(d => d != selectedI);
+  console.log(underneathIs);
   let curIIndex = 0;
   let linkGen = d3.linkHorizontal()
     .x(d => d.x)
     .y(d => d.y);
 
   const drawOneEdgeGroup = () => {
-    // Only draw the new group if it is in the softmax mode
-    if (!allowsSoftmaxAnimation) {
+    // Only draw the new group if it is in the sigmoid mode
+    if (!allowsSigmoidAnimation) {
       svg.select('.underneath')
         .selectAll(`.logit-lower`)
         .remove();
+      return;
+    }
+
+    if (underneathIs.length ===0) {
       return;
     }
 
@@ -357,45 +365,46 @@ const drawLogitLayer = (arg) => {
         .style('opacity', 0);
 
       // Hack: now show all edges, only draw 1/3 of the actual edges
-      for (let f = 0; f < flattenLength; f += 3) {
-        let loopFactors = [0, 9];
-        loopFactors.forEach(l => {
-          let factoredF = f + l * flattenLength;
+      for (let f = 0; f < lstmLength; f += 3) {
+        // let loopFactors = [0, 9];
+        // loopFactors.forEach(l => {
+        //   let factoredF = f + l * lstmLength;
     
-          // Flatten -> output
+          // dense -> output
           linkData.push({
             source: {x: intermediateX1 + pixelWidth + 3 - moveX,
-              y:  l === 0 ? topY + f * pixelHeight : bottomY + f * pixelHeight},
+              y:  nodeCoordinate[curLayerIndex-1][f]+ nodeHeight / 2},
             target: {x: intermediateX2 - moveX,
-              y: nodeCoordinate[curLayerIndex][curI].y + nodeLength / 2},
+              y: nodeCoordinate[curLayerIndex][curI].y + nodeHeight / 2},
             index: factoredF,
-            weight: rnn.flatten[factoredF].outputLinks[curI].weight,
+            weight: rnn.lstm[factoredF].outputLinks[curI].weight,
             color: '#F1F1F1',
             width: 0.5,
             opacity: 1,
-            class: `softmax-edge-${curI}`
+            class: `sigmoid-edge-${curI}`
           });
-        });
+        // });
       }
 
       // Draw middle rect to logits
-      for (let vi = 0; vi < rnn[layerIndexDict['output']].length - 2; vi++) {
-        linkData.push({
-          source: {x: intermediateX1 + pixelWidth + 3 - moveX,
-            y: topY + flattenLength * pixelHeight + middleGap * (vi + 1) +
-            middleRectHeight * (vi + 0.5)},
-          target: {x: intermediateX2 - moveX,
-            y: nodeCoordinate[curLayerIndex][curI].y + nodeLength / 2},
-          index: -1,
-          color: '#EDEDED',
-          width: 0.5,
-          opacity: 1,
-          class: `softmax-abstract-edge-${curI}`
-        });
-      }
+
+      // for (let vi = 0; vi < outputs.length - 2; vi++) {
+      //   linkData.push({
+      //     source: {x: intermediateX1 + pixelWidth + 3 - moveX,
+      //       y: topY + lstmLength * pixelHeight + middleGap * (vi + 1) +
+      //       middleRectHeight * (vi + 0.5)},
+      //     target: {x: intermediateX2 - moveX,
+      //       y: nodeCoordinate[curLayerIndex][curI].y + nodeLength / 2},
+      //     index: -1,
+      //     color: '#EDEDED',
+      //     width: 0.5,
+      //     opacity: 1,
+      //     class: `sigmoid-abstract-edge-${curI}`
+      //   });
+      // }
 
       // Render the edges on the underneath layer
-      curEdgeGroup.selectAll(`path.softmax-edge-${curI}`)
+      curEdgeGroup.selectAll(`path.sigmoid-edge-${curI}`)
         .data(linkData)
         .enter()
         .append('path')
@@ -422,7 +431,7 @@ const drawLogitLayer = (arg) => {
       .attr('id', `plus-symbol-clone-${curI}`)
       .select('circle')
       .datum({fill: gappedColorScale(layerColorScales.weight,
-        flattenRange, rnn[layerIndexDict['output']][curI].bias, 0.35)})
+        lstmRange, outputs[curI].bias, 0.35)})
       .style('pointer-events', 'none')
       .style('fill', '#E5E5E5');
 
@@ -447,7 +456,7 @@ const drawLogitLayer = (arg) => {
         y: nodeCoordinate[curLayerIndex][curI].y + nodeLength / 2
       },
       target: {
-        x: softmaxX,
+        x: sigmoidX,
         y: nodeCoordinate[curLayerIndex][selectedI].y + nodeLength / 2
       }
     });
@@ -481,11 +490,11 @@ const drawLogitLayer = (arg) => {
     outputEdge2.attr('stroke-dasharray', outputEdgeLength2 + ' ' + outputEdgeLength2)
       .attr('stroke-dashoffset', outputEdgeLength2);
 
-    outputEdge1.transition('softmax-output-edge')
+    outputEdge1.transition('sigmoid-output-edge')
       .duration(outputEdgeLength1 / totalLength * totalDuration)
       .attr('stroke-dashoffset', 0);
 
-    outputEdge2.transition('softmax-output-edge')
+    outputEdge2.transition('sigmoid-output-edge')
       .delay(outputEdgeLength1 / totalLength * totalDuration)
       .duration(outputEdgeLength2 / totalLength * totalDuration)
       .attr('stroke-dashoffset', 0);
@@ -505,33 +514,33 @@ const drawLogitLayer = (arg) => {
       .on('click', () => { d3.event.stopPropagation() });
     
     // Show the element in the detailed view
-    softmaxDetailViewInfo.startAnimation = {
+    sigmoidDetailViewInfo.startAnimation = {
       i: curI,
       duration: opacityDuration,
       // Always show the animation
       hasInitialized: false
     };
-    softmaxDetailViewStore.set(softmaxDetailViewInfo);
+    sigmoidDetailViewStore_rnn.set(sigmoidDetailViewInfo);
 
     // Show the elements with animation    
-    curNodeGroup.transition('softmax-edge')
+    curNodeGroup.transition('sigmoid-edge')
       .duration(opacityDuration)
       .style('opacity', 1);
 
     if ((selectedI < 3 && curI == 9) || (selectedI >= 3 && curI == 0)) {
       // Show the hover text
-      softmaxDetailAnnotation.select('.softmax-detail-hover-annotation')
-        .transition('softmax-edge')
+      sigmoidDetailAnnotation.select('.sigmoid-detail-hover-annotation')
+        .transition('sigmoid-edge')
         .duration(opacityDuration)
         .style('opacity', 1);
     }
 
-    softmaxDetailAnnotation.select(`#logit-text-${curI}`)
-      .transition('softmax-edge')
+    sigmoidDetailAnnotation.select(`#logit-text-${curI}`)
+      .transition('sigmoid-edge')
       .duration(opacityDuration)
       .style('opacity', 1);
     
-    curEdgeGroup.transition('softmax-edge')
+    curEdgeGroup.transition('sigmoid-edge')
       .duration(opacityDuration)
       .style('opacity', 1)
       .on('end', () => {
@@ -542,56 +551,62 @@ const drawLogitLayer = (arg) => {
           drawOneEdgeGroup();
         } else {
           hasInitialized = true;
-          softmaxDetailViewInfo.hasInitialized = true;
-          softmaxDetailViewStore.set(softmaxDetailViewInfo);
+          sigmoidDetailViewInfo.hasInitialized = true;
+          sigmoidDetailViewStore_rnn.set(sigmoidDetailViewInfo);
         }
       });
     
-    symbolClone.transition('softmax-edge')
+    symbolClone.transition('sigmoid-edge')
       .duration(opacityDuration)
       .style('opacity', 0.2);
   }
 
-  // Show the softmax detail view
+  // Show the sigmoid detail view
   let anchorElement = svg.select('.intermediate-layer')
     .select('.layer-label').node();
   let pos = getMidCoords(svg, anchorElement);
   let wholeSvg = d3.select('#rnn-svg');
   let svgYMid = +wholeSvg.style('height').replace('px', '') / 2;
-  let detailViewTop = 100 + svgYMid - 192 / 2;
+  let detailViewTop = 2.5*nodeLength + svgYMid;
 
   const detailview = document.getElementById('detailview');
   detailview.style.top = `${detailViewTop}px`;
-  detailview.style.left = `${pos.left - 490 - 50}px`;
+  detailview.style.left = `${pos.left -  nodeLength}px`;
   detailview.style.position = 'absolute';
 
-  softmaxDetailViewStore.set({
+  sigmoidDetailViewStore_rnn.set({
     show: true,
     logits: logits,
     logitColors: logits.map(d => layerColorScales.logit(logitColorScale(d))),
     selectedI: selectedI,
     highlightI: -1,
     outputName: classList[selectedI],
-    outputValue: rnn[layerIndexDict['output']][selectedI].output,
+    outputValue: outputs[selectedI].output,
     startAnimation: {i: -1, duration: 0, hasInitialized: hasInitialized}
   })
 
   drawOneEdgeGroup();
 
+  // same as input nodes
+  let legendHeight = inputNodeHeight;
+  // vSpaceAroundGap for each layer varies because of various number of nodes
+  legendY = svgPaddings.top + vSpaceAroundGap 
+        * (rnn[rnn.length-1].length+1) + 3 * legendHeight;
+
+  let legendRange = 
   // Draw logit circle color scale
   drawIntermediateLayerLegend({
     legendHeight: 5,
     curLayerIndex: curLayerIndex,
-    range: d3.extent(logits)[1] - d3.extent(logits)[0],
-    minMax: {min: d3.extent(logits)[0], max: d3.extent(logits)[1]},
+    range: Math.abs(d3.extent(logits)[1]) + Math.abs(d3.extent(logits)[0]),
+    minMax: {min: -Math.abs(d3.extent(logits)[0]), max: Math.abs(d3.extent(logits)[1])},
     group: logitLayer,
-    width: softmaxX - (intermediateX2 + plusSymbolRadius * 2 - moveX + 5),
+    width: sigmoidX - (intermediateX2 + plusSymbolRadius * 2 - moveX + 5),
     gradientAppendingName: 'flatten-logit-gradient',
     gradientGap: 0.1,
     colorScale: layerColorScales.logit,
     x: intermediateX2 + plusSymbolRadius * 2 - moveX + 5,
-    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
-      nodeLength * 10
+    y: legendY
   });
 
   // Draw logit layer label
@@ -600,7 +615,7 @@ const drawLogitLayer = (arg) => {
     .classed('hidden', detailedMode)
     .attr('transform', () => {
       let x = centerX;
-      let y = (svgPaddings.top + vSpaceAroundGap) / 2 + 5;
+      let y = labelY;
       return `translate(${x}, ${y})`;
     });
 
@@ -623,20 +638,20 @@ const removeLogitLayer = () => {
     .selectAll('.logit-lower')
     .style('opacity', 0);
 
-  softmaxDetailViewStore.set({
+  sigmoidDetailViewStore_rnn.set({
       show: false,
       logits: []
   })
 }
 
-const softmaxClicked = (arg) => {
+const sigmoidClicked = (arg) => {
   let curLayerIndex = arg.curLayerIndex,
     moveX = arg.moveX,
     symbolX = arg.symbolX,
     symbolY = arg.symbolY,
     outputX = arg.outputX,
     outputY = arg.outputY,
-    softmaxLeftMid = arg.softmaxLeftMid,
+    sigmoidLeftMid = arg.sigmoidLeftMid,
     selectedI = arg.selectedI,
     intermediateX1 = arg.intermediateX1,
     intermediateX2 = arg.intermediateX2,
@@ -646,113 +661,113 @@ const softmaxClicked = (arg) => {
     bottomY = arg.bottomY,
     middleGap = arg.middleGap,
     middleRectHeight = arg.middleRectHeight,
-    softmaxX = arg.softmaxX,
-    softmaxTextY = arg.softmaxTextY,
-    softmaxWidth = arg.softmaxWidth,
+    sigmoidX = arg.sigmoidX,
+    sigmoidTextY = arg.sigmoidTextY,
+    sigmoidWidth = arg.sigmoidWidth,
     symbolGroup = arg.symbolGroup,
-    flattenRange = arg.flattenRange;
+    lstmRange = arg.lstmRange;
 
   let duration = 600;
-  let centerX = softmaxLeftMid - moveX * 4 / 5;
+  let centerX = sigmoidLeftMid - moveX * 4 / 5;
   d3.event.stopPropagation();
 
   // Clean up the logit elemends before moving anything
-  if (isInSoftmax) {
-    allowsSoftmaxAnimationStore.set(false);
+  if (isInSigmoid) {
+    allowsSigmoidAnimationStore_rnn.set(false);
     removeLogitLayer();
   } else {
-    allowsSoftmaxAnimationStore.set(true);
+    allowsSigmoidAnimationStore_rnn.set(true);
   }
 
   // Move the overlay gradient
   svg.select('.intermediate-layer-overlay')
     .select('rect.overlay')
-    .transition('softmax')
+    .transition('sigmoid')
     .ease(d3.easeCubicInOut)
     .duration(duration)
-    .attr('transform', `translate(${isInSoftmax ? 0 : -moveX}, ${0})`);
+    .attr('transform', `translate(${isInSigmoid ? 0 : -moveX}, ${0})`);
 
   // Move the legends
   svg.selectAll(`.intermediate-legend-${curLayerIndex - 1}`)
-    .each((d, i, g) => moveLegend(d, i, g, moveX, duration, isInSoftmax));
+    .each((d, i, g) => moveLegend(d, i, g, moveX, duration, isInSigmoid));
 
   svg.select('.intermediate-layer')
     .select(`.layer-label`)
-    .each((d, i, g) => moveLegend(d, i, g, moveX, duration, isInSoftmax));
+    .each((d, i, g) => moveLegend(d, i, g, moveX, duration, isInSigmoid));
 
   svg.select('.intermediate-layer')
     .select(`.layer-detailed-label`)
-    .each((d, i, g) => moveLegend(d, i, g, moveX, duration, isInSoftmax));
+    .each((d, i, g) => moveLegend(d, i, g, moveX, duration, isInSigmoid));
 
   // Also move all layers on the left
   for (let i = curLayerIndex - 1; i >= 0; i--) {
     let curLayer = svg.select(`g#rnn-layer-group-${i}`);
     let previousX = +curLayer.select('image').attr('x');
-    let newX = isInSoftmax ? previousX + moveX : previousX - moveX;
+    let newX = isInSigmoid ? previousX + moveX : previousX - moveX;
     moveLayerX({
       layerIndex: i,
       targetX: newX,
       disable: true,
       delay: 0,
-      transitionName: 'softmax',
+      transitionName: 'sigmoid',
       duration: duration
     });
   }
 
   // Hide the sum up annotation
   svg.select('.plus-annotation')
-    .transition('softmax')
+    .transition('sigmoid')
     .duration(duration)
-    .style('opacity', isInSoftmax ? 1 : 0)
-    .style('pointer-events', isInSoftmax ? 'all' : 'none');
+    .style('opacity', isInSigmoid ? 1 : 0)
+    .style('pointer-events', isInSigmoid ? 'all' : 'none');
 
-  // Hide the softmax annotation
-  let softmaxAnnotation = svg.select('.softmax-annotation')
-    .style('pointer-events', isInSoftmax ? 'all' : 'none');
+  // Hide the sigmoid annotation
+  let sigmoidAnnotation = svg.select('.sigmoid-annotation')
+    .style('pointer-events', isInSigmoid ? 'all' : 'none');
   
-  let softmaxDetailAnnotation = softmaxAnnotation.selectAll('.softmax-detail-annoataion')
+  let sigmoidDetailAnnotation = sigmoidAnnotation.selectAll('.sigmoid-detail-annoataion')
     .data([0])
     .enter()
     .append('g')
-    .attr('class', 'softmax-detail-annoataion');
+    .attr('class', 'sigmoid-detail-annoataion');
 
   // Remove the detailed annoatioan when quitting the detail view
-  if (isInSoftmax) {
-    softmaxAnnotation.selectAll('.softmax-detail-annoataion').remove();
+  if (isInSigmoid) {
+    sigmoidAnnotation.selectAll('.sigmoid-detail-annoataion').remove();
   }
 
-  softmaxAnnotation.select('.arrow-group')
-    .transition('softmax')
+  sigmoidAnnotation.select('.arrow-group')
+    .transition('sigmoid')
     .duration(duration)
-    .style('opacity', isInSoftmax ? 1 : 0);
+    .style('opacity', isInSigmoid ? 1 : 0);
 
-  softmaxAnnotation.select('.annotation-text')
+  sigmoidAnnotation.select('.annotation-text')
     .style('cursor', 'help')
     .style('pointer-events', 'all')
     .on('click', () => {
       d3.event.stopPropagation();
       // Scroll to the article element
-      document.querySelector(`#article-softmax`).scrollIntoView({ 
+      document.querySelector(`#article-sigmoid`).scrollIntoView({ 
         behavior: 'smooth' 
       });
     })
-    .transition('softmax')
+    .transition('sigmoid')
     .duration(duration)
-    .style('opacity', isInSoftmax ? 1 : 0)
+    .style('opacity', isInSigmoid ? 1 : 0)
     .on('end', () => {
-      if (!isInSoftmax) {
-        // Add new annotation for the softmax button
-        let textX = softmaxX + softmaxWidth / 2;
-        let textY = softmaxTextY - 10;
+      if (!isInSigmoid) {
+        // Add new annotation for the sigmoid button
+        let textX = sigmoidX + sigmoidWidth / 2;
+        let textY = sigmoidTextY - 10;
 
         if (selectedI === 0) {
-          textY = softmaxTextY + 70;
+          textY = sigmoidTextY + 70;
         }
 
-        let text = softmaxDetailAnnotation.append('text')
+        let text = sigmoidDetailAnnotation.append('text')
           .attr('x', textX)
           .attr('y', textY)
-          .attr('class', 'annotation-text softmax-detail-text')
+          .attr('class', 'annotation-text sigmoid-detail-text')
           .style('dominant-baseline', 'baseline')
           .style('text-anchor', 'middle')
           .text('Normalize ');
@@ -773,10 +788,10 @@ const softmaxClicked = (arg) => {
 
         if (selectedI === 0) {
           drawArrow({
-            group: softmaxDetailAnnotation,
-            sx: softmaxX + softmaxWidth / 2 - 5,
-            sy: softmaxTextY + 44,
-            tx: softmaxX + softmaxWidth / 2,
+            group: sigmoidDetailAnnotation,
+            sx: sigmoidX + sigmoidWidth / 2 - 5,
+            sy: sigmoidTextY + 44,
+            tx: sigmoidX + sigmoidWidth / 2,
             ty: textY - 12,
             dr: 50,
             hFlip: true,
@@ -784,10 +799,10 @@ const softmaxClicked = (arg) => {
           });
         } else {
           drawArrow({
-            group: softmaxDetailAnnotation,
-            sx: softmaxX + softmaxWidth / 2 - 5,
-            sy: softmaxTextY + 4,
-            tx: softmaxX + softmaxWidth / 2,
+            group: sigmoidDetailAnnotation,
+            sx: sigmoidX + sigmoidWidth / 2 - 5,
+            sy: sigmoidTextY + 4,
+            tx: sigmoidX + sigmoidWidth / 2,
             ty: symbolY - plusSymbolRadius - 4,
             dr: 50,
             hFlip: true,
@@ -797,21 +812,20 @@ const softmaxClicked = (arg) => {
 
         // Add annotation for the logit layer label
         textX = centerX + 45;
-        textY = (svgPaddings.top + vSpaceAroundGap) / 2 + 5;
+        textY = labelY  + 5;
         let arrowTX = centerX + 20;
-        let arrowTY = (svgPaddings.top + vSpaceAroundGap) / 2 + 5;
+        let arrowTY = labelY  + 5;
 
-        softmaxDetailAnnotation.append('g')
+        sigmoidDetailAnnotation.append('g')
           .attr('class', 'layer-detailed-label')
           .attr('transform', () => {
             let x = centerX;
-            let y = (svgPaddings.top + vSpaceAroundGap) / 2 - 5;
+            let y = labelY - 5;
             return `translate(${x}, ${y})`;
           })
           .classed('hidden', !detailedMode)
           .append('text')
-          // .attr('x', centerX)
-          // .attr('y',  (svgPaddings.top + vSpaceAroundGap) / 2 - 6)
+          .attr('y', labelY)
           .style('opacity', 0.7)
           .style('dominant-baseline', 'middle')
           .style('font-size', '12px')
@@ -824,12 +838,12 @@ const softmaxClicked = (arg) => {
           .style('font-size', '8px')
           .style('font-weight', 'normal')
           .attr('dy', '1.5em')
-          .text('(10)');
+          .text(`(${1})`);
 
-        softmaxDetailAnnotation.append('text')
+        sigmoidDetailAnnotation.append('text')
           .attr('class', 'annotation-text')
           .attr('x', textX)
-          .attr('y', (svgPaddings.top + vSpaceAroundGap) / 2 + 3)
+          .attr('y', labelY  + 5)
           .style('text-anchor', 'start')
           .text('Before')
           .append('tspan')
@@ -839,7 +853,7 @@ const softmaxClicked = (arg) => {
 
 
         drawArrow({
-          group: softmaxDetailAnnotation,
+          group: sigmoidDetailAnnotation,
           tx: arrowTX,
           ty: arrowTY,
           sx: textX - 6,
@@ -849,43 +863,45 @@ const softmaxClicked = (arg) => {
           marker: 'marker-alt'
         });
 
-        softmaxDetailAnnotation.append('text')
+        let outputIndex = layerIndexDict['dense_Dense1'];
+
+        sigmoidDetailAnnotation.append('text')
           .attr('class', 'annotation-text')
-          .attr('x', nodeCoordinate[layerIndexDict['output']][0].x - 35)
-          .attr('y', (svgPaddings.top + vSpaceAroundGap) / 2 + 3)
+          .attr('x', nodeCoordinate[outputIndex][0].x - 30)
+          .attr('y', labelY  + 3)
           .style('text-anchor', 'end')
           .text('After')
           .append('tspan')
-          .attr('x', nodeCoordinate[layerIndexDict['output']][0].x - 35)
+          .attr('x', nodeCoordinate[outputIndex][0].x - 30)
           .attr('dy', '1em')
           .text('normalization')
 
         drawArrow({
-          group: softmaxDetailAnnotation,
-          tx: nodeCoordinate[layerIndexDict['output']][0].x - 8,
+          group: sigmoidDetailAnnotation,
+          tx: nodeCoordinate[outputIndex][0].x ,
           ty: arrowTY,
-          sx: nodeCoordinate[layerIndexDict['output']][0].x - 27,
+          sx: nodeCoordinate[outputIndex][0].x - 24,
           sy: textY + 2,
           dr: 60,
           hFlip: true,
           marker: 'marker-alt'
         });
 
-        // Add annotation for the logit circle
-        for (let i = 0; i < 10; i++) {
-          softmaxDetailAnnotation.append('text')
-            .attr('x', centerX)
-            .attr('y', nodeCoordinate[curLayerIndex - 1][i].y + nodeLength / 2 + 8)
-            .attr('class', 'annotation-text softmax-detail-text')
-            .attr('id', `logit-text-${i}`)
-            .style('text-anchor', 'middle')
-            .style('dominant-baseline', 'hanging')
-            .style('opacity', 0)
-            .text(`${classList[i]}`);
-        }
+        // // Add annotation for the logit circle
+        // for (let i = 0; i < 10; i++) {
+        //   sigmoidDetailAnnotation.append('text')
+        //     .attr('x', centerX)
+        //     .attr('y', nodeCoordinate[curLayerIndex - 1][i].y + nodeLength / 2 + 8)
+        //     .attr('class', 'annotation-text sigmoid-detail-text')
+        //     .attr('id', `logit-text-${i}`)
+        //     .style('text-anchor', 'middle')
+        //     .style('dominant-baseline', 'hanging')
+        //     .style('opacity', 0)
+        //     .text(`${classList[i]}`);
+        // }
 
-        let hoverTextGroup = softmaxDetailAnnotation.append('g')
-          .attr('class', 'softmax-detail-hover-annotation')
+        let hoverTextGroup = sigmoidDetailAnnotation.append('g')
+          .attr('class', 'sigmoid-detail-hover-annotation')
           .style('opacity', 0);
 
         textX = centerX + 50;
@@ -899,7 +915,7 @@ const softmaxClicked = (arg) => {
         let hoverText = hoverTextGroup.append('text')
           .attr('x', textX)
           .attr('y', textY)
-          .attr('class', 'annotation-text softmax-detail-text softmax-hover-text')
+          .attr('class', 'annotation-text sigmoid-detail-text sigmoid-hover-text')
           .style('text-anchor', 'start')
           .style('dominant-baseline', 'baseline')
           .append('tspan')
@@ -941,25 +957,25 @@ const softmaxClicked = (arg) => {
     })
 
   // Hide the annotation
-  svg.select('.flatten-annotation')
-    .transition('softmax')
+  svg.select('.lstm-annotation')
+    .transition('sigmoid')
     .duration(duration)
-    .style('opacity', isInSoftmax ? 1 : 0)
-    .style('pointer-events', isInSoftmax ? 'all' : 'none');
+    .style('opacity', isInSigmoid ? 1 : 0)
+    .style('pointer-events', isInSigmoid ? 'all' : 'none');
 
   // Move the left part of faltten layer elements
-  let flattenLeftPart = svg.select('.flatten-layer-left');
-  flattenLeftPart.transition('softmax')
+  let lstmLeftPart = svg.select('.lstm-layer-left');
+  lstmLeftPart.transition('sigmoid')
     .duration(duration)
     .ease(d3.easeCubicInOut)
-    .attr('transform', `translate(${isInSoftmax ? 0 : -moveX}, ${0})`)
+    .attr('transform', `translate(${isInSigmoid ? 0 : -moveX}, ${0})`)
     .on('end', () => {
       // Add the logit layer
-      if (!isInSoftmax) {
+      if (!isInSigmoid) {
         let logitArg = {
           curLayerIndex: curLayerIndex,
           moveX: moveX,
-          softmaxLeftMid: softmaxLeftMid,
+          sigmoidLeftMid: sigmoidLeftMid,
           selectedI: selectedI,
           intermediateX1: intermediateX1,
           intermediateX2: intermediateX2,
@@ -969,17 +985,17 @@ const softmaxClicked = (arg) => {
           bottomY: bottomY,
           middleGap: middleGap,
           middleRectHeight: middleRectHeight,
-          softmaxX: softmaxX,
+          sigmoidX: sigmoidX,
           symbolGroup: symbolGroup,
           symbolX: symbolX,
-          flattenRange: flattenRange
+          lstmRange: lstmRange
         };
         drawLogitLayer(logitArg);
       }
 
       // Redraw the line from the plus symbol to the output node
-      if (!isInSoftmax) {
-        let newLine = flattenLeftPart.select('.edge-group')
+      if (!isInSigmoid) {
+        let newLine = lstmLeftPart.select('.edge-group')
           .append('line')
           .attr('class', 'symbol-output-line')
           .attr('x1', symbolX)
@@ -990,21 +1006,21 @@ const softmaxClicked = (arg) => {
           .style('stroke', '#E5E5E5')
           .style('opacity', 0);
         
-        newLine.transition('softmax')
+        newLine.transition('sigmoid')
           .delay(duration / 3)
           .duration(duration * 2 / 3)
           .style('opacity', 1);
       } else {
-        flattenLeftPart.select('.symbol-output-line').remove();
+        lstmLeftPart.select('.symbol-output-line').remove();
       }
       
-      isInSoftmax = !isInSoftmax;
-      isInSoftmaxStore.set(isInSoftmax);
+      isInSigmoid = !isInSigmoid;
+      isInSigmoidStore_rnn.set(isInSigmoid);
     })
 }
 
 /**
- * Draw the flatten layer before output layer
+ * Draw the lstm layer before output layer
  * @param {number} curLayerIndex Index of the selected layer
  * @param {object} d Bounded d3 data
  * @param {number} i Index of the selected node
@@ -1115,20 +1131,20 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   console.log('intermediateX2 is: ',intermediateX2);
   let preLayerRange = rnnLayerRanges[selectedScaleLevel][curLayerIndex - 1];
   let colorScale = layerColorScales.conv;
-  // let flattenLength = rnn.flatten.length / rnn[1].length;
-    let flattenLength = rnn.flatten.length;
+  // let lstmLength = rnn.lstm.length / rnn[1].length;
+    let lstmLength = rnn.lstm.length;
   let linkData = [];
 
-  let flattenLayer = intermediateLayer.append('g')
-    .attr('class', 'flatten-layer');
+  let denseLayer = intermediateLayer.append('g')
+    .attr('class', 'dense-layer');
   
-  let flattenLayerLeftPart = flattenLayer.append('g')
-    .attr('class', 'flatten-layer-left');
+  let lstmLayerLeftPart = denseLayer.append('g')
+    .attr('class', 'lstm-layer-left');
   
   let topY = nodeCoordinate[curLayerIndex - 1][0].y;
   let lastNodeIndexOfPreLayer = rnn[curLayerIndex-1].length-1
   let bottomY = nodeCoordinate[curLayerIndex - 1][lastNodeIndexOfPreLayer].y + nodeHeight -
-        flattenLength * pixelHeight;
+        lstmLength * pixelHeight;
   
   // Compute the pre-layer gap
   // let preLayerDimension = rnn[curLayerIndex - 1][0].output.length;
@@ -1139,19 +1155,9 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   // Compute bounding box length
   let boundingBoxLength = nodeHeight / preLayerDimension;
 
-  // Compute the weight color scale
-  // let flattenExtent = d3.extent(rnn.flatten.slice(flattenLength)
-  //   .map(d => d.outputLinks[i].weight)
-  //   .concat(rnn.flatten.slice(9 * flattenLength, 10 * flattenLength)
-  //   .map(d => d.outputLinks[i].weight)));
+  let lstmRange = rnnLayerRanges[selectedScaleLevel][curLayerIndex-1];
 
-  // let flattenRange = 2 * (Math.round(
-  //   Math.max(...flattenExtent.map(Math.abs)) * 1000) / 1000);
-
-
-  let flattenRange = rnnLayerRanges[selectedScaleLevel][curLayerIndex-1];
-
-  let flattenMouseOverHandler = (d) => {
+  let lstmMouseOverHandler = (d) => {
     let index = d.index;
     // Screenshot
     // console.log(index);
@@ -1160,7 +1166,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     if (d.weight === undefined) {
       hoverInfo = {
         show: true,
-        text: `Pixel value: ${formater(flattenFactoredFDict[index])}`
+        text: `lstm output: ${formater(rnn.lstm[index].output)}`
       };
     } else {
       hoverInfo = {
@@ -1170,23 +1176,23 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     }
     hoverInfoStore_rnn.set(hoverInfo);
 
-    flattenLayerLeftPart.select(`#edge-lstm-${index}`)
-      .raise()
-      .style('stroke', intermediateColor)
-      .style('stroke-width', 1);
+    // lstmLayerLeftPart.select(`#edge-lstm-${index}`)
+    //   .raise()
+    //   .style('stroke', intermediateColor)
+    //   .style('stroke-width', 1);
 
-    flattenLayerLeftPart.select(`#edge-lstm-${index}-output`)
+    lstmLayerLeftPart.select(`#edge-lstm-${index}-output`)
       .raise()
       .style('stroke-width', 1)
       .style('stroke', da => gappedColorScale(layerColorScales.weight,
-        flattenRange, da.weight, 0.1));
+        lstmRange, da.weight, 0.1));
 
-    flattenLayerLeftPart.select(`#bounding-${index}`)
+    lstmLayerLeftPart.select(`#bounding-${index}`)
       .raise()
       .style('opacity', 1);
   }
 
-  let flattenMouseLeaveHandler = (d) => {
+  let lstmMouseLeaveHandler = (d) => {
     let index = d.index;
 
     // screenshot
@@ -1196,7 +1202,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     if (d.weight === undefined) {
       hoverInfo = {
         show: false,
-        text: `Pixel value: ${formater(flattenFactoredFDict[index])}`
+        text: `lstm output: ${formater(rnn.lstm[index].output)}`
       };
     } else {
       hoverInfo = {
@@ -1206,56 +1212,21 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     }
     hoverInfoStore_rnn.set(hoverInfo);
 
-    flattenLayerLeftPart.select(`#edge-lstm-${index}`)
-      .style('stroke-width', 0.6)
-      .style('stroke', '#E5E5E5')
+    // lstmLayerLeftPart.select(`#edge-lstm-${index}`)
+    //   .style('stroke-width', 0.6)
+    //   .style('stroke', '#E5E5E5')
 
-    flattenLayerLeftPart.select(`#edge-lstm-${index}-output`)
+    lstmLayerLeftPart.select(`#edge-lstm-${index}-output`)
       .style('stroke-width', 0.6)
       .style('stroke', da => gappedColorScale(layerColorScales.weight,
-        flattenRange, da.weight, 0.35));
+        lstmRange, da.weight, 0.35));
 
-    flattenLayerLeftPart.select(`#bounding-${index}`)
+    lstmLayerLeftPart.select(`#bounding-${index}`)
       .raise()
       .style('opacity', 0);
   }
 
-  flattenFactoredFDict = {};
-  for (let f = 0; f < flattenLength; f++) {
-    // let loopFactors = [0, 9];
-    // let loopFactors =[0,31]
-    // loopFactors.forEach(l => {
-      // let factoredF = f + l * flattenLength;
-      // let factoredF = l;
-      // flattenFactoredFDict[factoredF] = rnn.flatten[factoredF].output;
-      // flattenLayerLeftPart.append('rect')
-      //   .attr('x', intermediateX1)
-      //   .attr('y', l === 0 ? topY + f * pixelHeight : bottomY + f * pixelHeight)
-      //   .attr('width', pixelWidth)
-      //   .attr('height', pixelHeight)
-      //   .style('cursor', 'crosshair')
-      //   .style('fill', colorScale((rnn.flatten[factoredF].output + preLayerRange / 2) / preLayerRange))
-      //   .on('mouseover', () => flattenMouseOverHandler({index: factoredF}))
-      //   .on('mouseleave', () => flattenMouseLeaveHandler({index: factoredF}))
-      //   .on('click', () => { d3.event.stopPropagation() });
-
-      // // Flatten -> output
-      // linkData.push({
-      //   source: {x: intermediateX1 + pixelWidth + 3,
-      //     y:  l === 0 ? topY + f * pixelHeight : bottomY + f * pixelHeight},
-      //   target: {x: intermediateX2,
-      //     //nodeCoordinate[curLayerIndex][i].x - nodeLength,
-      //     y: nodeCoordinate[curLayerIndex][i].y + nodeLength / 2},
-      //   index: factoredF,
-      //   weight: rnn.flatten[factoredF].outputLinks[i].weight,
-      //   name: `flatten-${factoredF}-output`,
-      //   color: gappedColorScale(layerColorScales.weight,
-      //     flattenRange, rnn.flatten[factoredF].outputLinks[i].weight, 0.35),
-      //   width: 0.6,
-      //   opacity: 1,
-      //   class: `flatten-output`
-      // });
-
+  for (let f = 0; f < lstmLength; f++) {
       // lstm -> output
       linkData.push({
         source: {x: leftX + nodeLength + 3,
@@ -1264,39 +1235,20 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
           //nodeCoordinate[curLayerIndex][i].x - nodeLength,
           y: nodeCoordinate[curLayerIndex][i].y + nodeHeight / 2},
         index: f,
-        weight: rnn.flatten[f].outputLinks[i].weight,
+        weight: rnn.lstm[f].outputLinks[i].weight,
         name: `lstm-${f}-output`,
         color: gappedColorScale(layerColorScales.weight,
-          flattenRange, rnn.flatten[f].outputLinks[i].weight, 0.35),
+          lstmRange, rnn.lstm[f].outputLinks[i].weight, 0.35),
         width: 0.6,
         opacity: 1,
         class: `lstm-output`
       });
 
-
-      // // Pre-layer -> flatten
-      // let row = Math.floor(f / preLayerDimension);
-      // linkData.push({
-      //   target: {x: intermediateX1 - 3,
-      //     y:  l === 0 ? topY + f * pixelHeight : bottomY + f * pixelHeight},
-      //   source: {x: leftX + nodeLength + 3,
-      //     y: nodeCoordinate[curLayerIndex - 1][l].y + (2 * row + 1) * preLayerGap},
-      //   index: factoredF,
-      //   name: `flatten-${factoredF}`,
-      //   color: '#E5E5E5',
-      //   // color: gappedColorScale(layerColorScales.conv,
-      //   //   2 * Math.max(Math.abs(rnnLayerMinMax[10].max), Math.abs(rnnLayerMinMax[10].min)),
-      //   //   rnn.flatten[factoredF].output, 0.2),
-      //   width: 0.6,
-      //   opacity: 1,
-      //   class: `flatten`
-      // });
-
       // Add original pixel bounding box
-      let loc = rnn.flatten[f].outputLinks[0].weight;
-      flattenLayerLeftPart.append('rect')
+      let loc = rnn.lstm[f].outputLinks[0].weight;
+      lstmLayerLeftPart.append('rect')
         .attr('id', `bounding-${f}`)
-        .attr('class', 'flatten-bounding')
+        .attr('class', 'lstm-bounding')
         // .attr('x', leftX + loc[1] * boundingBoxLength)
         .attr('x', leftX)
         // .attr('y', nodeCoordinate[curLayerIndex - 1][l].y + loc[0] * boundingBoxLength)
@@ -1306,100 +1258,26 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
         .attr('height', boundingBoxLength)
         .style('fill', 'none')
         .style('stroke', intermediateColor)
-        .style('stroke-length', '0.5')
+        .style('stroke-length', '0.2')
         .style('pointer-events', 'all')
         .style('cursor', 'crosshair')
         .style('opacity', 0)
-        .on('mouseover', () => flattenMouseOverHandler({index: f}))
-        .on('mouseleave', () => flattenMouseLeaveHandler({index: f}))
+        .on('mouseover', () => lstmMouseOverHandler({index: f}))
+        .on('mouseleave', () => lstmMouseLeaveHandler({index: f}))
         .on('click', () => {d3.event.stopPropagation()});
-    // }) 
   }
   
-  // // Use abstract symbol to represent the flatten nodes in between (between
-  // // the first and the last nodes)
-  // // Compute the average value of input node and weights
-  // let meanValues = [];
-  // for (let n = 1; n < rnn[curLayerIndex - 1].length - 1; n++) {
-  //   /*
-  //   let meanOutput = d3.mean(rnn.flatten.slice(flattenLength * n,
-  //     flattenLength * (n + 1)).map(d => d.output));
-  //   let meanWeight= d3.mean(rnn.flatten.slice(flattenLength * n,
-  //     flattenLength * (n + 1)).map(d => d.outputLinks[i].weight));
-  //   meanValues.push({index: n, output: meanOutput, weight: meanWeight});
-  //   */
-  //   meanValues.push({index: n});
-  // }
-
   // Compute the middle gap
   let middleGap = 5;
   // let middleRectHeight = (10 * nodeLength + (10 - 1) * vSpaceAroundGap -
-  //   pixelHeight * flattenLength * 2 - 5 * (8 + 1)) / 8;
+  //   pixelHeight * lstmLength * 2 - 5 * (8 + 1)) / 8;
   let middleRectHeight = (height)
-
-  // // Add middle nodes
-  // meanValues.forEach((v, vi) => {
-  //   // Add a small rectangle
-  //   flattenLayerLeftPart.append('rect')
-  //     .attr('x', intermediateX1 + pixelWidth / 4)
-  //     .attr('y', topY + flattenLength * pixelHeight + middleGap * (vi + 1) +
-  //       middleRectHeight * vi)
-  //     .attr('width', pixelWidth / 2)
-  //     .attr('height', middleRectHeight)
-  //     // .style('fill', colorScale((v.output + preLayerRange / 2) / preLayerRange));
-  //     .style('fill', '#E5E5E5');
-    
-  //   // Add a triangle next to the input node
-  //   flattenLayerLeftPart.append('polyline')
-  //     .attr('points',
-  //       `${leftX + nodeLength + 3}
-  //       ${nodeCoordinate[curLayerIndex - 1][v.index].y},
-  //       ${leftX + nodeLength + 10}
-  //       ${nodeCoordinate[curLayerIndex - 1][v.index].y + nodeLength / 2},
-  //       ${leftX + nodeLength + 3}
-  //       ${nodeCoordinate[curLayerIndex - 1][v.index].y + nodeLength}`)
-  //     .style('fill', '#E5E5E5')
-  //     .style('opacity', 1);
-    
-  //   // Input -> flatten
-  //   linkData.push({
-  //     source: {x: leftX + nodeLength + 10,
-  //       y: nodeCoordinate[curLayerIndex - 1][v.index].y + nodeLength / 2},
-  //     target: {x: intermediateX1 - 3,
-  //       y: topY + flattenLength * pixelHeight + middleGap * (vi + 1) +
-  //         middleRectHeight * (vi + 0.5)},
-  //     index: -1,
-  //     width: 1,
-  //     opacity: 1,
-  //     name: `flatten-abstract-${v.index}`,
-  //     color: '#E5E5E5',
-  //     class: `flatten-abstract`
-  //   });
-
-  //   // Flatten -> output
-  //   linkData.push({
-  //     source: {x: intermediateX1 + pixelWidth + 3,
-  //     y: topY + flattenLength * pixelHeight + middleGap * (vi + 1) +
-  //       middleRectHeight * (vi + 0.5)},
-  //     target: {x: intermediateX2,
-  //     y: nodeCoordinate[curLayerIndex][i].y + nodeLength / 2},
-  //     index: -1,
-  //     name: `flatten-abstract-${v.index}-output`,
-  //     // color: gappedColorScale(layerColorScales.weight, flattenRange,
-  //     //   v.weight, 0.35),
-  //     color: '#E5E5E5',
-  //     weight: v.weight,
-  //     width: 1,
-  //     opacity: 1,
-  //     class: `flatten-abstract-output`
-  //   });
-  // })
 
   // Draw the plus operation symbol
   let symbolX = intermediateX2 + plusSymbolRadius;
   let symbolY = nodeCoordinate[curLayerIndex][i].y + nodeHeight / 2;
   let symbolRectHeight = 1;
-  let symbolGroup = flattenLayerLeftPart.append('g')
+  let symbolGroup = lstmLayerLeftPart.append('g')
     .attr('class', 'plus-symbol')
     .attr('transform', `translate(${symbolX}, ${symbolY})`);
   
@@ -1428,7 +1306,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .style('fill', intermediateColor);
 
   // Place the bias rectangle below the plus sign if user clicks the first
-  // conv node (no need now, since we added annotaiton for softmax to make it
+  // conv node (no need now, since we added annotaiton for sigmoid to make it
   // look better aligned)
   // Add bias symbol to the plus symbol
   symbolGroup.append('circle')
@@ -1438,7 +1316,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .style('stroke', intermediateColor)
     .style('cursor', 'crosshair')
     .style('fill', gappedColorScale(layerColorScales.weight,
-        flattenRange, d.bias, 0.35))
+        lstmRange, d.bias, 0.35))
     .on('mouseover', () => {
       hoverInfoStore_rnn.set( {show: true, text: `Bias: ${formater(d.bias)}`} );
     })
@@ -1469,24 +1347,24 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     color: '#E5E5E5'
   });
 
-  // Draw softmax operation symbol
-  let softmaxWidth = 55;
+  // Draw sigmoid operation symbol
+  let sigmoidWidth = 55;
   let emptySpace = ((totalLength - 2 * nodeLength - 2 * intermediateGap)
-    - softmaxWidth) / 2;
+    - sigmoidWidth) / 2;
   let symbolEndX = intermediateX2 + plusSymbolRadius * 2;
-  let softmaxX = emptySpace + symbolEndX;
-  let softmaxLeftMid = emptySpace / 2 + symbolEndX;
-  let softmaxTextY = nodeCoordinate[curLayerIndex][i].y - 2 * kernelRectLength - 2 * nodeHeight;
+  let sigmoidX = emptySpace + symbolEndX;
+  let sigmoidLeftMid = emptySpace / 2 + symbolEndX;
+  let sigmoidTextY = nodeCoordinate[curLayerIndex][i].y - 2 * kernelRectLength - 2 * nodeHeight;
   let moveX = (intermediateX2 - (intermediateX1 + pixelWidth + 3)) * 2 / 3;
 
-  let softmaxArg = {
+  let sigmoidArg = {
     curLayerIndex: curLayerIndex,
     moveX: moveX,
     symbolX: symbolX,
     symbolY: symbolY,
     outputX: nodeCoordinate[curLayerIndex][i].x,
     outputY: symbolY,
-    softmaxLeftMid: softmaxLeftMid,
+    sigmoidLeftMid: sigmoidLeftMid,
     selectedI: i,
     intermediateX1: intermediateX1,
     intermediateX2: intermediateX2,
@@ -1496,31 +1374,31 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     bottomY: bottomY,
     middleGap: middleGap,
     middleRectHeight: middleRectHeight,
-    softmaxX: softmaxX,
-    softmaxWidth: softmaxWidth,
-    softmaxTextY: softmaxTextY,
+    sigmoidX: sigmoidX,
+    sigmoidWidth: sigmoidWidth,
+    sigmoidTextY: sigmoidTextY,
     symbolGroup: symbolGroup,
-    flattenRange: flattenRange
+    lstmRange: lstmRange
   };
 
-  let softmaxSymbol = intermediateLayer.append('g')
-    .attr('class', 'softmax-symbol')
-    .attr('transform', `translate(${softmaxX}, ${symbolY})`)
+  let sigmoidSymbol = intermediateLayer.append('g')
+    .attr('class', 'sigmoid-symbol')
+    .attr('transform', `translate(${sigmoidX}, ${symbolY})`)
     .style('pointer-event', 'all')
     .style('cursor', 'pointer')
-    .on('click', () => softmaxClicked(softmaxArg));
+    .on('click', () => sigmoidClicked(sigmoidArg));
   
-  softmaxSymbol.append('rect')
+  sigmoidSymbol.append('rect')
     .attr('x', 0)
     .attr('y', -plusSymbolRadius)
-    .attr('width', softmaxWidth)
+    .attr('width', sigmoidWidth)
     .attr('height', plusSymbolRadius * 2)
     .attr('stroke', intermediateColor)
     .attr('rx', 2)
     .attr('ry', 2)
     .attr('fill', '#FAFAFA');
   
-  softmaxSymbol.append('text')
+  sigmoidSymbol.append('text')
     .attr('x', 5)
     .attr('y', 1)
     .style('dominant-baseline', 'middle')
@@ -1528,77 +1406,79 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .style('opacity', 0.5)
     .text('Sigmoid');
 
-  // // Draw the layer label
-  // let layerLabel = intermediateLayer.append('g')
-  //   .attr('class', 'layer-label')
-  //   .classed('hidden', detailedMode)
-  //   .attr('transform', () => {
-  //     let x = leftX + nodeLength + (4 * hSpaceAroundGap * gapRatio +
-  //       pixelWidth) / 2;
-  //     let y = (svgPaddings.top + vSpaceAroundGap) / 2 + 5;
-  //     return `translate(${x}, ${y})`;
-  //   })
-  //   .style('cursor', 'help')
-  //   .on('click', () => {
-  //     d3.event.stopPropagation();
-  //     // Scroll to the article element
-  //     document.querySelector(`#article-flatten`).scrollIntoView({ 
-  //       behavior: 'smooth' 
-  //     });
-  //   });
+  // Draw the layer label
+  let layerLabel = intermediateLayer.append('g')
+    .attr('class', 'layer-label')
+    .classed('hidden', detailedMode)
+    .attr('transform', () => {
+      // let x = leftX + nodeLength + (4 * hSpaceAroundGap * gapRatio +
+      //   pixelWidth) / 2;
+      let x = sigmoidX;
+      // let y = (svgPaddings.top + vSpaceAroundGap) / 2 + 5;
+      let y = labelY ;
+      return `translate(${x}, ${y})`;
+    })
+    .style('cursor', 'help')
+    .on('click', () => {
+      d3.event.stopPropagation();
+      // Scroll to the article element
+      document.querySelector(`#article-lstm`).scrollIntoView({ 
+        behavior: 'smooth' 
+      });
+    });
   
   // layerLabel.append('text')
   //   .style('dominant-baseline', 'middle')
   //   .style('opacity', 0.8)
   //   .style('font-weight', 800)
-  //   .text('flatten');
+  //   .text('Activiation');
 
   let svgHeight = Number(d3.select('#rnn-svg').style('height').replace('px', '')) + 150;
   let scroll = new SmoothScroll('a[href*="#"]', {offset: -svgHeight});
     
-  let detailedLabelGroup = intermediateLayer.append('g')
-    .attr('transform', () => {
-      // let x = leftX + nodeLength + (4 * hSpaceAroundGap * gapRatio + pixelWidth) / 2;
-      let x = softmaxX;
-      // let y = (svgPaddings.top + vSpaceAroundGap) / 2 - 5;
-      let y =svgPaddings.top / 2 - 4 ;
-      return `translate(${x}, ${y})`;
-    })
-    .attr('class', 'layer-detailed-label')
-    .classed('hidden', !detailedMode)
-    .style('cursor', 'help')
-    .on('click', () => {
-      d3.event.stopPropagation();
-      // Scroll to the article element
-      let anchor = document.querySelector(`#article-flatten`);
-      scroll.animateScroll(anchor);
-    });
+  // let detailedLabelGroup = intermediateLayer.append('g')
+  //   .attr('transform', () => {
+  //     // let x = leftX + nodeLength + (4 * hSpaceAroundGap * gapRatio + pixelWidth) / 2;
+  //     let x = sigmoidX;
+  //     // let y = (svgPaddings.top + vSpaceAroundGap) / 2 - 5;
+  //     let y = labelY ;
+  //     return `translate(${x}, ${y})`;
+  //   })
+  //   .attr('class', 'layer-detailed-label')
+  //   .classed('hidden', !detailedMode)
+  //   .style('cursor', 'help')
+  //   .on('click', () => {
+  //     d3.event.stopPropagation();
+  //     // Scroll to the article element
+  //     let anchor = document.querySelector(`#article-lstm`);
+  //     scroll.animateScroll(anchor);
+  //   });
   
-  detailedLabelGroup.append('title')
-    .text('Move to article section');
+  // detailedLabelGroup.append('title')
+  //   .text('Move to article section');
 
-  let detailedLabelText = detailedLabelGroup.append('text')
-    .style('text-anchor', 'middle')
-    .style('dominant-baseline', 'middle')
-    .style('opacity', '0.7')
-    .style('font-weight', 800)
-    .append('tspan')
-    .text('Activation');
+  // let detailedLabelText = detailedLabelGroup.append('text')
+  //   .style('text-anchor', 'middle')
+  //   .style('dominant-baseline', 'middle')
+  //   .style('opacity', '0.7')
+  //   .style('font-weight', 800)
+  //   .append('tspan')
+  //   .text('Activation');
   
-  // let dimension = rnn[layerIndexDict['max_pool_2']].length * 
-  //   rnn[layerIndexDict['max_pool_2']][0].output.length *
-  //   rnn[layerIndexDict['max_pool_2']][0].output[0].length;
-  let dimension = 1;
+  // // let dimension = rnn[layerIndexDict['max_pool_2']].length * 
+  // //   rnn[layerIndexDict['max_pool_2']][0].output.length *
+  // //   rnn[layerIndexDict['max_pool_2']][0].output[0].length;
+  // let dimension = 1;
 
-  detailedLabelText.append('tspan')
-    .attr('x', 0)
-    .attr('dy', '1.5em')
-    .style('font-size', '8px')
-    .style('font-weight', 'normal')
-    .text(`(${dimension})`);
+  // detailedLabelText.append('tspan')
+  //   .attr('x', 0)
+  //   .attr('dy', '1.5em')
+  //   .style('font-size', '8px')
+  //   .style('font-weight', 'normal')
+  //   .text(`(${dimension})`);
 
   // Add edges between nodes
-  let edgeGroup = flattenLayerLeftPart.append('g')
+  let edgeGroup = lstmLayerLeftPart.append('g')
     .attr('class', 'edge-group')
     .lower();
   
@@ -1622,14 +1502,14 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .attr('stroke-dashoffset', 0)
     .each((d, i, g) => animateEdge(d, i, g, dashoffset - 1000));
   
-  edgeGroup.selectAll('path.flatten-abstract-output')
+  edgeGroup.selectAll('path.lstm-abstract-output')
     .lower();
 
-  edgeGroup.selectAll('path.flatten,path.lstm-output')
+  edgeGroup.selectAll('path.lstm,path.lstm-output')
     .style('cursor', 'crosshair')
     .style('pointer-events', 'all')
-    .on('mouseover', flattenMouseOverHandler)
-    .on('mouseleave', flattenMouseLeaveHandler)
+    .on('mouseover', lstmMouseOverHandler)
+    .on('mouseleave', lstmMouseLeaveHandler)
     .on('click', () => { d3.event.stopPropagation() });
   
   // vSpaceAroundGap for each layer varies because of various number of nodes
@@ -1650,15 +1530,15 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   drawIntermediateLayerLegend({
     legendHeight: 5,
     curLayerIndex: curLayerIndex,
-    range: flattenRange,
+    range: lstmRange,
     minMax: rnnLayerMinMax[curLayerIndex-1],
     group: intermediateLayer,
-    width: intermediateX2-intermediateX1,
+    width: intermediateX2-leftX,
     gradientAppendingName: 'lstm-weight-gradient',
     gradientGap: 0.1,
     colorScale: layerColorScales.weight,
     // x: leftX + intermediateGap + nodeLength + pixelWidth + 3,
-    x:leftX,
+    x: leftX,
     y: legentY
   });
 
@@ -1747,7 +1627,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   let biasTextY = symbolY -nodeLength / 2 - kernelRectLength;
   biasTextY -= 2 * kernelRectLength + 4;
   
-  flattenLayerLeftPart.append('text')
+  lstmLayerLeftPart.append('text')
     .attr('class', 'annotation-text')
     .attr('x', intermediateX2 + plusSymbolRadius)
     .attr('y', biasTextY)
@@ -1755,13 +1635,13 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .style('dominant-baseline', 'baseline')
     .text('Bias');
   
-  // Add annotation for the softmax symbol
-  let softmaxAnnotation = intermediateLayerAnnotation.append('g')
-    .attr('class', 'softmax-annotation');
+  // Add annotation for the sigmoid symbol
+  let sigmoidAnnotation = intermediateLayerAnnotation.append('g')
+    .attr('class', 'sigmoid-annotation');
   
-  softmaxAnnotation.append('text')
-    .attr('x', softmaxX + softmaxWidth / 2)
-    .attr('y', softmaxTextY)
+  sigmoidAnnotation.append('text')
+    .attr('x', sigmoidX + sigmoidWidth / 2)
+    .attr('y', sigmoidTextY)
     .attr('class', 'annotation-text')
     .style('dominant-baseline', 'baseline')
     .style('text-anchor', 'middle')
@@ -1773,112 +1653,29 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .text('to learn more');
 
   drawArrow({
-    group: softmaxAnnotation,
-    sx: softmaxX + softmaxWidth / 2 - 5,
-    sy: softmaxTextY + 4,
-    tx: softmaxX + softmaxWidth / 2,
+    group: sigmoidAnnotation,
+    sx: sigmoidX + sigmoidWidth / 2 - 5,
+    sy: sigmoidTextY + 4,
+    tx: sigmoidX + sigmoidWidth / 2,
     ty: symbolY - plusSymbolRadius - 4,
     dr: 50,
     hFlip: true
   });
 
-  // // Add annotation for the flatten layer
-  // let flattenAnnotation = intermediateLayerAnnotation.append('g')
-  //   .attr('class', 'flatten-annotation');
-  
-  // textX = leftX - 80;
-  // textY = nodeCoordinate[curLayerIndex - 1][0].y;
-
-  // let flattenText = flattenAnnotation.append('text')
-  //   .attr('x', textX)
-  //   .attr('y', textY)
-  //   .attr('class', 'annotation-text')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('text-anchor', 'middle');
-
-  // let tempTspan = flattenText.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('font-weight', 700)
-  //   .text('Hover over ');
-  
-  // tempTspan.append('tspan')
-  //   .attr('dx', 1)
-  //   .style('font-weight', 400)
-  //   .style('dominant-baseline', 'hanging')
-  //   .text('matrix to');
-  
-  // flattenText.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .attr('x', textX)
-  //   .attr('dy', '1em')
-  //   .text('see how it is flattened');
-  
-  // flattenText.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .attr('x', textX)
-  //   .attr('dy', '1em')
-  //   .text('into a 1D array!');
-
-  // drawArrow({
-  //   group: flattenAnnotation,
-  //   sx: textX + 45,
-  //   sy: textY + nodeLength * 0.4 + 12,
-  //   tx: leftX - 10,
-  //   ty: textY + nodeLength / 2,
-  //   dr: 80,
-  //   hFlip: true
-  // });
-
-  // // Add annotation to explain the middle images
-  // textY = nodeCoordinate[curLayerIndex - 1][1].y;
-
-  // let middleText = flattenAnnotation.append('text')
-  //   .attr('x', textX)
-  //   .attr('y', textY)
-  //   .attr('class', 'annotation-text')
-  //   .style('dominant-baseline', 'hanging')
-  //   .style('text-anchor', 'middle');
-
-  // middleText.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .text('Same flattening');
-  
-  // middleText.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .attr('x', textX)
-  //   .attr('dy', '1em')
-  //   .text('operation for');
-
-  // middleText.append('tspan')
-  //   .style('dominant-baseline', 'hanging')
-  //   .attr('x', textX)
-  //   .attr('dy', '1em')
-  //   .text('each neuron');
-
-  // drawArrow({
-  //   group: flattenAnnotation,
-  //   sx: textX + 39,
-  //   sy: textY + 25,
-  //   tx: leftX - 10,
-  //   ty: textY + nodeLength / 2 - 2,
-  //   dr: 80,
-  //   hFlip: true,
-  //   marker: 'marker-alt'
-  // });
-
-
   // Add annotation for the output neuron
   let outputAnnotation = intermediateLayerAnnotation.append('g')
     .attr('class', 'output-annotation');
+
+  let outputIndex = layerIndexDict['dense_Dense1'];
   
   outputAnnotation.append('text')
-    .attr('x', nodeCoordinate[layerIndexDict['dense_Dense1']][i].x)
-    .attr('y', nodeCoordinate[layerIndexDict['dense_Dense1']][i].y-nodeHeight)
+    .attr('x', nodeCoordinate[outputIndex][i].x)
+    .attr('y', nodeCoordinate[outputIndex][i].y-nodeHeight)
     .attr('class', 'annotation-text')
-    .text(`(${d3.format('.4f')(rnn[layerIndexDict['dense_Dense1']][i].output)})`);
+    .text(`(${d3.format('.4f')(rnn[outputIndex][i].output)})`);
 
 
-  /* Prototype of using arc to represent the flatten layer (future)
+  /* Prototype of using arc to represent the dense layer (future)
   let pie = d3.pie()
     .padAngle(0)
     .sort(null)
@@ -1891,7 +1688,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .innerRadius(radius - 20)
     .outerRadius(radius);
 
-  let arcs = pie(rnn.flatten);
+  let arcs = pie(rnn.lstm);
   console.log(arcs);
 
   let test = svg.append('g')

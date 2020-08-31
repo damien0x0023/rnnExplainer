@@ -32,17 +32,17 @@ const formater = d3.format('.4f');
 let svg_rnn = undefined;
 svgStore_rnn.subscribe( value => {svg_rnn = value;} )
 
-let vSpaceAroundGap_rnn = undefined;
-vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap_rnn = value;} )
+let vSpaceAroundGap = undefined;
+vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap = value;} )
 
-let hSpaceAroundGap_rnn = undefined;
-hSpaceAroundGapStore_rnn.subscribe( value => {hSpaceAroundGap_rnn = value;} )
+let hSpaceAroundGap = undefined;
+hSpaceAroundGapStore_rnn.subscribe( value => {hSpaceAroundGap = value;} )
 
 let rnn = undefined;
 rnnStore.subscribe( value => {rnn = value;} )
 
-let nodeCoordinate_rnn = undefined;
-nodeCoordinateStore_rnn.subscribe( value => {nodeCoordinate_rnn = value;} )
+let nodeCoordinate = undefined;
+nodeCoordinateStore_rnn.subscribe( value => {nodeCoordinate = value;} )
 
 let selectedScaleLevel_rnn = undefined;
 selectedScaleLevelStore_rnn.subscribe( value => {selectedScaleLevel_rnn = value;} )
@@ -65,6 +65,8 @@ let n_longGaps = 2;
 // for module view
 let num_module = 2;
 let num_stack = 1;
+let labelY = svgPaddings.top / 2 - 4;
+let legendY;
 
 const enlargeOutputImage = (oriWidth, oriHeight, enlargedWidth, 
   enlargedHeight, bufferCan, bufferCtx,img) =>{
@@ -285,7 +287,7 @@ const legendDrawer = (range, domain, levelName, legends, startIndex,
     .attr('class', `legend ${levelName}-legend`)
     .attr('id', id)
     .classed('hidden', !detailedMode_rnn || selectedScaleLevel_rnn !== levelName)
-    .attr('transform', `translate(${nodeCoordinate_rnn[startIndex][0].x}, ${0})`);
+    .attr('transform', `translate(${nodeCoordinate[startIndex][0].x}, ${0})`);
 
   curLegend.append('g')
     .attr('transform', `translate(0, ${legendHeight - 3})`)
@@ -307,11 +309,11 @@ const drawAllLegends = (legends, legendHeight) => {
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
 
-    let range1 = 1 * embeddingLen + 0 * hSpaceAroundGap_rnn- 1.2;
+    let range1 = 1 * embeddingLen + 0 * hSpaceAroundGap- 1.2;
     let domain1 = rnnLayerRanges.local[start];
     legendDrawer(range1, domain1, 'local', legends, start, legendHeight, 'url(#embeddingGradient)',i , 1);
 
-    let range2 = 1 * nodeLength + 0 * hSpaceAroundGap_rnn- 1.2;
+    let range2 = 1 * nodeLength + 0 * hSpaceAroundGap- 1.2;
     let domain2= rnnLayerRanges.local[start + 1];
     legendDrawer(range2, domain2, 'local', legends, start+1, legendHeight, 'url(#lstmGradient)',i, 2);
   }
@@ -320,8 +322,8 @@ const drawAllLegends = (legends, legendHeight) => {
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
     let domain = rnnLayerRanges.module[start];
-    let range = (num_module-1) * nodeLength + embeddingLen+ 0 * hSpaceAroundGap_rnn +
-              (num_module-1) * hSpaceAroundGap_rnn * gapRatio - 1.2;
+    let range = (num_module-1) * nodeLength + embeddingLen+ 0 * hSpaceAroundGap +
+              (num_module-1) * hSpaceAroundGap * gapRatio - 1.2;
 
     legendDrawer(range, domain,'module', legends, start, legendHeight, 'url(#lstmGradient)',i);
   }
@@ -332,28 +334,28 @@ const drawAllLegends = (legends, legendHeight) => {
 
   let domain = rnnLayerRanges.global[start];
   let range = (numLayers-3) * nodeLength
-            + embeddingLen + (n_shortGaps-3) * hSpaceAroundGap_rnn 
-            + (n_longGaps-1) * hSpaceAroundGap_rnn * gapRatio - 1.2
+            + embeddingLen + (n_shortGaps-3) * hSpaceAroundGap 
+            + (n_longGaps-1) * hSpaceAroundGap * gapRatio - 1.2
   
   legendDrawer(range, domain,'global', legends, start, legendHeight, 'url(#lstmGradient)');
 
 
   // Add output legend
   let outputRectScale = d3.scaleLinear()
-        .domain([rnnLayerMinMax[nodeCoordinate_rnn.length-1].min, 
-          rnnLayerMinMax[nodeCoordinate_rnn.length-1].max])
+        .domain([rnnLayerMinMax[nodeCoordinate.length-1].min, 
+          rnnLayerMinMax[nodeCoordinate.length-1].max])
         .range([0, nodeLength - 1.2]);
 
   let outputLegendAxis = d3.axisBottom()
     .scale(outputRectScale)
     .tickFormat(d3.format('.1f'))
-    .tickValues([0, rnnLayerMinMax[nodeCoordinate_rnn.length-1].max])
+    .tickValues([0, rnnLayerMinMax[nodeCoordinate.length-1].max])
   
   let outputLegend = legends.append('g')
     .attr('class', 'legend output-legend')
     .attr('id', 'output-legend')
     .classed('hidden', !detailedMode_rnn)
-    .attr('transform', `translate(${nodeCoordinate_rnn[nodeCoordinate_rnn.length-1][0].x}, ${0})`);
+    .attr('transform', `translate(${nodeCoordinate[nodeCoordinate.length-1][0].x}, ${0})`);
   
   outputLegend.append('g')
     .attr('transform', `translate(0, ${legendHeight - 3})`)
@@ -377,7 +379,7 @@ const drawAllLegends = (legends, legendHeight) => {
   let inputLegend = legends.append('g')
     .attr('class', 'legend input-legend')
     .classed('hidden', !detailedMode_rnn)
-    .attr('transform', `translate(${nodeCoordinate_rnn[0][0].x}, ${0})`);
+    .attr('transform', `translate(${nodeCoordinate[0][0].x}, ${0})`);
   
   inputLegend.append('g')
     .attr('transform', `translate(0, ${legendHeight - 3})`)
@@ -443,9 +445,9 @@ const addLabels = ()=> {
     .classed('hidden', !detailedMode_rnn)
     .attr('transform', (d, i) => {
       let x = !d.name.includes('embedding') 
-        ? nodeCoordinate_rnn[i][0].x + nodeLength / 2
-        : nodeCoordinate_rnn[i][0].x + embeddingLen / 2;
-      let y = svgPaddings.top / 2 - 4 ;
+        ? nodeCoordinate[i][0].x + nodeLength / 2
+        : nodeCoordinate[i][0].x + embeddingLen / 2;
+      let y = labelY;
       return `translate(${x}, ${y})`;
     })
     .style('cursor', d => d.name.includes('dense') ? 'default' : 'help')
@@ -488,9 +490,9 @@ const addLabels = ()=> {
     .classed('hidden', detailedMode_rnn)
     .attr('transform', (d, i) => {
       let x = !d.name.includes('embedding') 
-        ? nodeCoordinate_rnn[i][0].x + nodeLength / 2
-        : nodeCoordinate_rnn[i][0].x + embeddingLen / 2;
-      let y = svgPaddings.top / 2 - 6 ;
+        ? nodeCoordinate[i][0].x + nodeLength / 2
+        : nodeCoordinate[i][0].x + embeddingLen / 2;
+      let y = labelY ;
       return `translate(${x}, ${y})`;
     })
     .style('cursor', d => d.name.includes('dense') ? 'default' : 'help')
@@ -537,14 +539,14 @@ const addLegends = () => {
 
   // same as input nodes
   let legendHeight = inputNodeHeight;
-  // vSpaceAroundGap_rnn for each layer varies because of various number of nodes
-  let legentY = svgPaddings.top + vSpaceAroundGap_rnn 
+  // vSpaceAroundGap for each layer varies because of various number of nodes
+  legendY = svgPaddings.top + vSpaceAroundGap 
        * (rnn[rnn.length-1].length+1) + 3 * legendHeight;
 
-  // y is based on the last one of vSpaceAroundGap_rnn
+  // y is based on the last one of vSpaceAroundGap
   let legends = svg_rnn.append('g')
       .attr('class', 'color-legend')
-      .attr('transform', `translate(${0}, ${legentY})`);
+      .attr('transform', `translate(${0}, ${legendY})`);
   
   drawAllLegends(legends, legendHeight);
 }
@@ -559,7 +561,7 @@ const addEdges = (rnnGroup)=> {
     .x(d => d.x)
     .y(d => d.y);
 
-  let linkData = getLinkDataRNN(nodeCoordinate_rnn, rnn);
+  let linkData = getLinkDataRNN(nodeCoordinate, rnn);
   // console.log('linkData is: ', linkData);
   let edgeGroup = rnnGroup.append('g')
     .attr('class', 'edge-group');
@@ -593,7 +595,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
   .attr('width', nodeLength)
   .attr('height', inputNodeHeight)
   .attr('x', left)
-  .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+  .attr('y', (d, i) => nodeCoordinate[l][i].y)
 
   nodeGroups.append('rect')
     .attr('class', 'input-rect')
@@ -601,7 +603,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
     .attr('width', nodeLength)
     .attr('height', inputNodeHeight)
     .attr('x', left)
-    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+    .attr('y', (d, i) => nodeCoordinate[l][i].y)
     .style('fill', 'none')
     .style('stroke', 'gray')
     .style('stroke-width', 1)
@@ -611,7 +613,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
   //   .attr('class', 'input-text')
   //   .attr('x', 0)
   //   // .attr('x', svgPaddings.left/3)
-  //   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+  //   .attr('y', (d, i) => nodeCoordinate[l][i].y)
   //   .style('dominant-baseline', 'middle')
   //   .style('font-size', '6px')
   //   .style('fill', 'black')
@@ -622,7 +624,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
   nodeGroups.append('text')
     .attr('class', 'input-text-index')
     .attr('x', left - 20)
-    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y+inputNodeHeight/2)
+    .attr('y', (d, i) => nodeCoordinate[l][i].y+inputNodeHeight/2)
     .style('dominant-baseline', 'middle')
     .style('font-size', '6px')
     .style('fill', 'black')
@@ -632,7 +634,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
   nodeGroups.append('text')
     .attr('class','input-annotation')
     .attr('x', left + nodeLength/2)
-    .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y+inputNodeHeight/2)
+    .attr('y', (d, i) => nodeCoordinate[l][i].y+inputNodeHeight/2)
     .style('dominant-baseline', 'middle')
     .style('font-size', '6px')
     .style('fill', 'rgb(255,165,42)')
@@ -653,7 +655,7 @@ const initOutputLayer = (nodeGroups, left, l) => {
         nodeGroups.append('rect')
         .attr('class', 'bounding')
         .attr('x', left)
-        .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y )
+        .attr('y', (d, i) => nodeCoordinate[l][i].y )
         .attr('height', nodeHeight)
         .attr('width', nodeLength)
         .style('fill', 'none')
@@ -663,7 +665,7 @@ const initOutputLayer = (nodeGroups, left, l) => {
         nodeGroups.append('rect')
           .attr('class', 'output-rect')
           .attr('x', left)
-          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y )
+          .attr('y', (d, i) => nodeCoordinate[l][i].y )
           .attr('height', nodeHeight)
           .attr('width', nodeLength)
           .style('fill', 'gray');
@@ -672,7 +674,7 @@ const initOutputLayer = (nodeGroups, left, l) => {
         //   .attr('class', 'annotation-output')
         //   .attr('id', (d, i) => `output-prob-${i}`)
         //   .attr('x', left + nodeLength/4)
-        //   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y + nodeLength / 2)
+        //   .attr('y', (d, i) => nodeCoordinate[l][i].y + nodeLength / 2)
         //   // .style('dominant-baseline', 'middle')
         //   // .style('font-size', '11px')
         //   // .style('fill', 'black')
@@ -681,7 +683,7 @@ const initOutputLayer = (nodeGroups, left, l) => {
         nodeGroups.append('text')
           .attr('class', 'output-text-one')
           .attr('x', left-nodeLength/5)
-          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y - nodeLength / 4)
+          .attr('y', (d, i) => nodeCoordinate[l][i].y - nodeLength / 4)
           .style('dominant-baseline', 'middle')
           .style('font-size', '11px')
           .style('fill', 'black')
@@ -690,7 +692,7 @@ const initOutputLayer = (nodeGroups, left, l) => {
         nodeGroups.append('text')
           .attr('class', 'output-text-two')
           .attr('x', left+nodeLength*4/5)
-          .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y - nodeLength / 4)
+          .attr('y', (d, i) => nodeCoordinate[l][i].y - nodeLength / 4)
           .style('dominant-baseline', 'middle')
           .style('font-size', '11px')
           .style('fill', 'black')
@@ -727,7 +729,7 @@ const initMiddleLayer = (nodeGroups, left, l) => {
    .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
    .attr('height', (d, i) => d.type!=='embedding'? nodeHeight:inputNodeHeight)
    .attr('x', left)
-   .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y);
+   .attr('y', (d, i) => nodeCoordinate[l][i].y);
 
    // Add a rectangle to show the border
    nodeGroups.append('rect')
@@ -735,7 +737,7 @@ const initMiddleLayer = (nodeGroups, left, l) => {
      .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
      .attr('height', (d, i) => d.type!=='embedding'? nodeHeight:inputNodeHeight)
      .attr('x', left)
-     .attr('y', (d, i) => nodeCoordinate_rnn[l][i].y)
+     .attr('y', (d, i) => nodeCoordinate[l][i].y)
      .style('fill', 'none')
      .style('stroke', 'gray')
      .style('stroke-width', 1)
@@ -768,44 +770,45 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
   nodeMouseLeaveHandler, nodeClickHandler) => {
  
   // Draw the RNN
-  hSpaceAroundGap_rnn = calcHorSpaceGap(width);
-  hSpaceAroundGapStore_rnn.set(hSpaceAroundGap_rnn);
+  hSpaceAroundGap = calcHorSpaceGap(width);
+  hSpaceAroundGapStore_rnn.set(hSpaceAroundGap);
   
   let leftAccuumulatedSpace = 0;
-  // clear nodeCoordinate_rnn for reloading, otherwise it will push new coords into 
+  // clear nodeCoordinate for reloading, otherwise it will push new coords into 
   //existing array as well as generate blank array
-  nodeCoordinate_rnn.length=0;
+  nodeCoordinate.length=0;
   // Iterate through the rnn to draw nodes in each layer
   for (let l = 0; l < rnn.length; l++) {
 
     let curLayer = rnn[l];
     let isInput = curLayer[0].layerName === 'input';
     let isOutput = curLayer[0].layerName === 'dense_Dense1';
+    let isLstm = curLayer[0].type ==='lstm';
 
-    nodeCoordinate_rnn.push([]);
+    nodeCoordinate.push([]);
 
     // Compute the x coordinate of the whole layer
     // Output (dense) and lstm layer has long gaps
     if (isOutput || curLayer[0].type ==='lstm') {
-      leftAccuumulatedSpace += hSpaceAroundGap_rnn * gapRatio;
+      leftAccuumulatedSpace += hSpaceAroundGap * gapRatio;
     } else {
-      leftAccuumulatedSpace += hSpaceAroundGap_rnn;
+      leftAccuumulatedSpace += hSpaceAroundGap;
     }
 
     // All nodes share the same x coordiante (left in div style)
     let left = leftAccuumulatedSpace;
 
     let curLayerName = curLayer[0].layerName;
-    // vSpaceAroundGap_rnn = curLayerName !== 'input' && !curLayerName.includes('embbeding')
+    // vSpaceAroundGap = curLayerName !== 'input' && !curLayerName.includes('embbeding')
     //     ? calcVerSpaceGap(height, curLayer.length, nodeHeight) 
     //     : calcVerSpaceGap(height, curLayer.length, inputNodeHeight);
     if (curLayerName === 'input' ||curLayerName.includes('embedding')) {
-      vSpaceAroundGap_rnn =calcVerSpaceGap(height, curLayer.length, inputNodeHeight);
+      vSpaceAroundGap =calcVerSpaceGap(height, curLayer.length, inputNodeHeight);
     } else {
-      vSpaceAroundGap_rnn = calcVerSpaceGap(height, curLayer.length, nodeHeight);
+      vSpaceAroundGap = calcVerSpaceGap(height, curLayer.length, nodeHeight);
     }
 
-    vSpaceAroundGapStore_rnn.set(vSpaceAroundGap_rnn);
+    vSpaceAroundGapStore_rnn.set(vSpaceAroundGap);
 
     let layerGroup = rnnGroup.append('g')
       .attr('class', 'rnn-layer-group')
@@ -818,11 +821,12 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
       .attr('class', 'node-group')
       .style('cursor', 'pointer')
       .style('pointer-events', 'all')
-      .on('click', nodeClickHandler)
+      .on('click', isLstm? null :nodeClickHandler)
       .on('mouseover', nodeMouseOverHandler)
       .on('mouseleave', nodeMouseLeaveHandler)
       .classed('node-input', isInput)
       .classed('node-output', isOutput)
+      .classed('node-lstm', isLstm)
       .attr('id', (d, i) => {
           // Compute the coordinate
           // Not using transform on the group object because of a decade old
@@ -830,13 +834,13 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
           // https://bugs.webkit.org/show_bug.cgi?id=23113
           let top;
           if (d.type ==='input'|| d.type === 'embedding'){
-              top = i * inputNodeHeight + (i + 1) * vSpaceAroundGap_rnn;
+              top = i * inputNodeHeight + (i + 1) * vSpaceAroundGap;
             } else{
-              top = i * nodeHeight + (i + 1) * vSpaceAroundGap_rnn;
+              top = i * nodeHeight + (i + 1) * vSpaceAroundGap;
             }
 
           top += svgPaddings.top;
-          nodeCoordinate_rnn[l].push({x: left, y: top});
+          nodeCoordinate[l].push({x: left, y: top});
           return `layer-${l}-node-${i}`
         }
       );
@@ -884,8 +888,8 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
   }
 
   // Share the nodeCoordinate
-  nodeCoordinateStore_rnn.set(nodeCoordinate_rnn);
-
+  nodeCoordinateStore_rnn.set(nodeCoordinate);
+  console.log('nodeCoordinate is: ',nodeCoordinate);
   // Add layer label
   addLabels();
 
@@ -951,10 +955,10 @@ export const updateRNN = () => {
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
     let domain1 = rnnLayerRanges.local[start];
-    let range1 =  1 * embeddingLen + 0 * hSpaceAroundGap_rnn;
+    let range1 =  1 * embeddingLen + 0 * hSpaceAroundGap;
     legendUpdate(range1, domain1,'local',i , 1);
     
-    let range2 = 1 * nodeLength + 0 * hSpaceAroundGap_rnn;
+    let range2 = 1 * nodeLength + 0 * hSpaceAroundGap;
     let domain2 =  rnnLayerRanges.local[start + 1];
     legendUpdate(range2, domain2,'local',i , 2)
   }
@@ -963,8 +967,8 @@ export const updateRNN = () => {
   for (let i = 0; i < num_stack; i++){
     let start = 1 + i * num_module;
     // 1 embedding, 1 long gap and 1 lstm
-    let range = 1 * nodeLength + 1 * embeddingLen + 0 * hSpaceAroundGap_rnn +
-          1 * hSpaceAroundGap_rnn * gapRatio - 1.2;
+    let range = 1 * nodeLength + 1 * embeddingLen + 0 * hSpaceAroundGap +
+          1 * hSpaceAroundGap * gapRatio - 1.2;
     let domain = rnnLayerRanges.module[start];
     legendUpdate(range,domain,'module',i);
   }
@@ -972,8 +976,8 @@ export const updateRNN = () => {
   // Global legend
   let start = 1;
   // evething but input node, output node and 2 long gap
-  let range = (numLayers-3) * nodeLength + 1 * embeddingLen + (n_shortGaps-3) * hSpaceAroundGap_rnn 
-           + (n_longGaps-1) * hSpaceAroundGap_rnn * gapRatio - 1.2;
+  let range = (numLayers-3) * nodeLength + 1 * embeddingLen + (n_shortGaps-3) * hSpaceAroundGap 
+           + (n_longGaps-1) * hSpaceAroundGap * gapRatio - 1.2;
   let domain = rnnLayerRanges.global[start];
   legendUpdate(range, domain, 'global');
 }
