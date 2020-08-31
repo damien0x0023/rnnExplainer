@@ -4,7 +4,8 @@ import {
   svgStore_rnn, vSpaceAroundGapStore_rnn, hSpaceAroundGapStore_rnn, rnnStore,
   nodeCoordinateStore_rnn, selectedScaleLevelStore_rnn, rnnLayerRangesStore,
   rnnLayerMinMaxStore, isInSoftmaxStore_rnn, softmaxDetailViewStore_rnn,
-  hoverInfoStore_rnn, allowsSoftmaxAnimationStore_rnn, detailedModeStore_r, detailedModeStore_rnn
+  hoverInfoStore_rnn, allowsSoftmaxAnimationStore_rnn, detailedModeStore_rnn,
+  shouldIntermediateAnimateStore_rnn
 } from '../stores.js';
 import {
   getOutputKnot, getInputKnot, gappedColorScale, getMidCoords
@@ -20,6 +21,7 @@ const layerColorScales = rnnOverviewConfig.layerColorScales;
 const numLayer=rnnOverviewConfig.numLayers;
 const nodeLength = rnnOverviewConfig.nodeLength;
 const nodeHeight = rnnOverviewConfig.nodeHeight;
+const inputNodeHeight = rnnOverviewConfig.inputNodeHeight;
 const embeedingLen = rnnOverviewConfig.embedddingLength;
 const plusSymbolRadius = rnnOverviewConfig.plusSymbolRadius;
 const intermediateColor = rnnOverviewConfig.intermediateColor;
@@ -69,6 +71,11 @@ hoverInfoStore_rnn.subscribe( value => {hoverInfo = value;} )
 let detailedMode = undefined;
 detailedModeStore_rnn.subscribe( value => {detailedMode = value;} )
 
+let shouldIntermediateAnimate = undefined;
+shouldIntermediateAnimateStore_rnn.subscribe(value => {
+  shouldIntermediateAnimate = value;
+})
+
 const layerIndexDict = {
   'input': 0,
   'embedding_Embedding1': 1,
@@ -79,6 +86,19 @@ const layerIndexDict = {
 let hasInitialized = false;
 let logits = [];
 let flattenFactoredFDict = {};
+
+const animateEdge = (d, i, g, dashoffset) => {
+  let curPath = d3.select(g[i]);
+  curPath.transition()
+    .duration(60000)
+    .ease(d3.easeLinear)
+    .attr('stroke-dashoffset', dashoffset)
+    .on('end', (d, i, g) => {
+      if (shouldIntermediateAnimate) {
+        animateEdge(d, i, g, dashoffset - 2000);
+      }
+    });
+}
 
 const moveLegend = (d, i, g, moveX, duration, restore) => {
   let legend = d3.select(g[i]);
@@ -1093,7 +1113,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   console.log('intermediateX1 is: ', intermediateX1)
   let intermediateX2 = intermediateX1 + intermediateGap + pixelWidth;
   console.log('intermediateX2 is: ',intermediateX2);
-  let range = rnnLayerRanges[selectedScaleLevel][curLayerIndex - 1];
+  let preLayerRange = rnnLayerRanges[selectedScaleLevel][curLayerIndex - 1];
   let colorScale = layerColorScales.conv;
   // let flattenLength = rnn.flatten.length / rnn[1].length;
     let flattenLength = rnn.flatten.length;
@@ -1120,13 +1140,16 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   let boundingBoxLength = nodeHeight / preLayerDimension;
 
   // Compute the weight color scale
-  let flattenExtent = d3.extent(rnn.flatten.slice(flattenLength)
-    .map(d => d.outputLinks[i].weight)
-    .concat(rnn.flatten.slice(9 * flattenLength, 10 * flattenLength)
-      .map(d => d.outputLinks[i].weight)));
+  // let flattenExtent = d3.extent(rnn.flatten.slice(flattenLength)
+  //   .map(d => d.outputLinks[i].weight)
+  //   .concat(rnn.flatten.slice(9 * flattenLength, 10 * flattenLength)
+  //   .map(d => d.outputLinks[i].weight)));
 
-  let flattenRange = 2 * (Math.round(
-    Math.max(...flattenExtent.map(Math.abs)) * 1000) / 1000);
+  // let flattenRange = 2 * (Math.round(
+  //   Math.max(...flattenExtent.map(Math.abs)) * 1000) / 1000);
+
+
+  let flattenRange = rnnLayerRanges[selectedScaleLevel][curLayerIndex-1];
 
   let flattenMouseOverHandler = (d) => {
     let index = d.index;
@@ -1147,12 +1170,12 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     }
     hoverInfoStore_rnn.set(hoverInfo);
 
-    flattenLayerLeftPart.select(`#edge-flatten-${index}`)
+    flattenLayerLeftPart.select(`#edge-lstm-${index}`)
       .raise()
       .style('stroke', intermediateColor)
       .style('stroke-width', 1);
 
-    flattenLayerLeftPart.select(`#edge-flatten-${index}-output`)
+    flattenLayerLeftPart.select(`#edge-lstm-${index}-output`)
       .raise()
       .style('stroke-width', 1)
       .style('stroke', da => gappedColorScale(layerColorScales.weight,
@@ -1183,11 +1206,11 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     }
     hoverInfoStore_rnn.set(hoverInfo);
 
-    flattenLayerLeftPart.select(`#edge-flatten-${index}`)
+    flattenLayerLeftPart.select(`#edge-lstm-${index}`)
       .style('stroke-width', 0.6)
       .style('stroke', '#E5E5E5')
 
-    flattenLayerLeftPart.select(`#edge-flatten-${index}-output`)
+    flattenLayerLeftPart.select(`#edge-lstm-${index}-output`)
       .style('stroke-width', 0.6)
       .style('stroke', da => gappedColorScale(layerColorScales.weight,
         flattenRange, da.weight, 0.35));
@@ -1211,7 +1234,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
       //   .attr('width', pixelWidth)
       //   .attr('height', pixelHeight)
       //   .style('cursor', 'crosshair')
-      //   .style('fill', colorScale((rnn.flatten[factoredF].output + range / 2) / range))
+      //   .style('fill', colorScale((rnn.flatten[factoredF].output + preLayerRange / 2) / preLayerRange))
       //   .on('mouseover', () => flattenMouseOverHandler({index: factoredF}))
       //   .on('mouseleave', () => flattenMouseLeaveHandler({index: factoredF}))
       //   .on('click', () => { d3.event.stopPropagation() });
@@ -1236,7 +1259,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
       // lstm -> output
       linkData.push({
         source: {x: leftX + nodeLength + 3,
-          y: nodeCoordinate[curLayerIndex-1][f].y + nodeHeight/2},
+          y: nodeCoordinate[curLayerIndex-1][f].y + nodeHeight / 2},
         target: {x: intermediateX2,
           //nodeCoordinate[curLayerIndex][i].x - nodeLength,
           y: nodeCoordinate[curLayerIndex][i].y + nodeHeight / 2},
@@ -1323,7 +1346,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   //       middleRectHeight * vi)
   //     .attr('width', pixelWidth / 2)
   //     .attr('height', middleRectHeight)
-  //     // .style('fill', colorScale((v.output + range / 2) / range));
+  //     // .style('fill', colorScale((v.output + preLayerRange / 2) / preLayerRange));
   //     .style('fill', '#E5E5E5');
     
   //   // Add a triangle next to the input node
@@ -1410,7 +1433,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   // Add bias symbol to the plus symbol
   symbolGroup.append('circle')
     .attr('cx', 0)
-    .attr('cy', -nodeHeight / 2 - 0.5 * kernelRectLength)
+    .attr('cy', -nodeLength / 2 - 0.5 * kernelRectLength)
     .attr('r', kernelRectLength * 1.5)
     .style('stroke', intermediateColor)
     .style('cursor', 'crosshair')
@@ -1428,7 +1451,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   symbolGroup.append('path')
     .attr('d', linkGen({
       source: { x: 0, y: 0 },
-      target: { x: 0, y: -nodeHeight / 2 - 0.5 * kernelRectLength }
+      target: { x: 0, y: -nodeLength / 2 - 0.5 * kernelRectLength }
     }))
     .attr('id', 'bias-plus')
     .attr('stroke-width', 1.2)
@@ -1438,9 +1461,9 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   // Link from the plus symbol to the output
   linkData.push({
     source: getOutputKnot({x: intermediateX2 + 2 * plusSymbolRadius - nodeLength,
-      y: nodeCoordinate[curLayerIndex][i].y}),
+      y: nodeCoordinate[curLayerIndex][i].y- nodeLength/2 +nodeHeight/2}),
     target: getInputKnot({x: nodeCoordinate[curLayerIndex][i].x - 3,
-      y: nodeCoordinate[curLayerIndex][i].y}),
+      y: nodeCoordinate[curLayerIndex][i].y - nodeLength/2 +nodeHeight/2}),
     name: `symbol-output`,
     width: 1.2,
     color: '#E5E5E5'
@@ -1453,7 +1476,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   let symbolEndX = intermediateX2 + plusSymbolRadius * 2;
   let softmaxX = emptySpace + symbolEndX;
   let softmaxLeftMid = emptySpace / 2 + symbolEndX;
-  let softmaxTextY = nodeCoordinate[curLayerIndex][i].y - 2 * kernelRectLength - 6;
+  let softmaxTextY = nodeCoordinate[curLayerIndex][i].y - 2 * kernelRectLength - 2 * nodeHeight;
   let moveX = (intermediateX2 - (intermediateX1 + pixelWidth + 3)) * 2 / 3;
 
   let softmaxArg = {
@@ -1503,40 +1526,42 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .style('dominant-baseline', 'middle')
     .style('font-size', '12px')
     .style('opacity', 0.5)
-    .text('softmax');
+    .text('Sigmoid');
 
-  // Draw the layer label
-  let layerLabel = intermediateLayer.append('g')
-    .attr('class', 'layer-label')
-    .classed('hidden', detailedMode)
-    .attr('transform', () => {
-      let x = leftX + nodeLength + (4 * hSpaceAroundGap * gapRatio +
-        pixelWidth) / 2;
-      let y = (svgPaddings.top + vSpaceAroundGap) / 2 + 5;
-      return `translate(${x}, ${y})`;
-    })
-    .style('cursor', 'help')
-    .on('click', () => {
-      d3.event.stopPropagation();
-      // Scroll to the article element
-      document.querySelector(`#article-flatten`).scrollIntoView({ 
-        behavior: 'smooth' 
-      });
-    });
+  // // Draw the layer label
+  // let layerLabel = intermediateLayer.append('g')
+  //   .attr('class', 'layer-label')
+  //   .classed('hidden', detailedMode)
+  //   .attr('transform', () => {
+  //     let x = leftX + nodeLength + (4 * hSpaceAroundGap * gapRatio +
+  //       pixelWidth) / 2;
+  //     let y = (svgPaddings.top + vSpaceAroundGap) / 2 + 5;
+  //     return `translate(${x}, ${y})`;
+  //   })
+  //   .style('cursor', 'help')
+  //   .on('click', () => {
+  //     d3.event.stopPropagation();
+  //     // Scroll to the article element
+  //     document.querySelector(`#article-flatten`).scrollIntoView({ 
+  //       behavior: 'smooth' 
+  //     });
+  //   });
   
-  layerLabel.append('text')
-    .style('dominant-baseline', 'middle')
-    .style('opacity', 0.8)
-    .style('font-weight', 800)
-    .text('flatten');
+  // layerLabel.append('text')
+  //   .style('dominant-baseline', 'middle')
+  //   .style('opacity', 0.8)
+  //   .style('font-weight', 800)
+  //   .text('flatten');
 
   let svgHeight = Number(d3.select('#rnn-svg').style('height').replace('px', '')) + 150;
   let scroll = new SmoothScroll('a[href*="#"]', {offset: -svgHeight});
     
   let detailedLabelGroup = intermediateLayer.append('g')
     .attr('transform', () => {
-      let x = leftX + nodeLength + (4 * hSpaceAroundGap * gapRatio + pixelWidth) / 2;
-      let y = (svgPaddings.top + vSpaceAroundGap) / 2 - 5;
+      // let x = leftX + nodeLength + (4 * hSpaceAroundGap * gapRatio + pixelWidth) / 2;
+      let x = softmaxX;
+      // let y = (svgPaddings.top + vSpaceAroundGap) / 2 - 5;
+      let y =svgPaddings.top / 2 - 4 ;
       return `translate(${x}, ${y})`;
     })
     .attr('class', 'layer-detailed-label')
@@ -1558,12 +1583,12 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .style('opacity', '0.7')
     .style('font-weight', 800)
     .append('tspan')
-    .text('flatten');
+    .text('Activation');
   
   // let dimension = rnn[layerIndexDict['max_pool_2']].length * 
   //   rnn[layerIndexDict['max_pool_2']][0].output.length *
   //   rnn[layerIndexDict['max_pool_2']][0].output[0].length;
-  let dimension = rnn[layerIndexDict['lstm_LSTM1']].length;
+  let dimension = 1;
 
   detailedLabelText.append('tspan')
     .attr('x', 0)
@@ -1577,55 +1602,65 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .attr('class', 'edge-group')
     .lower();
   
+  let dashoffset = 0;
+  
   edgeGroup.selectAll('path')
     .data(linkData)
     .enter()
     .append('path')
     .attr('class', d => d.class)
+    .classed('flow-edge', d=>d.name !== 'output-next')
     .attr('id', d => `edge-${d.name}`)
     .attr('d', d => linkGen({source: d.source, target: d.target}))
     .style('fill', 'none')
     .style('stroke-width', d => d.width)
     .style('stroke', d => d.color === undefined ? intermediateColor : d.color)
     .style('opacity', d => d.opacity);
+
+  edgeGroup.selectAll('path.flow-edge')
+    .attr('stroke-dasharray', '4 2')
+    .attr('stroke-dashoffset', 0)
+    .each((d, i, g) => animateEdge(d, i, g, dashoffset - 1000));
   
   edgeGroup.selectAll('path.flatten-abstract-output')
     .lower();
 
-  edgeGroup.selectAll('path.flatten,path.flatten-output')
+  edgeGroup.selectAll('path.flatten,path.lstm-output')
     .style('cursor', 'crosshair')
     .style('pointer-events', 'all')
     .on('mouseover', flattenMouseOverHandler)
     .on('mouseleave', flattenMouseLeaveHandler)
     .on('click', () => { d3.event.stopPropagation() });
   
+  // vSpaceAroundGap for each layer varies because of various number of nodes
+  let legentY = svgPaddings.top + vSpaceAroundGap 
+    * (rnn[rnn.length-1].length+1) + 3 * inputNodeHeight;
   // // Add legend
   // drawIntermediateLayerLegend({
   //   legendHeight: 5,
   //   curLayerIndex: curLayerIndex,
-  //   range: range,
-  //   minMax: rnnLayerMinMax[10],
+  //   range: preLayerRange,
+  //   minMax: rnnLayerMinMax[2],
   //   group: intermediateLayer,
   //   width: intermediateGap + nodeLength - 3,
   //   x: leftX,
-  //   y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
-  //     nodeHeight * 32
+  //   y: legentY
   // });
 
-  // drawIntermediateLayerLegend({
-  //   legendHeight: 5,
-  //   curLayerIndex: curLayerIndex,
-  //   range: flattenRange,
-  //   minMax: {min: flattenExtent[0], max: flattenExtent[1]},
-  //   group: intermediateLayer,
-  //   width: intermediateGap - 3 - 5,
-  //   gradientAppendingName: 'flatten-weight-gradient',
-  //   gradientGap: 0.1,
-  //   colorScale: layerColorScales.weight,
-  //   x: leftX + intermediateGap + nodeLength + pixelWidth + 3,
-  //   y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
-  //     nodeHeight * 32
-  // });
+  drawIntermediateLayerLegend({
+    legendHeight: 5,
+    curLayerIndex: curLayerIndex,
+    range: flattenRange,
+    minMax: rnnLayerMinMax[curLayerIndex-1],
+    group: intermediateLayer,
+    width: intermediateX2-intermediateX1,
+    gradientAppendingName: 'lstm-weight-gradient',
+    gradientGap: 0.1,
+    colorScale: layerColorScales.weight,
+    // x: leftX + intermediateGap + nodeLength + pixelWidth + 3,
+    x:leftX,
+    y: legentY
+  });
 
   // Add annotation to the intermediate layer
   let intermediateLayerAnnotation = svg.append('g')
@@ -1642,7 +1677,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     kernelRectLength * 3;
   let arrowSY = nodeCoordinate[curLayerIndex][i].y + nodeLength +
     kernelRectLength * 2;
-  let arrowTY = nodeCoordinate[curLayerIndex][i].y + nodeLength / 2 +
+  let arrowTY = nodeCoordinate[curLayerIndex][i].y + nodeHeight / 2 +
     plusSymbolRadius;
 
   if (i == 9) {
@@ -1709,7 +1744,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   });
 
   // Add annotation for the bias
-  let biasTextY = nodeCoordinate[curLayerIndex][i].y;
+  let biasTextY = symbolY -nodeLength / 2 - kernelRectLength;
   biasTextY -= 2 * kernelRectLength + 4;
   
   flattenLayerLeftPart.append('text')
@@ -1747,89 +1782,89 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     hFlip: true
   });
 
-  // Add annotation for the flatten layer
-  let flattenAnnotation = intermediateLayerAnnotation.append('g')
-    .attr('class', 'flatten-annotation');
+  // // Add annotation for the flatten layer
+  // let flattenAnnotation = intermediateLayerAnnotation.append('g')
+  //   .attr('class', 'flatten-annotation');
   
-  textX = leftX - 80;
-  textY = nodeCoordinate[curLayerIndex - 1][0].y;
+  // textX = leftX - 80;
+  // textY = nodeCoordinate[curLayerIndex - 1][0].y;
 
-  let flattenText = flattenAnnotation.append('text')
-    .attr('x', textX)
-    .attr('y', textY)
-    .attr('class', 'annotation-text')
-    .style('dominant-baseline', 'hanging')
-    .style('text-anchor', 'middle');
+  // let flattenText = flattenAnnotation.append('text')
+  //   .attr('x', textX)
+  //   .attr('y', textY)
+  //   .attr('class', 'annotation-text')
+  //   .style('dominant-baseline', 'hanging')
+  //   .style('text-anchor', 'middle');
 
-  let tempTspan = flattenText.append('tspan')
-    .style('dominant-baseline', 'hanging')
-    .style('font-weight', 700)
-    .text('Hover over ');
+  // let tempTspan = flattenText.append('tspan')
+  //   .style('dominant-baseline', 'hanging')
+  //   .style('font-weight', 700)
+  //   .text('Hover over ');
   
-  tempTspan.append('tspan')
-    .attr('dx', 1)
-    .style('font-weight', 400)
-    .style('dominant-baseline', 'hanging')
-    .text('matrix to');
+  // tempTspan.append('tspan')
+  //   .attr('dx', 1)
+  //   .style('font-weight', 400)
+  //   .style('dominant-baseline', 'hanging')
+  //   .text('matrix to');
   
-  flattenText.append('tspan')
-    .style('dominant-baseline', 'hanging')
-    .attr('x', textX)
-    .attr('dy', '1em')
-    .text('see how it is flattened');
+  // flattenText.append('tspan')
+  //   .style('dominant-baseline', 'hanging')
+  //   .attr('x', textX)
+  //   .attr('dy', '1em')
+  //   .text('see how it is flattened');
   
-  flattenText.append('tspan')
-    .style('dominant-baseline', 'hanging')
-    .attr('x', textX)
-    .attr('dy', '1em')
-    .text('into a 1D array!');
+  // flattenText.append('tspan')
+  //   .style('dominant-baseline', 'hanging')
+  //   .attr('x', textX)
+  //   .attr('dy', '1em')
+  //   .text('into a 1D array!');
 
-  drawArrow({
-    group: flattenAnnotation,
-    sx: textX + 45,
-    sy: textY + nodeLength * 0.4 + 12,
-    tx: leftX - 10,
-    ty: textY + nodeLength / 2,
-    dr: 80,
-    hFlip: true
-  });
+  // drawArrow({
+  //   group: flattenAnnotation,
+  //   sx: textX + 45,
+  //   sy: textY + nodeLength * 0.4 + 12,
+  //   tx: leftX - 10,
+  //   ty: textY + nodeLength / 2,
+  //   dr: 80,
+  //   hFlip: true
+  // });
 
-  // Add annotation to explain the middle images
-  textY = nodeCoordinate[curLayerIndex - 1][1].y;
+  // // Add annotation to explain the middle images
+  // textY = nodeCoordinate[curLayerIndex - 1][1].y;
 
-  let middleText = flattenAnnotation.append('text')
-    .attr('x', textX)
-    .attr('y', textY)
-    .attr('class', 'annotation-text')
-    .style('dominant-baseline', 'hanging')
-    .style('text-anchor', 'middle');
+  // let middleText = flattenAnnotation.append('text')
+  //   .attr('x', textX)
+  //   .attr('y', textY)
+  //   .attr('class', 'annotation-text')
+  //   .style('dominant-baseline', 'hanging')
+  //   .style('text-anchor', 'middle');
 
-  middleText.append('tspan')
-    .style('dominant-baseline', 'hanging')
-    .text('Same flattening');
+  // middleText.append('tspan')
+  //   .style('dominant-baseline', 'hanging')
+  //   .text('Same flattening');
   
-  middleText.append('tspan')
-    .style('dominant-baseline', 'hanging')
-    .attr('x', textX)
-    .attr('dy', '1em')
-    .text('operation for');
+  // middleText.append('tspan')
+  //   .style('dominant-baseline', 'hanging')
+  //   .attr('x', textX)
+  //   .attr('dy', '1em')
+  //   .text('operation for');
 
-  middleText.append('tspan')
-    .style('dominant-baseline', 'hanging')
-    .attr('x', textX)
-    .attr('dy', '1em')
-    .text('each neuron');
+  // middleText.append('tspan')
+  //   .style('dominant-baseline', 'hanging')
+  //   .attr('x', textX)
+  //   .attr('dy', '1em')
+  //   .text('each neuron');
 
-  drawArrow({
-    group: flattenAnnotation,
-    sx: textX + 39,
-    sy: textY + 25,
-    tx: leftX - 10,
-    ty: textY + nodeLength / 2 - 2,
-    dr: 80,
-    hFlip: true,
-    marker: 'marker-alt'
-  });
+  // drawArrow({
+  //   group: flattenAnnotation,
+  //   sx: textX + 39,
+  //   sy: textY + 25,
+  //   tx: leftX - 10,
+  //   ty: textY + nodeLength / 2 - 2,
+  //   dr: 80,
+  //   hFlip: true,
+  //   marker: 'marker-alt'
+  // });
 
 
   // Add annotation for the output neuron
@@ -1838,7 +1873,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   
   outputAnnotation.append('text')
     .attr('x', nodeCoordinate[layerIndexDict['dense_Dense1']][i].x)
-    .attr('y', nodeCoordinate[layerIndexDict['dense_Dense1']][i].y + 10)
+    .attr('y', nodeCoordinate[layerIndexDict['dense_Dense1']][i].y-nodeHeight)
     .attr('class', 'annotation-text')
     .text(`(${d3.format('.4f')(rnn[layerIndexDict['dense_Dense1']][i].output)})`);
 
