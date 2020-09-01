@@ -248,7 +248,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
     } else if (layer.name.includes('lstm')) {
       curLayerType = nodeType.LSTM;
     } else if (layer.name.includes('dense')) {
-      curLayerType = nodeType.DENSE;
+      curLayerType = nodeType.DENSE; // or FC(fullyConnect)
     } else {
       console.log('Find unknown type');
     }
@@ -403,9 +403,55 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
         break;
       }
       case nodeType.LSTM: {
+        /**
+       * Long-Short Term Memory layer - Hochreiter 1997.
+       * This is an `RNN` layer consisting of one `LSTMCell`. It operates on a 
+       * sequence of inputs. The shape of the input (not including the first,
+       * batch dimension) needs to be at least 2-D, with the first dimension being
+       * time steps. For example:
+       *
+       * ```js
+       * const lstm = tf.layers.lstm({units: 8, returnSequences: true});
+       *
+       * // Create an input with 10 time steps.
+       * const input = tf.input({shape: [10, 20]});
+       * const output = lstm.apply(input);
+       *
+       * console.log(JSON.stringify(output.shape));
+       * // [null, 10, 8]: 1st dimension is unknown batch size; 2nd dimension is the
+       * // same as the sequence length of `input`, due to `returnSequences`: `true`;
+       * // 3rd dimension is the `LSTMCell`'s number of units. 
+       * 
+       *    tf.layers.lstm({units: 32})
+       * In our project , the time steps are 100 as there are 100 words in a review, 
+       * but the setting for units is 32 without returnSequences, so it only returns 
+       * the output of last time step. [null,null,32] => 32. 
+       *   kernel: (input_dim, unit * 4)
+       *   recurrent_kernel: (unit, unit * 4)
+       *   bias: (unit * 4)
+       * In the cell of lstm, the hidden size (unit) is 32 and the input_dim is 64, 
+       * the magic number 4 is due to  forget, input, candidate and output gates.
+       * There will be 64 * 32 * 4 +32 * 32 * 4+ 32 * 4 hyperparameters. 
+       * 
+       * According code review of keras.layers.recurrent.py
+       * https://github.com/tensorflow/tensorflow/blob/c7933ce9f3f25e592bef5f9a243ac72c5fd76cd1/tensorflow/python/keras/layers/recurrent.py#L1583
+       * the first [0: 1* self.units(32)] elements in recurrent_kernel are weights for input gate,
+       * the second [32:64] are weights for forget gate,
+       * [64:96] for candidate gate and [96:128] for output gate.
+       * The biases and weights in kernel follow the same order.
+       * The recurrent_kernel provides weights to calculate and deliver the long term 
+       * memory (c) and short term memory(h or o). The kernel keep the weights for the 
+       * calculation with new input.
+       */
+
+       // 
         let biases = layer.cell.bias.val.arraySync();
-        // New order is [output_depth, input_depth]
+        let splitedBiases = tf.split(biases,4)
+        // New order is [units*4, input_dim]
         let weights = layer.cell.kernel.val.transpose([1, 0]).arraySync();
+        // There is only one node here and the output is just for the last time step, 
+        // so we cannot use outputs directly.
+
         
         //add nodes into this layer
         for (let i=0; i < outputs.length; i++){
