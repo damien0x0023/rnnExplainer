@@ -8,7 +8,7 @@ const embeddingLen = rnnOverviewConfig.embedddingLength;
 
 /**
  * Compute the [minimum, maximum] of a 1D or 2D array.
- * @param {[number]} array 
+ * @param {[number] or number} array or number
  */
 export  const getExtent = (array) => {
   let min = Infinity;

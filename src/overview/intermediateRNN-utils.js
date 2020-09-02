@@ -6,16 +6,17 @@ import { rnnOverviewConfig } from '../config.js';
 // Configs
 const layerColorScales = rnnOverviewConfig.layerColorScales;
 const nodeLength = rnnOverviewConfig.nodeLength;
-const embeddingNodeLen = rnnOverviewConfig.embedddingLength;
+const embeddingLen = rnnOverviewConfig.embedddingLength;
 const intermediateColor = rnnOverviewConfig.intermediateColor;
 const svgPaddings = rnnOverviewConfig.svgPaddings;
 
 // Shared variables
 let svg_rnn = undefined;
+let labelY = svgPaddings.top / 2 - 4 ;
 svgStore_rnn.subscribe( value => {svg_rnn = value;} )
 
-let vSpaceAroundGap_rnn = undefined;
-vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap_rnn = value;} )
+let vSpaceAroundGap = undefined;
+vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap = value;} )
 
 /**
  * Move one layer horizontally
@@ -76,9 +77,9 @@ export const moveLayerX = (arg) => {
     .delay(delay)
     .duration(duration)
     .attr('transform', (d,i) => {
-      let x = d.type !=='embedding' ? targetX + nodeLength / 2:targetX + embeddingNodeLen;
-      // let y = (svgPaddings.top + vSpaceAroundGap_rnn) / 2 + 5;
-      let y = svgPaddings.top / 2 - 4 ;
+      let x = d.type !=='embedding' ? targetX + nodeLength / 2 :targetX + embeddingLen /2;
+      // let y = (svgPaddings.top + vSpaceAroundGap) / 2 + 5;
+      let y = labelY;
       return `translate(${x}, ${y})`;
     })
     .on('end', onEndFunc);
@@ -89,9 +90,9 @@ export const moveLayerX = (arg) => {
     .delay(delay)
     .duration(duration)
     .attr('transform', (d,i) => {
-      let x = d.type !=='embedding' ? targetX + nodeLength / 2:targetX + embeddingNodeLen;
-      // let y = (svgPaddings.top + vSpaceAroundGap_rnn) / 2 - 6;
-      let y = svgPaddings.top / 2 - 4 ;
+      let x = d.type !=='embedding' ? targetX + nodeLength / 2 :targetX + embeddingLen/2;
+      // let y = (svgPaddings.top + vSpaceAroundGap) / 2 - 6;
+      let y = labelY;
       return `translate(${x}, ${y})`;
     })
     .on('end', onEndFunc);

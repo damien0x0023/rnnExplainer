@@ -22,6 +22,9 @@ import { rnnOverviewConfig } from '../config.js';
 // Configs
 const layerColorScales = rnnOverviewConfig.layerColorScales;
 const nodeLength = rnnOverviewConfig.nodeLength;
+const nodeHeight = rnnOverviewConfig.nodeHeight;
+const embeddingNodeLength = rnnOverviewConfig.embedddingLength;
+const embeddingNodeHeight = rnnOverviewConfig.embeddingNodeHeight;
 const plusSymbolRadius = rnnOverviewConfig.plusSymbolRadius;
 const numLayers = rnnOverviewConfig.numLayers;
 const intermediateColor = rnnOverviewConfig.intermediateColor;
@@ -32,21 +35,23 @@ const overlayRectOffset = rnnOverviewConfig.overlayRectOffset;
 const formater = d3.format('.4f');
 let isEndOfAnimation = false;
 
+let legendY;
+
 // Shared variables
-let svg_rnn = undefined;
-svgStore_rnn.subscribe( value => {svg_rnn = value;} )
+let svg = undefined;
+svgStore_rnn.subscribe( value => {svg = value;} )
 
-let vSpaceAroundGap_rnn = undefined;
-vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap_rnn = value;} )
+let vSpaceAroundGap = undefined;
+vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap = value;} )
 
-let hSpaceAroundGap_rnn = undefined;
-hSpaceAroundGapStore_rnn.subscribe( value => {hSpaceAroundGap_rnn = value;} )
+let hSpaceAroundGap = undefined;
+hSpaceAroundGapStore_rnn.subscribe( value => {hSpaceAroundGap = value;} )
 
 let rnn = undefined;
 rnnStore.subscribe( value => {rnn = value;} )
 
-let nodeCoordinate_rnn = undefined;
-nodeCoordinateStore_rnn.subscribe( value => {nodeCoordinate_rnn = value;} )
+let nodeCoordinate = undefined;
+nodeCoordinateStore_rnn.subscribe( value => {nodeCoordinate = value;} )
 
 let selectedScaleLevel = undefined;
 selectedScaleLevelStore_rnn.subscribe( value => {selectedScaleLevel = value;} )
@@ -207,7 +212,7 @@ const startOutputAnimation = (kernelGroup, tickTime1D, stride, delay,
     let newTick = (oldTick + 1) % (tickTime1D * tickTime1D);
 
     // Remove one mask rect at each tick
-    svg_rnn.selectAll(`rect.mask-${i}-${j}`)
+    svg.selectAll(`rect.mask-${i}-${j}`)
       .transition('window-sliding-mask')
       .delay(delay + 100)
       .duration(300)
@@ -259,7 +264,7 @@ const startIntermediateAnimation = (kernelGroupInput, kernelGroupResult,
     let newTick = (oldTick + 1) % (tickTime1D * tickTime1D);
 
     // Remove one mask rect at each tick
-    svg_rnn.selectAll(`rect.mask-${i}-${j}`)
+    svg.selectAll(`rect.mask-${i}-${j}`)
       .transition('window-sliding-mask')
       .delay(delay + 100)
       .duration(300)
@@ -308,19 +313,19 @@ const animationButtonClicked = (curLayerIndex) => {
     shouldIntermediateAnimateStore.set(true);
 
     // Show kernel
-    svg_rnn.selectAll('.kernel-clone')
+    svg.selectAll('.kernel-clone')
       .transition()
       .duration(300)
       .style('opacity', 1)
 
     // Restore the mask
-    svg_rnn.selectAll(`rect.mask-overlay`)
+    svg.selectAll(`rect.mask-overlay`)
       .transition()
       .duration(300)
       .style('opacity', 1);
 
     // Start the intermediate animation
-    for (let i  = 0; i < nodeCoordinate_rnn[curLayerIndex - 1].length; i++) {
+    for (let i  = 0; i < nodeCoordinate[curLayerIndex - 1].length; i++) {
       startIntermediateAnimation(d3.select(`.kernel-input-${i}`),
         d3.select(`.kernel-result-${i}`), tickTime1D, stride);
     }
@@ -330,14 +335,14 @@ const animationButtonClicked = (curLayerIndex) => {
       tickTime1D, stride, delay, curLayerIndex);
     
     // Change the flow edge style
-    svg_rnn.selectAll('path.flow-edge')
+    svg.selectAll('path.flow-edge')
       .attr('stroke-dasharray', '4 2')
       .attr('stroke-dashoffset', 0)
       .each((d, i, g) => animateEdge(d, i, g, 0 - 1000));
 
     // Change button icon
-    svg_rnn.select('.animation-control-button')
-      .attr('xlink:href', 'PUBLIC_URL/assets/img/fast_forward.svg_rnn');
+    svg.select('.animation-control-button')
+      .attr('xlink:href', 'PUBLIC_URL/assets/img/fast_forward.svg');
     
     isEndOfAnimation = false;
 
@@ -346,13 +351,13 @@ const animationButtonClicked = (curLayerIndex) => {
     shouldIntermediateAnimateStore.set(false);
     
     // Show all intermediate and output results
-    svg_rnn.selectAll(`rect.mask-overlay`)
+    svg.selectAll(`rect.mask-overlay`)
       .transition('skip')
       .duration(600)
       .style('opacity', 0);
     
     // Move kernel to the beginning to prepare for the next animation
-    let kernelClones = svg_rnn.selectAll('.kernel-clone');
+    let kernelClones = svg.selectAll('.kernel-clone');
     kernelClones.attr('data-tick', 0)
       .transition('skip')
       .duration(300)
@@ -365,12 +370,12 @@ const animationButtonClicked = (curLayerIndex) => {
       });
     
     // Change flow edge style
-    svg_rnn.selectAll('path.flow-edge')
+    svg.selectAll('path.flow-edge')
       .interrupt()
       .attr('stroke-dasharray', '0 0');
     
     // Change button icon
-    svg_rnn.select('.animation-control-button')
+    svg.select('.animation-control-button')
       .attr('xlink:href', 'PUBLIC_URL/assets/img/redo.svg');
     
     isEndOfAnimation = true;
@@ -410,7 +415,7 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
   // curRightX = rightStart;
 
   // Add the intermediate layer
-  let intermediateLayer = svg_rnn.append('g')
+  let intermediateLayer = svg.append('g')
     .attr('class', 'intermediate-layer')
     .style('opacity', 0);
   
@@ -453,8 +458,8 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
   let stride = kernelRectLength * 3; 
 
   // Also add the overlay mask on the output node
-  let outputY = nodeCoordinate_rnn[curLayerIndex][i].y;
-  let curNode = svg_rnn.select(`#layer-${curLayerIndex}-node-${i}`);
+  let outputY = nodeCoordinate[curLayerIndex][i].y;
+  let curNode = svg.select(`#layer-${curLayerIndex}-node-${i}`);
   let outputOverlayGroup = curNode.append('g')
     .attr('class', 'overlay-group')
     .attr('transform', `translate(${rightX}, ${outputY})`);
@@ -501,7 +506,7 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
   startOutputAnimation(kernelGroup, tickTime1D, stride, delay, curLayerIndex);
 
   // First intermediate layer
-  nodeCoordinate_rnn[curLayerIndex - 1].forEach((n, ni) => {
+  nodeCoordinate[curLayerIndex - 1].forEach((n, ni) => {
 
     // Compute the intermediate value
     let inputMatrix = rnn[curLayerIndex - 1][ni].output;
@@ -535,7 +540,7 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
     linkData.push({
       source: getOutputKnot({x: intermediateX1, y: n.y}),
       target: getInputKnot({x: intermediateX2,
-        y: nodeCoordinate_rnn[curLayerIndex][i].y}),
+        y: nodeCoordinate[curLayerIndex][i].y}),
       name: `inter1-${ni}-inter2-1`
     });
 
@@ -630,7 +635,7 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
   let aggregatedMinMax = {min: aggregatedExtent[0], max: aggregatedExtent[1]};
 
   // Draw the plus operation symbol
-  let symbolY = nodeCoordinate_rnn[curLayerIndex][i].y + nodeLength / 2;
+  let symbolY = nodeCoordinate[curLayerIndex][i].y + nodeLength / 2;
   let symbolRectHeight = 1;
   let symbolGroup = intermediateLayer.append('g')
     .attr('class', 'plus-symbol')
@@ -682,9 +687,9 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
     // Link from bias to the plus symbol
     linkData.push({
       source: {x: intermediateX2 + plusSymbolRadius,
-        y: nodeCoordinate_rnn[curLayerIndex][i].y + nodeLength},
+        y: nodeCoordinate[curLayerIndex][i].y + nodeLength},
       target: {x: intermediateX2 + plusSymbolRadius,
-        y: nodeCoordinate_rnn[curLayerIndex][i].y + nodeLength / 2 + plusSymbolRadius},
+        y: nodeCoordinate[curLayerIndex][i].y + nodeLength / 2 + plusSymbolRadius},
       name: `bias-plus`
     });
   } else {
@@ -707,9 +712,9 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
     // Link from bias to the plus symbol
     linkData.push({
       source: {x: intermediateX2 + plusSymbolRadius,
-        y: nodeCoordinate_rnn[curLayerIndex][i].y},
+        y: nodeCoordinate[curLayerIndex][i].y},
       target: {x: intermediateX2 + plusSymbolRadius,
-        y: nodeCoordinate_rnn[curLayerIndex][i].y + nodeLength / 2 - plusSymbolRadius},
+        y: nodeCoordinate[curLayerIndex][i].y + nodeLength / 2 - plusSymbolRadius},
       name: `bias-plus`
     });
   }
@@ -717,18 +722,18 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
   // Link from the plus symbol to the output
   linkData.push({
     source: getOutputKnot({x: intermediateX2 + 2 * plusSymbolRadius - nodeLength,
-      y: nodeCoordinate_rnn[curLayerIndex][i].y}),
+      y: nodeCoordinate[curLayerIndex][i].y}),
     target: getInputKnot({x: rightX,
-      y: nodeCoordinate_rnn[curLayerIndex][i].y}),
+      y: nodeCoordinate[curLayerIndex][i].y}),
     name: `symbol-output`
   });
   
   // Output -> next layer
   linkData.push({
     source: getOutputKnot({x: rightX,
-      y: nodeCoordinate_rnn[curLayerIndex][i].y}),
+      y: nodeCoordinate[curLayerIndex][i].y}),
     target: getInputKnot({x: rightStart,
-      y: nodeCoordinate_rnn[curLayerIndex][i].y}),
+      y: nodeCoordinate[curLayerIndex][i].y}),
     name: `output-next`
   });
 
@@ -737,7 +742,7 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
     .attr('class', 'layer-intermediate-label layer-label')
     .attr('transform', () => {
       let x = intermediateX1 + nodeLength / 2;
-      let y = (svgPaddings.top + vSpaceAroundGap_rnn) / 2 + 5;
+      let y = (svgPaddings.top + vSpaceAroundGap) / 2 + 5;
       return `translate(${x}, ${y})`;
     })
     .classed('hidden', detailedMode)
@@ -752,7 +757,7 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
     .attr('class', 'animation-control')
     .attr('transform', () => {
       let x = intermediateX1 + nodeLength / 2;
-      let y = (svgPaddings.top + vSpaceAroundGap_rnn) / 2 - 4;
+      let y = (svgPaddings.top + vSpaceAroundGap) / 2 - 4;
       return `translate(${x}, ${y})`;
     })
     .on('click', () => animationButtonClicked(curLayerIndex))
@@ -769,7 +774,7 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
     .attr('class', 'layer-intermediate-label layer-detailed-label')
     .attr('transform', () => {
       let x = intermediateX1 + nodeLength / 2;
-      let y = (svgPaddings.top + vSpaceAroundGap_rnn) / 2 - 5;
+      let y = (svgPaddings.top + vSpaceAroundGap) / 2 - 5;
       return `translate(${x}, ${y})`;
     })
     .classed('hidden', !detailedMode)
@@ -851,7 +856,7 @@ const drawIntermediateLayerAnnotation = (arg) => {
     .text('Kernel')
     .attr('class', 'annotation-text')
     .attr('x', leftX - 2.5 * kernelRectLength * 3)
-    .attr('y', nodeCoordinate_rnn[curLayerIndex - 1][0].y + kernelRectLength * 3)
+    .attr('y', nodeCoordinate[curLayerIndex - 1][0].y + kernelRectLength * 3)
     .style('dominant-baseline', 'baseline')
     .style('text-anchor', 'end');
 
@@ -860,34 +865,34 @@ const drawIntermediateLayerAnnotation = (arg) => {
   
   if (isFirstConv) {
     sliderX = leftX;
-    sliderY = nodeCoordinate_rnn[curLayerIndex - 1][0].y + nodeLength +
+    sliderY = nodeCoordinate[curLayerIndex - 1][0].y + nodeLength +
       kernelRectLength * 3;
     arrowSX = leftX - 5;
-    arrowSY = nodeCoordinate_rnn[curLayerIndex - 1][0].y + nodeLength +
+    arrowSY = nodeCoordinate[curLayerIndex - 1][0].y + nodeLength +
       kernelRectLength * 3 + 5;
     dr = 20;
 
     sliderX2 = leftX;
-      sliderY2 = nodeCoordinate_rnn[curLayerIndex - 1][1].y + nodeLength +
+      sliderY2 = nodeCoordinate[curLayerIndex - 1][1].y + nodeLength +
     kernelRectLength * 3;
     arrowSX2 = leftX - kernelRectLength * 3;
-    arrowSY2 = nodeCoordinate_rnn[curLayerIndex - 1][1].y + nodeLength + 15;
+    arrowSY2 = nodeCoordinate[curLayerIndex - 1][1].y + nodeLength + 15;
     arrowTX2 = leftX - 13;
-    arrowTY2 =  nodeCoordinate_rnn[curLayerIndex - 1][1].y + 15;
+    arrowTY2 =  nodeCoordinate[curLayerIndex - 1][1].y + 15;
     dr2 = 35;
   } else {
     sliderX = leftX - 3 * kernelRectLength * 3;
-    sliderY = nodeCoordinate_rnn[curLayerIndex - 1][0].y + nodeLength / 3;
+    sliderY = nodeCoordinate[curLayerIndex - 1][0].y + nodeLength / 3;
     arrowSX = leftX - 2 * kernelRectLength * 3 - 5;
-    arrowSY = nodeCoordinate_rnn[curLayerIndex - 1][0].y + nodeLength - 10;
+    arrowSY = nodeCoordinate[curLayerIndex - 1][0].y + nodeLength - 10;
     dr = 50;
 
     sliderX2 = leftX - 3 * kernelRectLength * 3;
-    sliderY2 = nodeCoordinate_rnn[curLayerIndex - 1][2].y - 3;
+    sliderY2 = nodeCoordinate[curLayerIndex - 1][2].y - 3;
     arrowTX2 = leftX - kernelRectLength * 3 - 4;
-    arrowTY2 = nodeCoordinate_rnn[curLayerIndex - 1][2].y + kernelRectLength * 3 + 6;
+    arrowTY2 = nodeCoordinate[curLayerIndex - 1][2].y + kernelRectLength * 3 + 6;
     arrowSX2 = leftX - kernelRectLength * 3 - 13;
-    arrowSY2 = nodeCoordinate_rnn[curLayerIndex - 1][2].y + 26;
+    arrowSY2 = nodeCoordinate[curLayerIndex - 1][2].y + 26;
     dr2 = 20;
   }
 
@@ -929,7 +934,7 @@ const drawIntermediateLayerAnnotation = (arg) => {
   drawArrow({
     group: group,
     tx: leftX - 7,
-    ty: nodeCoordinate_rnn[curLayerIndex - 1][0].y + nodeLength / 2,
+    ty: nodeCoordinate[curLayerIndex - 1][0].y + nodeLength / 2,
     sx: arrowSX,
     sy: arrowSY,
     hFlip: !isFirstConv,
@@ -985,7 +990,7 @@ const drawIntermediateLayerAnnotation = (arg) => {
   
   let intermediateX2 = leftX + 2 * nodeLength + 2.5 * intermediateGap;
   let textX = intermediateX2;
-  let textY = nodeCoordinate_rnn[curLayerIndex][i].y + nodeLength +
+  let textY = nodeCoordinate[curLayerIndex][i].y + nodeLength +
       kernelRectLength * 3;
   
   // Special case 1: first node
@@ -1018,9 +1023,9 @@ const drawIntermediateLayerAnnotation = (arg) => {
     drawArrow({
       group: group,
       sx: intermediateX2 + 50,
-      sy: nodeCoordinate_rnn[curLayerIndex][i].y - (nodeLength / 2 + kernelRectLength * 2),
+      sy: nodeCoordinate[curLayerIndex][i].y - (nodeLength / 2 + kernelRectLength * 2),
       tx: intermediateX2 + 2 * plusSymbolRadius + 5,
-      ty: nodeCoordinate_rnn[curLayerIndex][i].y + nodeLength / 2 - plusSymbolRadius,
+      ty: nodeCoordinate[curLayerIndex][i].y + nodeLength / 2 - plusSymbolRadius,
       dr: 50,
       hFlip: false,
       marker: 'marker-alt'
@@ -1029,9 +1034,9 @@ const drawIntermediateLayerAnnotation = (arg) => {
     drawArrow({
       group: group,
       sx: intermediateX2 + 35,
-      sy: nodeCoordinate_rnn[curLayerIndex][i].y + nodeLength + kernelRectLength * 2,
+      sy: nodeCoordinate[curLayerIndex][i].y + nodeLength + kernelRectLength * 2,
       tx: intermediateX2 + 2 * plusSymbolRadius + 5,
-      ty: nodeCoordinate_rnn[curLayerIndex][i].y + nodeLength / 2 + plusSymbolRadius,
+      ty: nodeCoordinate[curLayerIndex][i].y + nodeLength / 2 + plusSymbolRadius,
       dr: 30,
       hFlip: true,
       marker: 'marker-alt'
@@ -1039,7 +1044,7 @@ const drawIntermediateLayerAnnotation = (arg) => {
   }
 
   // Add annotation for the bias
-  let biasTextY = nodeCoordinate_rnn[curLayerIndex][i].y;
+  let biasTextY = nodeCoordinate[curLayerIndex][i].y;
   if (i === 0) {
     biasTextY += nodeLength + 3 * kernelRectLength;
   } else {
@@ -1069,14 +1074,14 @@ const addUnderneathRect = (curLayerIndex, i, leftX,
   intermediateGap, padding, intermediateNodeMouseOverHandler,
   intermediateNodeMouseLeaveHandler, intermediateNodeClicked) => {
   // Add underneath rects
-  let underGroup = svg_rnn.select('g.underneath');
+  let underGroup = svg.select('g.underneath');
 
   for (let n = 0; n < rnn[curLayerIndex - 1].length; n++) {
     underGroup.append('rect')
       .attr('class', 'underneath-gateway')
       .attr('id', `underneath-gateway-${n}`)
       .attr('x', leftX - padding)
-      .attr('y', nodeCoordinate_rnn[curLayerIndex - 1][n].y - padding)
+      .attr('y', nodeCoordinate[curLayerIndex - 1][n].y - padding)
       .attr('width', (2 * nodeLength + intermediateGap) + 2 * padding)
       .attr('height', nodeLength + 2 * padding)
       .attr('rx', 10)
@@ -1084,7 +1089,7 @@ const addUnderneathRect = (curLayerIndex, i, leftX,
       .style('opacity', 0);
     
     // Register new events for input layer nodes
-    svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${n}`)
+    svg.select(`g#layer-${curLayerIndex - 1}-node-${n}`)
       .style('pointer-events', 'all')
       .style('cursor', 'pointer')
       .on('mouseover', intermediateNodeMouseOverHandler)
@@ -1105,11 +1110,11 @@ const addUnderneathRect = (curLayerIndex, i, leftX,
  * @param {number} height Rect height
  */
 export const addOverlayRect = (gradientName, x, y, width, height) => {
-  if (svg_rnn.select('.intermediate-layer-overlay').empty()) {
-    svg_rnn.append('g').attr('class', 'intermediate-layer-overlay');
+  if (svg.select('.intermediate-layer-overlay').empty()) {
+    svg.append('g').attr('class', 'intermediate-layer-overlay');
   }
 
-  let intermediateLayerOverlay = svg_rnn.select('.intermediate-layer-overlay');
+  let intermediateLayerOverlay = svg.select('.intermediate-layer-overlay');
 
   let overlayRect = intermediateLayerOverlay.append('rect')
     .attr('class', 'overlay')
@@ -1142,25 +1147,25 @@ const redrawLayerIfNeeded = (curLayerIndex, i) => {
 
   if (rangePre > rangeCur) {
     // Redraw the current layer (selected node)
-    svg_rnn.select(`g#layer-${curLayerIndex}-node-${i}`)
+    svg.select(`g#layer-${curLayerIndex}-node-${i}`)
       .select('image.node-image')
       .each((d, g, i) => drawOutputRNN(d, g, i, range));
     
     // Record the change so we will re-redraw the layer when user quits
     // the intermediate view
     needRedraw = [curLayerIndex, i];
-    needRedrawStore.set(needRedraw);
+    needRedrawStore_rnn.set(needRedraw);
     
   } else if (rangePre < rangeCur) {
     // Redraw the previous layer (whole layer)
-    svg_rnn.select(`g#rnn-layer-group-${curLayerIndex - 1}`)
+    svg.select(`g#rnn-layer-group-${curLayerIndex - 1}`)
       .selectAll('image.node-image')
       .each((d, g, i) => drawOutputRNN(d, g, i, range));
 
     // Record the change so we will re-redraw the layer when user quits
     // the intermediate view
     needRedraw = [curLayerIndex - 1, undefined];
-    needRedrawStore.set(needRedraw);
+    needRedrawStore_rnn.set(needRedraw);
   }
 
   // Compute the min, max value of all nodes in pre-layer and the selected
@@ -1195,17 +1200,17 @@ export const drawConv1 = (curLayerIndex, d, i, width, height,
   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
   intermediateNodeClicked) => {
   // Compute the target location
-  let targetX = nodeCoordinate_rnn[curLayerIndex - 1][0].x + 2 * nodeLength +
-    2 * hSpaceAroundGap_rnn * gapRatio + plusSymbolRadius * 2;
-  let intermediateGap = (hSpaceAroundGap_rnn * gapRatio * 2) / 3;
-  let leftX = nodeCoordinate_rnn[curLayerIndex - 1][0].x;
+  let targetX = nodeCoordinate[curLayerIndex - 1][0].x + 2 * nodeLength +
+    2 * hSpaceAroundGap * gapRatio + plusSymbolRadius * 2;
+  let intermediateGap = (hSpaceAroundGap * gapRatio * 2) / 3;
+  let leftX = nodeCoordinate[curLayerIndex - 1][0].x;
 
   // Record the left x position for dynamic detial view positioning
   intermediateLayerPosition['conv_1_1'] = targetX + nodeLength;
   intermediateLayerPositionStore.set(intermediateLayerPosition);
 
   // Hide the edges
-  svg_rnn.select('g.edge-group')
+  svg.select('g.edge-group')
     .style('visibility', 'hidden');
 
   // Move the selected layer
@@ -1213,7 +1218,7 @@ export const drawConv1 = (curLayerIndex, d, i, width, height,
     delay: 0, opacity: 0.15, specialIndex: i});
 
   // Compute the gap in the right shrink region
-  let rightStart = targetX + nodeLength + hSpaceAroundGap_rnn * gapRatio;
+  let rightStart = targetX + nodeLength + hSpaceAroundGap * gapRatio;
   let rightGap = (width - rightStart - 10 * nodeLength) / 10;
 
   // Move the right layers
@@ -1258,7 +1263,7 @@ export const drawConv1 = (curLayerIndex, d, i, width, height,
   }
 
   // Add annotation to the intermediate layer
-  let intermediateLayerAnnotation = svg_rnn.append('g')
+  let intermediateLayerAnnotation = svg.append('g')
   .attr('class', 'intermediate-layer-annotation')
   .style('opacity', 0);
 
@@ -1281,7 +1286,7 @@ export const drawConv1 = (curLayerIndex, d, i, width, height,
     width: 2 * nodeLength + intermediateGap,
     isInput: true,
     x: leftX,
-    y: svgPaddings.top + vSpaceAroundGap_rnn * (10) + vSpaceAroundGap_rnn + 
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
       nodeLength * 10 - 25
   });
 
@@ -1292,8 +1297,8 @@ export const drawConv1 = (curLayerIndex, d, i, width, height,
     minMax: finalMinMax,
     group: intermediateLayer,
     width: 2 * nodeLength + intermediateGap,
-    x: nodeCoordinate_rnn[curLayerIndex - 1][2].x,
-    y: svgPaddings.top + vSpaceAroundGap_rnn * (10) + vSpaceAroundGap_rnn + 
+    x: nodeCoordinate[curLayerIndex - 1][2].x,
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
       nodeLength * 10
   });
 
@@ -1305,7 +1310,7 @@ export const drawConv1 = (curLayerIndex, d, i, width, height,
     group: intermediateLayer,
     width: 2 * nodeLength + intermediateGap,
     x: targetX + nodeLength - (2 * nodeLength + intermediateGap),
-    y: svgPaddings.top + vSpaceAroundGap_rnn * (10) + vSpaceAroundGap_rnn + 
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
       nodeLength * 10,
     gradientAppendingName: 'kernelColorGradient',
     colorScale: layerColorScales.weight,
@@ -1313,7 +1318,7 @@ export const drawConv1 = (curLayerIndex, d, i, width, height,
   });
 
   // Show everything
-  svg_rnn.selectAll('g.intermediate-layer, g.intermediate-layer-annotation')
+  svg.selectAll('g.intermediate-layer, g.intermediate-layer-annotation')
     .transition()
     .delay(500)
     .duration(500)
@@ -1335,9 +1340,9 @@ export const drawConv1 = (curLayerIndex, d, i, width, height,
 export const drawConv2 = (curLayerIndex, d, i, width, height,
   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
   intermediateNodeClicked) => {
-  let targetX = nodeCoordinate_rnn[curLayerIndex - 1][0].x + 2 * nodeLength +
-    2 * hSpaceAroundGap_rnn * gapRatio + plusSymbolRadius * 2;
-  let intermediateGap = (hSpaceAroundGap_rnn * gapRatio * 2) / 3;
+  let targetX = nodeCoordinate[curLayerIndex - 1][0].x + 2 * nodeLength +
+    2 * hSpaceAroundGap * gapRatio + plusSymbolRadius * 2;
+  let intermediateGap = (hSpaceAroundGap * gapRatio * 2) / 3;
 
   // Record the left x position for dynamic detial view positioning
   intermediateLayerPosition['conv_1_2'] = targetX + nodeLength;
@@ -1347,7 +1352,7 @@ export const drawConv2 = (curLayerIndex, d, i, width, height,
   let {range, minMax} = redrawLayerIfNeeded(curLayerIndex, i);
 
   // Hide the edges
-  svg_rnn.select('g.edge-group')
+  svg.select('g.edge-group')
     .style('visibility', 'hidden');
 
   // Move the selected layer
@@ -1355,7 +1360,7 @@ export const drawConv2 = (curLayerIndex, d, i, width, height,
     delay: 0, opacity: 0.15, specialIndex: i});
 
   // Compute the gap in the right shrink region
-  let rightStart = targetX + nodeLength + hSpaceAroundGap_rnn * gapRatio;
+  let rightStart = targetX + nodeLength + hSpaceAroundGap * gapRatio;
   let rightGap = (width - rightStart - 8 * nodeLength) / 8;
 
   // Move the right layers
@@ -1370,7 +1375,7 @@ export const drawConv2 = (curLayerIndex, d, i, width, height,
     {offset: '100%', color: 'rgb(250, 250, 250)', opacity: 1}];
   addOverlayGradient('overlay-gradient-right', stops);
 
-  let leftRightRatio = (2 * nodeLength + hSpaceAroundGap_rnn * gapRatio) /
+  let leftRightRatio = (2 * nodeLength + hSpaceAroundGap * gapRatio) /
     (8 * nodeLength + intermediateGap * 7);
   let endingGradient = 0.85 + (0.95 - 0.85) * leftRightRatio;
   stops = [{offset: '0%', color: 'rgb(250, 250, 250)', opacity: endingGradient},
@@ -1381,12 +1386,12 @@ export const drawConv2 = (curLayerIndex, d, i, width, height,
     0, width - rightStart + overlayRectOffset,
     height + svgPaddings.top + svgPaddings.bottom);
 
-  addOverlayRect('overlay-gradient-left', nodeCoordinate_rnn[0][0].x - overlayRectOffset / 2,
-    0, nodeLength * 2 + hSpaceAroundGap_rnn * gapRatio + overlayRectOffset,
+  addOverlayRect('overlay-gradient-left', nodeCoordinate[0][0].x - overlayRectOffset / 2,
+    0, nodeLength * 2 + hSpaceAroundGap * gapRatio + overlayRectOffset,
     height + svgPaddings.top + svgPaddings.bottom);
 
   // Draw the intermediate layer
-  let leftX = nodeCoordinate_rnn[curLayerIndex - 1][0].x;
+  let leftX = nodeCoordinate[curLayerIndex - 1][0].x;
   let {intermediateLayer, intermediateMinMax, kernelRange, kernelMinMax} =
     drawIntermediateLayer(curLayerIndex, leftX, targetX, rightStart,
       intermediateGap, d, i, intermediateNodeMouseOverHandler,
@@ -1403,7 +1408,7 @@ export const drawConv2 = (curLayerIndex, d, i, width, height,
   }
 
   // Add annotation to the intermediate layer
-  let intermediateLayerAnnotation = svg_rnn.append('g')
+  let intermediateLayerAnnotation = svg.append('g')
     .attr('class', 'intermediate-layer-annotation')
     .style('opacity', 0);
 
@@ -1423,7 +1428,7 @@ export const drawConv2 = (curLayerIndex, d, i, width, height,
     group: intermediateLayer,
     width: 2 * nodeLength + intermediateGap,
     x: leftX,
-    y: svgPaddings.top + vSpaceAroundGap_rnn * (10) + vSpaceAroundGap_rnn + 
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
       nodeLength * 10
   });
 
@@ -1435,7 +1440,7 @@ export const drawConv2 = (curLayerIndex, d, i, width, height,
     group: intermediateLayer,
     width: 2 * nodeLength + intermediateGap,
     x: targetX + nodeLength - (2 * nodeLength + intermediateGap),
-    y: svgPaddings.top + vSpaceAroundGap_rnn * (10) + vSpaceAroundGap_rnn + 
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
       nodeLength * 10,
     gradientAppendingName: 'kernelColorGradient',
     colorScale: layerColorScales.weight,
@@ -1443,7 +1448,7 @@ export const drawConv2 = (curLayerIndex, d, i, width, height,
   });
 
   // Show everything
-  svg_rnn.selectAll('g.intermediate-layer, g.intermediate-layer-annotation')
+  svg.selectAll('g.intermediate-layer, g.intermediate-layer-annotation')
     .transition()
     .delay(500)
     .duration(500)
@@ -1466,17 +1471,17 @@ export const drawConv3 = (curLayerIndex, d, i, width, height,
   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
   intermediateNodeClicked) => {
 
-  let targetX = nodeCoordinate_rnn[curLayerIndex][0].x;
+  let targetX = nodeCoordinate[curLayerIndex][0].x;
   let leftX = targetX - (2 * nodeLength +
-    2 * hSpaceAroundGap_rnn * gapRatio + plusSymbolRadius * 2);
-  let intermediateGap = (hSpaceAroundGap_rnn * gapRatio * 2) / 3;
+    2 * hSpaceAroundGap * gapRatio + plusSymbolRadius * 2);
+  let intermediateGap = (hSpaceAroundGap * gapRatio * 2) / 3;
 
   // Record the left x position for dynamic detial view positioning
   intermediateLayerPosition['conv_2_1'] = targetX + nodeLength;
   intermediateLayerPositionStore.set(intermediateLayerPosition);
 
   // Hide the edges
-  svg_rnn.select('g.edge-group')
+  svg.select('g.edge-group')
     .style('visibility', 'hidden');
 
   // Make sure two layers have the same range
@@ -1491,14 +1496,14 @@ export const drawConv3 = (curLayerIndex, d, i, width, height,
     delay: 0, opacity: 0.15, specialIndex: i});
 
   // Compute the gap in the left shrink region
-  let leftEnd = leftX - hSpaceAroundGap_rnn;
-  let leftGap = (leftEnd - nodeCoordinate_rnn[0][0].x - 5 * nodeLength) / 5;
-  let rightStart = nodeCoordinate_rnn[curLayerIndex][0].x +
-    nodeLength + hSpaceAroundGap_rnn;
+  let leftEnd = leftX - hSpaceAroundGap;
+  let leftGap = (leftEnd - nodeCoordinate[0][0].x - 5 * nodeLength) / 5;
+  let rightStart = nodeCoordinate[curLayerIndex][0].x +
+    nodeLength + hSpaceAroundGap;
 
   // Move the left layers
   for (let i = 0; i < curLayerIndex - 1; i++) {
-    let curX = nodeCoordinate_rnn[0][0].x + i * (nodeLength + leftGap);
+    let curX = nodeCoordinate[0][0].x + i * (nodeLength + leftGap);
     moveLayerX({layerIndex: i, targetX: curX, disable: true, delay: 0});
   }
 
@@ -1513,8 +1518,8 @@ export const drawConv3 = (curLayerIndex, d, i, width, height,
     {offset: '100%', color: 'rgb(250, 250, 250)', opacity: 1}];
   addOverlayGradient('overlay-gradient-right', stops);
 
-  addOverlayRect('overlay-gradient-left', nodeCoordinate_rnn[0][0].x - overlayRectOffset / 2,
-    0, leftEnd - nodeCoordinate_rnn[0][0].x + overlayRectOffset,
+  addOverlayRect('overlay-gradient-left', nodeCoordinate[0][0].x - overlayRectOffset / 2,
+    0, leftEnd - nodeCoordinate[0][0].x + overlayRectOffset,
     height + svgPaddings.top + svgPaddings.bottom);
   
   addOverlayRect('overlay-gradient-right', rightStart - overlayRectOffset / 2,
@@ -1524,7 +1529,7 @@ export const drawConv3 = (curLayerIndex, d, i, width, height,
   // Draw the intermediate layer
   let {intermediateLayer, intermediateMinMax, kernelRange, kernelMinMax} =
     drawIntermediateLayer(curLayerIndex, leftX,
-      nodeCoordinate_rnn[curLayerIndex][0].x, rightStart, intermediateGap,
+      nodeCoordinate[curLayerIndex][0].x, rightStart, intermediateGap,
       d, i, intermediateNodeMouseOverHandler,
       intermediateNodeMouseLeaveHandler, intermediateNodeClicked);
   addUnderneathRect(curLayerIndex, i, leftX, intermediateGap, 5,
@@ -1539,7 +1544,7 @@ export const drawConv3 = (curLayerIndex, d, i, width, height,
   }
 
   // Add annotation to the intermediate layer
-  let intermediateLayerAnnotation = svg_rnn.append('g')
+  let intermediateLayerAnnotation = svg.append('g')
     .attr('class', 'intermediate-layer-annotation')
     .style('opacity', 0);
 
@@ -1559,7 +1564,7 @@ export const drawConv3 = (curLayerIndex, d, i, width, height,
     width: 2 * nodeLength + intermediateGap,
     minMax: finalMinMax,
     x: leftX,
-    y: svgPaddings.top + vSpaceAroundGap_rnn * (10) + vSpaceAroundGap_rnn + 
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
       nodeLength * 10
   });
 
@@ -1571,7 +1576,7 @@ export const drawConv3 = (curLayerIndex, d, i, width, height,
     group: intermediateLayer,
     width: 2 * nodeLength + intermediateGap,
     x: targetX + nodeLength - (2 * nodeLength + intermediateGap),
-    y: svgPaddings.top + vSpaceAroundGap_rnn * (10) + vSpaceAroundGap_rnn + 
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
       nodeLength * 10,
     gradientAppendingName: 'kernelColorGradient',
     colorScale: layerColorScales.weight,
@@ -1579,7 +1584,7 @@ export const drawConv3 = (curLayerIndex, d, i, width, height,
   });
 
   // Show everything
-  svg_rnn.selectAll('g.intermediate-layer, g.intermediate-layer-annotation')
+  svg.selectAll('g.intermediate-layer, g.intermediate-layer-annotation')
     .transition()
     .delay(500)
     .duration(500)
@@ -1601,17 +1606,17 @@ export const drawConv3 = (curLayerIndex, d, i, width, height,
 export const drawConv4 = (curLayerIndex, d, i, width, height,
   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
   intermediateNodeClicked) => {
-  let targetX = nodeCoordinate_rnn[curLayerIndex][0].x;
+  let targetX = nodeCoordinate[curLayerIndex][0].x;
   let leftX = targetX - (2 * nodeLength +
-    2 * hSpaceAroundGap_rnn * gapRatio + plusSymbolRadius * 2);
-  let intermediateGap = (hSpaceAroundGap_rnn * gapRatio * 2) / 3;
+    2 * hSpaceAroundGap * gapRatio + plusSymbolRadius * 2);
+  let intermediateGap = (hSpaceAroundGap * gapRatio * 2) / 3;
 
   // Record the left x position for dynamic detial view positioning
   intermediateLayerPosition['conv_2_2'] = leftX;
   intermediateLayerPositionStore.set(intermediateLayerPosition);
 
   // Hide the edges
-  svg_rnn.select('g.edge-group')
+  svg.select('g.edge-group')
     .style('visibility', 'hidden');
 
   // Make sure two layers have the same range
@@ -1626,13 +1631,13 @@ export const drawConv4 = (curLayerIndex, d, i, width, height,
     delay: 0, opacity: 0.15, specialIndex: i});
 
   // Compute the gap in the left shrink region
-  let leftEnd = leftX - hSpaceAroundGap_rnn;
-  let leftGap = (leftEnd - nodeCoordinate_rnn[0][0].x - 7 * nodeLength) / 7;
-  let rightStart = targetX + nodeLength + hSpaceAroundGap_rnn;
+  let leftEnd = leftX - hSpaceAroundGap;
+  let leftGap = (leftEnd - nodeCoordinate[0][0].x - 7 * nodeLength) / 7;
+  let rightStart = targetX + nodeLength + hSpaceAroundGap;
 
   // Move the left layers
   for (let i = 0; i < curLayerIndex - 1; i++) {
-    let curX = nodeCoordinate_rnn[0][0].x + i * (nodeLength + leftGap);
+    let curX = nodeCoordinate[0][0].x + i * (nodeLength + leftGap);
     moveLayerX({layerIndex: i, targetX: curX, disable: true, delay: 0});
   }
 
@@ -1647,8 +1652,8 @@ export const drawConv4 = (curLayerIndex, d, i, width, height,
     {offset: '100%', color: 'rgb(250, 250, 250)', opacity: 1}];
   addOverlayGradient('overlay-gradient-right', stops);
 
-  addOverlayRect('overlay-gradient-left', nodeCoordinate_rnn[0][0].x - overlayRectOffset / 2,
-    0, leftEnd - nodeCoordinate_rnn[0][0].x + overlayRectOffset,
+  addOverlayRect('overlay-gradient-left', nodeCoordinate[0][0].x - overlayRectOffset / 2,
+    0, leftEnd - nodeCoordinate[0][0].x + overlayRectOffset,
     height + svgPaddings.top + svgPaddings.bottom);
   
   addOverlayRect('overlay-gradient-right', rightStart - overlayRectOffset / 2,
@@ -1658,7 +1663,7 @@ export const drawConv4 = (curLayerIndex, d, i, width, height,
   // Draw the intermediate layer
   let {intermediateLayer, intermediateMinMax, kernelRange, kernelMinMax} =
     drawIntermediateLayer(curLayerIndex, leftX,
-      nodeCoordinate_rnn[curLayerIndex][0].x, rightStart, intermediateGap,
+      nodeCoordinate[curLayerIndex][0].x, rightStart, intermediateGap,
       d, i, intermediateNodeMouseOverHandler,
       intermediateNodeMouseLeaveHandler, intermediateNodeClicked);
   addUnderneathRect(curLayerIndex, i, leftX, intermediateGap, 5,
@@ -1673,7 +1678,7 @@ export const drawConv4 = (curLayerIndex, d, i, width, height,
   }
 
   // Add annotation to the intermediate layer
-  let intermediateLayerAnnotation = svg_rnn.append('g')
+  let intermediateLayerAnnotation = svg.append('g')
     .attr('class', 'intermediate-layer-annotation')
     .style('opacity', 0);
 
@@ -1693,7 +1698,7 @@ export const drawConv4 = (curLayerIndex, d, i, width, height,
     minMax: finalMinMax,
     width: 2 * nodeLength + intermediateGap,
     x: leftX,
-    y: svgPaddings.top + vSpaceAroundGap_rnn * (10) + vSpaceAroundGap_rnn + 
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
       nodeLength * 10
   });
 
@@ -1705,7 +1710,7 @@ export const drawConv4 = (curLayerIndex, d, i, width, height,
     group: intermediateLayer,
     width: 2 * nodeLength + intermediateGap,
     x: targetX + nodeLength - (2 * nodeLength + intermediateGap),
-    y: svgPaddings.top + vSpaceAroundGap_rnn * (10) + vSpaceAroundGap_rnn + 
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
       nodeLength * 10,
     gradientAppendingName: 'kernelColorGradient',
     colorScale: layerColorScales.weight,
@@ -1713,10 +1718,135 @@ export const drawConv4 = (curLayerIndex, d, i, width, height,
   });
 
   // Show everything
-  svg_rnn.selectAll('g.intermediate-layer, g.intermediate-layer-annotation')
+  svg.selectAll('g.intermediate-layer, g.intermediate-layer-annotation')
     .transition()
     .delay(500)
     .duration(500)
     .ease(d3.easeCubicInOut)
     .style('opacity', 1);
 }
+
+export const drawLstm = (curLayerIndex, d, i, width, height, 
+  intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
+  intermediateNodeClicked) =>{
+    // let targetX = nodeCoordinate[curLayerIndex][0].x;
+    // let leftX = targetX - (2 * nodeLength +
+    //   2 * hSpaceAroundGap * gapRatio + plusSymbolRadius * 2);
+    // let intermediateGap = (hSpaceAroundGap * gapRatio * 2) / 3;
+  
+    // // Record the left x position for dynamic detial view positioning
+    // intermediateLayerPosition['lstm_LSTM1'] = leftX;
+    // intermediateLayerPositionStore_rnn.set(intermediateLayerPosition);
+  
+    // // Hide the edges
+    // svg.select('g.edge-group')
+    //   .style('visibility', 'hidden');
+  
+    // // Make sure two layers have the same range
+    // let {range, minMax} = redrawLayerIfNeeded(curLayerIndex, i);
+  
+    // // Move the previous layer
+    // moveLayerX({layerIndex: curLayerIndex - 1, targetX: leftX,
+    //   disable: true, delay: 0});
+  
+    // moveLayerX({layerIndex: curLayerIndex,
+    //   targetX: targetX, disable: true,
+    //   delay: 0, opacity: 0.15, specialIndex: i});
+  
+    // // Compute the gap in the left shrink region
+    // let leftEnd = leftX - hSpaceAroundGap;
+    // let leftGap = (leftEnd - nodeCoordinate[0][0].x - 1 * nodeLength - 1*embeddingNodeLength) / (curLayerIndex-1);
+    // let rightStart = targetX + nodeLength + hSpaceAroundGap;
+  
+    // // Move the left layers
+    // for (let i = 0; i < curLayerIndex - 1; i++) {
+    //   let curX = nodeCoordinate[0][0].x + i * (nodeLength + leftGap);
+    //   moveLayerX({layerIndex: i, targetX: curX, disable: true, delay: 0});
+    // }
+  
+    // // Add an overlay
+    // let stops = [{offset: '0%', color: 'rgb(250, 250, 250)', opacity: 1},
+    //   {offset: '50%', color: 'rgb(250, 250, 250)', opacity: 0.95},
+    //   {offset: '100%', color: 'rgb(250, 250, 250)', opacity: 0.85}];
+    // addOverlayGradient('overlay-gradient-left', stops);
+  
+    // stops = [{offset: '0%', color: 'rgb(250, 250, 250)', opacity: 0.85},
+    //   {offset: '50%', color: 'rgb(250, 250, 250)', opacity: 0.95},
+    //   {offset: '100%', color: 'rgb(250, 250, 250)', opacity: 1}];
+    // addOverlayGradient('overlay-gradient-right', stops);
+  
+    // addOverlayRect('overlay-gradient-left', nodeCoordinate[0][0].x - overlayRectOffset / 2,
+    //   0, leftEnd - nodeCoordinate[0][0].x + overlayRectOffset,
+    //   height + svgPaddings.top + svgPaddings.bottom);
+    
+    // addOverlayRect('overlay-gradient-right', rightStart - overlayRectOffset / 2,
+    //   0, width - rightStart + overlayRectOffset,
+    //   height + svgPaddings.top + svgPaddings.bottom);
+    
+    // // Draw the intermediate layer
+    // let {intermediateLayer, intermediateMinMax, kernelRange, kernelMinMax} =
+    //   drawIntermediateLayer(curLayerIndex, leftX,
+    //     nodeCoordinate[curLayerIndex][0].x, rightStart, intermediateGap,
+    //     d, i, intermediateNodeMouseOverHandler,
+    //     intermediateNodeMouseLeaveHandler, intermediateNodeClicked);
+    // addUnderneathRect(curLayerIndex, i, leftX, intermediateGap, 5,
+    //   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
+    //   intermediateNodeClicked);
+            
+    // // After getting the intermediateMinMax, we can finally aggregate it with
+    // // the preLayer minmax, curLayer minmax
+    // let finalMinMax = {
+    //   min: Math.min(minMax.min, intermediateMinMax.min),
+    //   max: Math.max(minMax.max, intermediateMinMax.max)
+    // }
+  
+    // // Add annotation to the intermediate layer
+    // let intermediateLayerAnnotation = svg.append('g')
+    //   .attr('class', 'intermediate-layer-annotation')
+    //   .style('opacity', 0);
+  
+    // drawIntermediateLayerAnnotation({
+    //   leftX: leftX,
+    //   curLayerIndex: curLayerIndex,
+    //   group: intermediateLayerAnnotation,
+    //   intermediateGap: intermediateGap,
+    //   i: i
+    // });
+
+    // legendY = svgPaddings.top + vSpaceAroundGap 
+    //   * (rnn[rnn.length-1].length+1) + 3 * legendHeight;
+  
+    // drawIntermediateLayerLegend({
+    //   legendHeight: 5,
+    //   curLayerIndex: curLayerIndex,
+    //   range: range,
+    //   group: intermediateLayer,
+    //   minMax: finalMinMax,
+    //   width: 2 * nodeLength + intermediateGap,
+    //   x: leftX,
+    //   y: legendY
+    // });
+  
+    // drawIntermediateLayerLegend({
+    //   legendHeight: 5,
+    //   curLayerIndex: curLayerIndex,
+    //   range: kernelRange,
+    //   minMax: kernelMinMax,
+    //   group: intermediateLayer,
+    //   width: 2 * nodeLength + intermediateGap,
+    //   x: targetX + nodeLength - (2 * nodeLength + intermediateGap),
+    //   y: legendY,
+    //   gradientAppendingName: 'kernelColorGradient',
+    //   colorScale: layerColorScales.weight,
+    //   gradientGap: 0.2
+    // });
+  
+    // // Show everything
+    // svg.selectAll('g.intermediate-layer, g.intermediate-layer-annotation')
+    //   .transition()
+    //   .delay(500)
+    //   .duration(500)
+    //   .ease(d3.easeCubicInOut)
+    //   .style('opacity', 1);
+
+  }

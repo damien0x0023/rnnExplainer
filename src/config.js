@@ -46,10 +46,11 @@ let nodeLength_rnn = 96;
 
 export const rnnOverviewConfig = {
   nodeLength : nodeLength_rnn,
-  nodeHeight : nodeLength_rnn / 10, // 10
+  nodeHeight : nodeLength_rnn / 10, // 9.6
   embedddingLength : nodeLength_rnn / 20 * 64, // a bit large may be better
-  inputNodeHeight : nodeLength_rnn / 20, // 5
-  plusSymbolRadius : nodeLength_rnn / 10,
+  // embedddingLength: nodeLength_rnn,
+  inputNodeHeight : nodeLength_rnn / 20, // 4.8
+  plusSymbolRadius : nodeLength_rnn / 10, //4.8
   numLayers : 4,
   edgeOpacity : 0.8,
   edgeInitColor : 'rgb(230, 230, 230)',

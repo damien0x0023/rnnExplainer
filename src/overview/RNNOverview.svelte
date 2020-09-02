@@ -34,7 +34,7 @@
   import { rnnOverviewConfig } from '../config.js';
 
   import {
-    addOverlayRect, drawConv1, drawConv2, drawConv3, drawConv4
+    addOverlayRect, drawLstm
   } from './intermediate-drawRNN.js';
 
   import { moveLayerX, addOverlayGradient } from './intermediateRNN-utils.js';
@@ -103,11 +103,11 @@
     shouldIntermediateAnimate_rnn = value;
   })
 
-  let vSpaceAroundGap_rnn = undefined;
-  vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap_rnn = value;} )
+  let vSpaceAroundGap = undefined;
+  vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap = value;} )
 
-  let hSpaceAroundGap_rnn = undefined;
-  hSpaceAroundGapStore_rnn.subscribe( value => {hSpaceAroundGap_rnn = value;} )
+  let hSpaceAroundGap = undefined;
+  hSpaceAroundGapStore_rnn.subscribe( value => {hSpaceAroundGap = value;} )
 
   let isInSigmoid = undefined;
   isInSigmoidStore_rnn.subscribe( value => {isInSigmoid = value;} )
@@ -479,8 +479,8 @@
         disable:false, delay:500, opacity: 1});
     }
 
-    moveLayerX({layerIndex: numLayers - 2,
-      targetX: nodeCoordinate[numLayers - 2][0].x, opacity: 1,
+    moveLayerX({layerIndex: numLayers - 1,
+      targetX: nodeCoordinate[numLayers - 1][0].x, opacity: 1,
       disable:false, delay:500, onEndFunc: () => {
         // Show all edges on the last moving animation end
         svg_rnn.select('g.edge-group')
@@ -731,7 +731,7 @@
         .attr('id', `underneath-gateway-${n}`)
         .attr('x', nodeCoordinate[curLayerIndex - 1][n].x - padding)
         .attr('y', nodeCoordinate[curLayerIndex - 1][n].y - padding)
-        .attr('width', (1 * nodeLength + 1*embbedingLength + hSpaceAroundGap_rnn) + 2 * padding)
+        .attr('width', (1 * nodeLength + 1*embbedingLength + hSpaceAroundGap) + 2 * padding)
         .attr('height', inputNodeHeight + 2 * padding)
         .attr('rx', 10)
         .style('fill', 'rgba(160, 160, 160, 0.3)')
@@ -912,7 +912,7 @@
     selectedNode.domG = g;
 
     // Record data for detailed view.
-    if (d.type ==='embedding'||d.type === 'lstm') {
+    if (d.type ==='embedding'||d.type === 'lstm'|| d.type === 'dense') {
       let data = [];
       for (let j = 0; j < d.inputLinks.length; j++) {
         data.push({
@@ -929,9 +929,7 @@
 
     let curLayerIndex = layerIndexDict[d.layerName];
 
-    if (d.type === 'embedding'
-      //  || d.type === 'lstm'
-    ) {
+    if (d.type === 'embedding') {
       isExitedFromDetailedView = false;
       if (!isInActPoolDetailView) {
         // Enter the act pool detail view
@@ -941,62 +939,60 @@
           // Quit the act pool detail view
           quitActPoolDetailView();
         } 
-        // else {
-        //   // Switch the detail view input to the new clicked pair
+        else {
+          // Switch the detail view input to the new clicked pair
 
-        //   // Remove the previous selection effect
-        //   svg_rnn.select(`g#layer-${curLayerIndex}-node-${actPoolDetailViewNodeIndex}`)
-        //     .select('rect.bounding')
-        //     .classed('hidden', true);
+          // Remove the previous selection effect
+          svg_rnn.select(`g#layer-${curLayerIndex}-node-${actPoolDetailViewNodeIndex}`)
+            .select('rect.bounding')
+            .classed('hidden', true);
 
-        //   svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${actPoolDetailViewNodeIndex}`)
-        //     .select('rect.bounding')
-        //     .classed('hidden', true);
+          svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${actPoolDetailViewNodeIndex}`)
+            .select('rect.bounding')
+            .classed('hidden', true);
           
-        //   let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+          let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
       
-        //   edgeGroup.selectAll(`path.edge-${curLayerIndex}-${actPoolDetailViewNodeIndex}`)
-        //     .transition()
-        //     .ease(d3.easeCubicOut)
-        //     .duration(200)
-        //     .style('stroke', edgeInitColor)
-        //     .style('stroke-width', edgeStrokeWidth)
-        //     .style('opacity', edgeOpacity);
+          edgeGroup.selectAll(`path.edge-${curLayerIndex}-${actPoolDetailViewNodeIndex}`)
+            .transition()
+            .ease(d3.easeCubicOut)
+            .duration(200)
+            .style('stroke', edgeInitColor)
+            .style('stroke-width', edgeStrokeWidth)
+            .style('opacity', edgeOpacity);
           
-        //   let underGroup = svg_rnn.select('g.underneath');
-        //   underGroup.select(`#underneath-gateway-${actPoolDetailViewNodeIndex}`)
-        //     .style('opacity', 0);
+          let underGroup = svg_rnn.select('g.underneath');
+          underGroup.select(`#underneath-gateway-${actPoolDetailViewNodeIndex}`)
+            .style('opacity', 0);
         
-        //   // Add selection effect on the new selected pair
-        //   svg_rnn.select(`g#layer-${curLayerIndex}-node-${nodeIndex}`)
-        //     .select('rect.bounding')
-        //     .classed('hidden', false);
+          // Add selection effect on the new selected pair
+          svg_rnn.select(`g#layer-${curLayerIndex}-node-${nodeIndex}`)
+            .select('rect.bounding')
+            .classed('hidden', false);
 
-        //   svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${nodeIndex}`)
-        //     .select('rect.bounding')
-        //     .classed('hidden', false);
+          svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${nodeIndex}`)
+            .select('rect.bounding')
+            .classed('hidden', false);
 
-        //   edgeGroup.selectAll(`path.edge-${curLayerIndex}-${nodeIndex}`)
-        //     .raise()
-        //     .transition()
-        //     .ease(d3.easeCubicInOut)
-        //     .duration(400)
-        //     .style('stroke', edgeHoverColor)
-        //     .style('stroke-width', '1')
-        //     .style('opacity', 1);
+          edgeGroup.selectAll(`path.edge-${curLayerIndex}-${nodeIndex}`)
+            .raise()
+            .transition()
+            .ease(d3.easeCubicInOut)
+            .duration(400)
+            .style('stroke', edgeHoverColor)
+            .style('stroke-width', '1')
+            .style('opacity', 1);
 
-        //   underGroup.select(`#underneath-gateway-${nodeIndex}`)
-        //     .style('opacity', 1);
+          underGroup.select(`#underneath-gateway-${nodeIndex}`)
+            .style('opacity', 1);
 
-        //   actPoolDetailViewNodeIndex = nodeIndex;
-        // }
+          actPoolDetailViewNodeIndex = nodeIndex;
+        }
       }
     }
 
     // Enter the second view (layer-view) when user clicks a conv node
-    if ((
-      // d.type === 'lstm' || 
-      d.layerName === 'dense_Dense1') && !isInIntermediateView) {
+    if ((d.type === 'lstm' || d.layerName === 'dense_Dense1') && !isInIntermediateView) {
       prepareToEnterIntermediateView(d, g, nodeIndex, curLayerIndex);
 
       if (d.layerName === 'dense_Dense1'){
@@ -1005,16 +1001,14 @@
           intermediateNodeClicked);
       }
       else if (d.layerName === 'lstm_LSTM1'){
-        // // todo:
-        // drawLSTM(curLayerIndex, d, nodeIndex, width, height,
-        //   intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
-        //   intermediateNodeClicked);
+        // todo:
+        drawLstm(curLayerIndex, d, nodeIndex, width, height,
+          intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
+          intermediateNodeClicked);
       }
     }
     // Quit the layerview
-    else if ((
-      // d.type === 'lstm' || 
-      d.layerName === 'dense_Dense1') && isInIntermediateView) {
+    else if ((d.type === 'lstm' || d.layerName === 'dense_Dense1') && isInIntermediateView) {
       quitIntermediateView(curLayerIndex, g, i);
     }
   }

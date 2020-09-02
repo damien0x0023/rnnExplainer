@@ -151,7 +151,7 @@ export const drawOutputRNN = (d, i, g, range) => {
     if (d.type === 'input'){
       color = d3.rgb(colorScale(0.1 +d.output/range));
     } else if (d.type.includes('lstm')) {
-      color = d3.rgb(colorScale((d.output+range/2)/range));
+      color = d3.rgb(colorScale((d.output[j]+range/2)/range));
     } else if (d.type.includes('embedding')){
       color = d3.rgb(colorScale((d.output[j] + range/2)/range));
     }
@@ -631,16 +631,16 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
     .style('opacity', 0.8)
     .text((d, i) => `#${i+1}`);
 
-  nodeGroups.append('text')
-    .attr('class','input-annotation')
-    .attr('x', left + nodeLength/2)
-    .attr('y', (d, i) => nodeCoordinate[l][i].y+inputNodeHeight/2)
-    .style('dominant-baseline', 'middle')
-    .style('font-size', '6px')
-    .style('fill', 'rgb(255,165,42)')
-    .style('opacity', 0.8)
-    // .text((d,i) => d.output);
-    .text((d,i)=>d.output[0]);
+  // nodeGroups.append('text')
+  //   .attr('class','input-annotation')
+  //   .attr('x', left + nodeLength/2)
+  //   .attr('y', (d, i) => nodeCoordinate[l][i].y+inputNodeHeight/2)
+  //   .style('dominant-baseline', 'middle')
+  //   .style('font-size', '6px')
+  //   .style('fill', 'rgb(255,165,42)')
+  //   .style('opacity', 0.8)
+  //   // .text((d,i) => d.output);
+  //   .text((d,i)=>d.output[0]);
 }
 
 /**
