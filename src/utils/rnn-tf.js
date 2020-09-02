@@ -199,6 +199,8 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
   // Add the first layer (input layer)
   let inputLayer = [];
   let nonPadInputLayer = [];
+  let lstmAtEnd = [];
+  let lstmLayerOnTime = [];
   let inputShape = model.layers[0].batchInputShape.slice(1);
   let inputTextArray = inputTextTensor.transpose([1,0]).arraySync();
 
@@ -455,7 +457,6 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
         // There is only one node here and the output is just for the last time step, 
         // so we cannot use outputs for nodes at different time step directly.
         let node = new Node(layer.name, 0, curLayerType, bias, outputs);
-
         for (let j=0; j<rnn[curLayerIndex-1].length; j++) {
           let preNode =rnn[curLayerIndex-1][j];
           // according to code review: 
@@ -484,22 +485,44 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
           node.inputLinks.push(curLink);
         }
         curLayerNodes.push(node);
-        
-        // //add nodes into this layer
-        // for (let i=0; i < outputs.length; i++){
-        //   let node = new Node(layer.name, i, curLayerType, 
-        //     biases[i], outputs[i]);
 
-        //   // Connect this node to all previous nodes (create links)
-        //   // LSTM layers have weights in links. Links are one-to-multiple.
-        //   for (let j=0; j < rnn[curLayerIndex -1].length; j++) {
-        //       let preNode = rnn[curLayerIndex-1][j];
-        //       let curLink = new Link(preNode, node, weights[i][j]);
-        //       preNode.outputLinks.push(curLink);
-        //       node.inputLinks.push(curLink);
-        //     }
-        //   curLayerNodes.push(node);
-        // }
+        // add output of lstm at the final time step to array
+        for (let i =0; i < outputs.length; i++){
+          let finalOutput = new Node(layer.name, i, curLayerType, 0, outputs[i]);
+          lstmAtEnd.push(finalOutput);
+        }
+        
+        //add the first node on time steps into a special layer
+        let ct, outputOnTime;
+        let nodeOnTime = new Node(layer.name, 0, curLayerType, kernelBiases, outputOnTime)
+        let preNode = rnn[curLayerIndex - 1][0];
+        let curLink = new Link(preNode, nodeOnTime, kernelWeights);
+        nodeOnTime.inputLinks.push(curLink);
+        lstmLayerOnTime.push(nodeOnTime);
+        // the left time steps
+        for (let i=1; i < rnn[curLayerIndex-1].length; i++){
+          nodeOnTime = new Node(layer.name, i, curLayerType, 
+            kernelBiases, outputOnTime);
+          preNode = rnn[curLayerIndex-1][i];
+
+          let nodeOnTM1 = lstmLayerOnTime[i-1];
+          let preLink = new Link (nodeOnTM1, nodeOnTime, kernelWeights)
+          nodeOnTime.inputLinks.push(preLink);
+          nodeOnTM1.outputLinks.push(preLink);
+
+          curLink = new Link(preNode, nodeOnTime, kernelWeights)
+          nodeOnTime.inputLinks.push(curLink);
+
+          // // Connect this node to all previous nodes (create links)
+          // // LSTM layers have weights in links. Links are one-to-multiple.
+          // for (let j=0; j < rnn[curLayerIndex -1].length; j++) {
+          //     let preNode = rnn[curLayerIndex-1][j];
+          //     let curLink = new Link(preNode, node, weights[i][j]);
+          //     preNode.outputLinks.push(curLink);
+          //     node.inputLinks.push(curLink);
+          //   }
+          lstmLayerOnTime.push(nodeOnTime);
+        }
         break;
       }
       case nodeType.DENSE: {
@@ -518,6 +541,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
           for (let j = 0; j < rnn[curLayerIndex - 1].length; j++) {
             let preNode = rnn[curLayerIndex - 1][j];
             let curLink = new Link(preNode, node, weights[i]);
+
             preNode.outputLinks.push(curLink);
             node.inputLinks.push(curLink);
             for (let k = 0; k<preNode.output.length; k++)
@@ -526,9 +550,26 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
           curLogit += biases[i];
           node.logit = curLogit;
           curLayerNodes.push(node);
-        }
 
-        // Sort flatten layer based on the node TF index
+          // add outputlink to the last node of lstmLayerOnTime
+          if( lstmLayerOnTime && lstmLayerOnTime.length > 0){
+            let preNodeOnTime = lstmLayerOnTime[lstmLayerOnTime.length-1]
+            let link = new Link(preNodeOnTime,node, weights[i]);
+            preNodeOnTime.outputLinks.push(link);
+          }
+
+          // add outputlink to the final outputs of lstm at the last time step
+
+          for (let j = 0; j<lstmAtEnd.length;j++){
+            let preOutput = lstmAtEnd[j];
+            let link = new Link(preOutput, node, weights[i][j]);
+
+            preOutput.outputLinks.push(link);
+          }
+
+        }    
+
+        // Sort layer based on the node TF index
         rnn[curLayerIndex - 1].sort((a, b) => a.realIndex - b.realIndex);
 
         break;
@@ -542,7 +583,8 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
     rnn.push(curLayerNodes);
     curLayerIndex++;
   }
-
+  rnn.lstmAtEnd = lstmAtEnd;
+  rnn.lstmLayerOnTime = lstmLayerOnTime;
   rnn.nonPadInput = nonPadInputLayer;
   return rnn;
 }

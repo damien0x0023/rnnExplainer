@@ -23,6 +23,7 @@ import * as shelljs from 'shelljs';
 
 import {loadData, loadMetadataTemplate} from './data';
 import {writeEmbeddingMatrixAndLabels} from './embedding';
+import { parse } from 'path';
 
 /**
  * Create a model for IMDB sentiment analysis.
@@ -33,7 +34,8 @@ import {writeEmbeddingMatrixAndLabels} from './embedding';
  *   configure the embedding layer.
  * @returns An uncompiled instance of `tf.Model`.
  */
-export function buildModel(modelType, maxLen, vocabularySize, embeddingSize) {
+export function buildModel(modelType, maxLen, vocabularySize, embeddingSize,
+  numUnits, returnSeq) {
   // TODO(cais): Bidirectional and dense-only.
   const model = tf.sequential();
   if (modelType === 'multihot') {
@@ -70,9 +72,16 @@ export function buildModel(modelType, maxLen, vocabularySize, embeddingSize) {
       model.add(tf.layers.globalMaxPool1d({}));
       model.add(tf.layers.dense({units: 250, activation: 'relu'}));
     } else if (modelType === 'simpleRNN') {
-      model.add(tf.layers.simpleRNN({units: 32}));
+      model.add(tf.layers.simpleRNN({units: numUnits}));
     } else if (modelType === 'lstm') {
-      model.add(tf.layers.lstm({units: 32}));
+      // the shape of lstm output with return sequences cannot be accepted by dense layer,
+      // it can work to add a flatten layer, but the score doesn't make sence
+      if (returnSeq === 'true') {
+        model.add(tf.layers.lstm({units: numUnits, returnSequences: returnSeq}));
+        model.add(tf.layers.flatten())
+      } else {
+        model.add(tf.layers.lstm({units: numUnits}));
+      }
     } else if (modelType === 'bidirectionalLSTM') {
       model.add(tf.layers.bidirectional(
           {layer: tf.layers.lstm({units: 32}), mergeMode: 'concat'}));
@@ -80,7 +89,11 @@ export function buildModel(modelType, maxLen, vocabularySize, embeddingSize) {
       throw new Error(`Unsupported model type: ${modelType}`);
     }
   }
-  model.add(tf.layers.dense({units: 1, activation: 'sigmoid'}));
+  if (returnSeq === 'true'){
+    model.add(tf.layers.dense({units:maxLen, activation: 'softmax'}));
+  } else {
+    model.add(tf.layers.dense({units: 1, activation: 'sigmoid'}));
+  }
   return model;
 }
 
@@ -108,6 +121,16 @@ function parseArguments() {
     type: 'int',
     defaultValue: 128,
     help: 'Number of word embedding dimensions'
+  });
+  parser.addArgument('--numUnits', {
+    type: 'int',
+    defaultValue: 32,
+    help: 'Number of units in LSTM cell'
+  });
+  parser.addArgument('--returnSeq', {
+    type: 'string',
+    defaultValue: 'false',
+    help: 'Whether to return sequences in the output of LSTM layer'
   });
   parser.addArgument(
       '--gpu', {action: 'storeTrue', help: 'Use GPU for training'});
@@ -176,7 +199,8 @@ async function main() {
 
   console.log('Building model...');
   const model = buildModel(
-      args.modelType, args.maxLen, args.numWords, args.embeddingSize);
+      args.modelType, args.maxLen, args.numWords, args.embeddingSize,
+       args.numUnits, args.returnSeq);
 
   model.compile({
     loss: 'binaryCrossentropy',

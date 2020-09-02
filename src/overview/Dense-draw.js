@@ -958,10 +958,11 @@ const sigmoidClicked = (arg) => {
 
   // Hide the annotation
   svg.select('.lstm-annotation')
-    .transition('sigmoid')
-    .duration(duration)
-    .style('opacity', isInSigmoid ? 1 : 0)
-    .style('pointer-events', isInSigmoid ? 'all' : 'none');
+      .classed('hidden', true);
+    // .transition('sigmoid')
+    // .duration(duration)
+    // .style('opacity', isInSigmoid ? 1 : 0)
+    // .style('pointer-events', isInSigmoid ? 'all' : 'none');
 
   // Move the left part of faltten layer elements
   let lstmLeftPart = svg.select('.lstm-layer-left');
@@ -1160,15 +1161,15 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   let lstmMouseOverHandler = (d) => {
     let index = d.index;
     // Screenshot
-    // console.log(index);
-
     // Update the hover info UI
     if (d.weight === undefined) {
+      // let formattedOutput = rnn.lstm[index].output.map(d3.format('.2f'));
       hoverInfo = {
         show: true,
         text: `lstm output: ${formater(rnn.lstm[index].output)}`
       };
     } else {
+      // let formattedWeights = d.weight.map(d3.format('.2f'));
       hoverInfo = {
         show: true,
         text: `Weight: ${formater(d.weight)}`
@@ -1196,18 +1197,16 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     let index = d.index;
 
     // screenshot
-    // if (index === 70) {return;}
-
-    // Update the hover info UI
+     // Update the hover info UI
     if (d.weight === undefined) {
       hoverInfo = {
         show: false,
-        text: `lstm output: ${formater(rnn.lstm[index].output)}`
+        text: ``
       };
     } else {
       hoverInfo = {
         show: false,
-        text: `Weight: ${formater(d.weight)}`
+        text: ``
       };
     }
     hoverInfoStore_rnn.set(hoverInfo);
@@ -1217,7 +1216,7 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     //   .style('stroke', '#E5E5E5')
 
     lstmLayerLeftPart.select(`#edge-lstm-${index}-output`)
-      .style('stroke-width', 0.6)
+      .style('stroke-width', (d,i) => d.width )
       .style('stroke', da => gappedColorScale(layerColorScales.weight,
         lstmRange, da.weight, 0.35));
 
@@ -1239,8 +1238,8 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
         name: `lstm-${f}-output`,
         color: gappedColorScale(layerColorScales.weight,
           lstmRange, rnn.lstm[f].outputLinks[i].weight, 0.35),
-        width: 0.6,
-        opacity: 1,
+        width: 1.2,
+        opacity: 0.7,
         class: `lstm-output`
       });
 
@@ -1502,10 +1501,10 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     .attr('stroke-dashoffset', 0)
     .each((d, i, g) => animateEdge(d, i, g, dashoffset - 1000));
   
-  edgeGroup.selectAll('path.lstm-abstract-output')
-    .lower();
+  // edgeGroup.selectAll('path.lstm-abstract-output')
+  //   .lower();
 
-  edgeGroup.selectAll('path.lstm,path.lstm-output')
+  edgeGroup.selectAll('path.lstm-output,path.lstm-output')
     .style('cursor', 'crosshair')
     .style('pointer-events', 'all')
     .on('mouseover', lstmMouseOverHandler)
@@ -1553,11 +1552,11 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
   
   // let textX = nodeCoordinate[curLayerIndex][i].x - 50;
   let textX = intermediateX2;
-  let textY = nodeCoordinate[curLayerIndex][i].y + nodeLength +
-    kernelRectLength * 3;
-  let arrowSY = nodeCoordinate[curLayerIndex][i].y + nodeLength +
-    kernelRectLength * 2;
-  let arrowTY = nodeCoordinate[curLayerIndex][i].y + nodeHeight / 2 +
+  let textY = nodeCoordinate[curLayerIndex][i].y + nodeHeight +
+    plusSymbolRadius * 3;
+  let arrowSY = nodeCoordinate[curLayerIndex][i].y + nodeHeight +
+    plusSymbolRadius * 2;
+  let arrowTY = nodeCoordinate[curLayerIndex][i].y + nodeHeight +
     plusSymbolRadius;
 
   if (i == 9) {
