@@ -16,13 +16,6 @@
   import SigmoidView from '../detail-view/Sigmoidview.svelte';
   import EmbeddingView from '../detail-view/Embeddingview.svelte';
 
-  const HOSTED_URLS = {
-    model:
-        'https://storage.googleapis.com/tfjs-models/tfjs/sentiment_cnn_v1/model.json',
-    metadata:
-        'https://storage.googleapis.com/tfjs-models/tfjs/sentiment_cnn_v1/metadata.json'
-  };
-
   const LOCAL_URLS = {
     model: 'PUBLIC_URL/resources/model.json',
     metadata: 'PUBLIC_URL/resources/metadata.json'
@@ -55,7 +48,7 @@
   let previousSelectedScaleLevel = selectedScaleLevel;
   let overview = undefined;
   let wholeSvg_rnn = undefined;
-  let svg_rnn = undefined;
+  let svg = undefined;
 
   // let wholeSvg_cnn = undefined;
   // let svg_cnn = undefined;
@@ -193,7 +186,7 @@
 
   // Helper functions
   const selectedScaleLevelChanged = () => {
-    if (svg_rnn !== undefined) {
+    if (svg !== undefined) {
       if (!scaleLevelSet.add(selectedScaleLevel)) {
         console.error('Encounter unknown scale level!');
       }
@@ -222,18 +215,18 @@
 
         updatingLayerIndex.forEach(l => {
           let range = rnnLayerRanges[selectedScaleLevel][l];
-          svg_rnn.select(`#rnn-layer-group-${l}`)
+          svg.select(`#rnn-layer-group-${l}`)
             .selectAll('.node-image')
             .each((d, i, g) => drawOutputRNN(d, i, g, range));
         });
 
  
         // Hide previous legend
-        svg_rnn.selectAll(`.${previousSelectedScaleLevel}-legend`)
+        svg.selectAll(`.${previousSelectedScaleLevel}-legend`)
           .classed('hidden', true);
 
         // Show selected legends
-        svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+        svg.selectAll(`.${selectedScaleLevel}-legend`)
           .classed('hidden', !detailedMode);
       }
       previousSelectedScaleLevel = selectedScaleLevel;
@@ -317,18 +310,18 @@
 
     if (!isInIntermediateView){
       // Show the legend
-      svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+      svg.selectAll(`.${selectedScaleLevel}-legend`)
         .classed('hidden', !detailedMode);
       
-      svg_rnn.selectAll('.input-legend').classed('hidden', !detailedMode);
-      svg_rnn.selectAll('.output-legend').classed('hidden', !detailedMode);
+      svg.selectAll('.input-legend').classed('hidden', !detailedMode);
+      svg.selectAll('.output-legend').classed('hidden', !detailedMode);
     }
     
     // Switch the layer name
-    svg_rnn.selectAll('.layer-detailed-label')
+    svg.selectAll('.layer-detailed-label')
       .classed('hidden', !detailedMode);
     
-    svg_rnn.selectAll('.layer-label')
+    svg.selectAll('.layer-label')
       .classed('hidden', detailedMode);
   }
 
@@ -339,14 +332,14 @@
           // Setting this for testing purposes currently.
       selectedNodeIndex = -1; 
       // User clicks this node again -> rewind
-      svg_rnn.select(`rect#underneath-gateway-${detailedViewNum}`)
+      svg.select(`rect#underneath-gateway-${detailedViewNum}`)
         .style('opacity', 0);
       detailedViewNum = undefined;
     }
 
-    // If sigmoid view -> rewind to flatten layer view
+    // If sigmoid view -> rewind to dense layer view
     else if (isInSigmoid) {
-      svg_rnn.select('.sigmoid-symbol')
+      svg.select('.sigmoid-symbol')
         .dispatch('click');
     }
 
@@ -367,13 +360,13 @@
   const quitIntermediateView = (curLayerIndex, g, i) => {
     // If it is the sigmoid detail view, quit that view first
     if (isInSigmoid) {
-      svg_rnn.select('.logit-layer').remove();
-      svg_rnn.select('.logit-layer-lower').remove();
-      svg_rnn.selectAll('.plus-symbol-clone').remove();
+      svg.select('.logit-layer').remove();
+      svg.select('.logit-layer-lower').remove();
+      svg.selectAll('.plus-symbol-clone').remove();
 
       // Instead of removing the paths, we hide them, so it is faster to load in
       // the future
-      svg_rnn.select('.underneath')
+      svg.select('.underneath')
         .selectAll('.logit-lower')
         .style('opacity', 0);
 
@@ -382,36 +375,36 @@
           logits: []
       })
 
-      allowsSigmoidAnimationStore.set(false);
+      allowsSigmoidAnimationStore_rnn.set(false);
     }
     isInSigmoidStore_rnn.set(false);
     isInIntermediateView = false;
 
     // Show the legend
-    svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+    svg.selectAll(`.${selectedScaleLevel}-legend`)
       .classed('hidden', !detailedMode);
-    svg_rnn.selectAll('.input-legend').classed('hidden', !detailedMode);
-    svg_rnn.selectAll('.output-legend').classed('hidden', !detailedMode);
+    svg.selectAll('.input-legend').classed('hidden', !detailedMode);
+    svg.selectAll('.output-legend').classed('hidden', !detailedMode);
 
     // Recover control panel UI
     disableControl = false;
 
     // Recover the input layer node's event
     for (let n = 0; n < rnn[curLayerIndex - 1].length; n++) {
-      svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${n}`)
+      svg.select(`g#layer-${curLayerIndex - 1}-node-${n}`)
         .on('mouseover', nodeMouseOverHandler)
         .on('mouseleave', nodeMouseLeaveHandler)
         .on('click', nodeClickHandler);
     }
 
     // Clean up the underneath rects
-    svg_rnn.select('g.underneath')
+    svg.select('g.underneath')
       .selectAll('rect')
       .remove();
     detailedViewNum = undefined;
 
     // Highlight the previous layer and this node
-    svg_rnn.select(`g#rnn-layer-group-${curLayerIndex - 1}`)
+    svg.select(`g#rnn-layer-group-${curLayerIndex - 1}`)
       .selectAll('rect.bounding')
       .style('stroke-width', 1);
     
@@ -420,7 +413,7 @@
       .style('stroke-width', 1);
 
     // Highlight the labels
-    svg_rnn.selectAll(`g#layer-label-${curLayerIndex - 1},
+    svg.selectAll(`g#layer-label-${curLayerIndex - 1},
       g#layer-detailed-label-${curLayerIndex - 1},
       g#layer-label-${curLayerIndex},
       g#layer-detailed-label-${curLayerIndex}`)
@@ -434,7 +427,7 @@
     isExitedFromCollapse = true;
 
     // Remove the intermediate layer
-    let intermediateLayer = svg_rnn.select('g.intermediate-layer');
+    let intermediateLayer = svg.select('g.intermediate-layer');
 
     // Kill the infinite animation loop
     shouldIntermediateAnimateStore_rnn.set(false);
@@ -446,28 +439,28 @@
       .on('end', (d, i, g) => { d3.select(g[i]).remove()});
     
     // Remove the output node overlay mask
-    svg_rnn.selectAll('.overlay-group').remove();
+    svg.selectAll('.overlay-group').remove();
     
     // Remove the overlay rect
-    svg_rnn.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation')
+    svg.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation')
       .transition('remove')
       .duration(500)
       .ease(d3.easeCubicInOut)
       .style('opacity', 0)
       .on('end', (d, i, g) => {
-        svg_rnn.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation').remove();
-        svg_rnn.selectAll('defs.overlay-gradient').remove();
+        svg.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation').remove();
+        svg.selectAll('defs.overlay-gradient').remove();
       });
     
     // Recover the layer if we have drdrawn it
     if (needRedraw[0] !== undefined) {
       let redrawRange = rnnLayerRanges[selectedScaleLevel][needRedraw[0]];
       if (needRedraw[1] !== undefined) {
-        svg_rnn.select(`g#layer-${needRedraw[0]}-node-${needRedraw[1]}`)
+        svg.select(`g#layer-${needRedraw[0]}-node-${needRedraw[1]}`)
           .select('image.node-image')
           .each((d, i, g) => drawOutput(d, i, g, redrawRange));
       } else {
-        svg_rnn.select(`g#rnn-layer-group-${needRedraw[0]}`)
+        svg.select(`g#rnn-layer-group-${needRedraw[0]}`)
           .selectAll('image.node-image')
           .each((d, i, g) => drawOutput(d, i, g, redrawRange));
       }
@@ -481,14 +474,15 @@
 
     moveLayerX({layerIndex: numLayers - 1,
       targetX: nodeCoordinate[numLayers - 1][0].x, opacity: 1,
-      disable:false, delay:500, onEndFunc: () => {
+      disable:false, delay:800, onEndFunc: () => {
         // Show all edges on the last moving animation end
-        svg_rnn.select('g.edge-group')
+        svg.select('g.edge-group')
           .style('visibility', 'visible');
-
+        svg.select('.lstm-annotation')
+            .classed('hidden',false);
         // Recover the input annotation
-        svg_rnn.select('.input-annotation')
-          .classed('hidden', false);
+        svg.select('.input-annotation')
+            .classed('hidden', false);
       }});
   }
 
@@ -498,25 +492,25 @@
 
     let layerIndex = layerIndexDict[selectedNode.layerName];
     let nodeIndex = selectedNode.index;
-    svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+    svg.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
       .select('rect.bounding')
       .classed('hidden', true);
 
     selectedNode.data.inputLinks.forEach(link => {
       let layerIndex = layerIndexDict[link.source.layerName];
       let nodeIndex = link.source.index;
-      svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+      svg.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
         .select('rect.bounding')
         .classed('hidden', true);
     })
 
     // Clean up the underneath rects
-    svg_rnn.select('g.underneath')
+    svg.select('g.underneath')
       .selectAll('rect')
       .remove();
 
     // Show all edges
-    let unimportantEdges = svg_rnn.select('g.edge-group')
+    let unimportantEdges = svg.select('g.edge-group')
       .selectAll('.edge')
       .filter(d => {
         return d.targetLayerIndex !== actPoolDetailViewLayerIndex;
@@ -527,13 +521,13 @@
     disableControl = false;
 
     // Show legends if in detailed mode
-    svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+    svg.selectAll(`.${selectedScaleLevel}-legend`)
       .classed('hidden', !detailedMode);
-    svg_rnn.selectAll('.input-legend').classed('hidden', !detailedMode);
-    svg_rnn.selectAll('.output-legend').classed('hidden', !detailedMode);
+    svg.selectAll('.input-legend').classed('hidden', !detailedMode);
+    svg.selectAll('.output-legend').classed('hidden', !detailedMode);
 
     // Also dehighlight the edge
-    let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+    let edgeGroup = svg.select('g.rnn-group').select('g.edge-group');
     edgeGroup.selectAll(`path.edge-${layerIndex}-${nodeIndex}`)
       .transition()
       .ease(d3.easeCubicOut)
@@ -543,26 +537,26 @@
       .style('opacity', edgeOpacity);
 
     // Remove the overlay rect
-    svg_rnn.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation')
+    svg.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation')
       .transition('remove')
       .duration(500)
       .ease(d3.easeCubicInOut)
       .style('opacity', 0)
       .on('end', (d, i, g) => {
-        svg_rnn.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation').remove();
-        svg_rnn.selectAll('defs.overlay-gradient').remove();
-        svg_rnn.select('.input-annotation').classed('hidden', false);
+        svg.selectAll('g.intermediate-layer-overlay, g.intermediate-layer-annotation').remove();
+        svg.selectAll('defs.overlay-gradient').remove();
+        svg.select('.input-annotation').classed('hidden', false);
       });
 
     // Turn the fade out nodes back
-    svg_rnn.select(`g#rnn-layer-group-${layerIndex}`)
+    svg.select(`g#rnn-layer-group-${layerIndex}`)
       .selectAll('g.node-group')
       .each((sd, si, sg) => {
         d3.select(sg[si])
           .style('pointer-events', 'all');
     });
 
-    svg_rnn.select(`g#rnn-layer-group-${layerIndex - 1}`)
+    svg.select(`g#rnn-layer-group-${layerIndex - 1}`)
       .selectAll('g.node-group')
       .each((sd, si, sg) => {
         // Recover the old events
@@ -584,17 +578,21 @@
   const prepareToEnterIntermediateView = (d, g, i, curLayerIndex) => {
     isInIntermediateView = true;
     // Hide all legends
-    svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+    svg.selectAll(`.${selectedScaleLevel}-legend`)
       .classed('hidden', true);
-    svg_rnn.selectAll('.input-legend').classed('hidden', true);
-    svg_rnn.selectAll('.output-legend').classed('hidden', true);
+    svg.selectAll('.input-legend').classed('hidden', true);
+    svg.selectAll('.output-legend').classed('hidden', true);
 
     // Hide the input annotation
-    svg_rnn.select('.input-annotation')
+    svg.select('.input-annotation')
       .classed('hidden', true);
 
+    // Hide the lstm annotation
+    svg.select('.lstm-annotation')
+      .classed('hidden',true)
+
     // Highlight the previous layer and this node
-    svg_rnn.select(`g#rnn-layer-group-${curLayerIndex - 1}`)
+    svg.select(`g#rnn-layer-group-${curLayerIndex - 1}`)
       .selectAll('rect.bounding')
       .style('stroke-width', 2);
     
@@ -613,7 +611,7 @@
     shouldIntermediateAnimateStore_rnn.set(true);
 
     // Highlight the labels
-    svg_rnn.selectAll(`g#layer-label-${curLayerIndex - 1},
+    svg.selectAll(`g#layer-label-${curLayerIndex - 1},
       g#layer-detailed-label-${curLayerIndex - 1},
       g#layer-label-${curLayerIndex},
       g#layer-detailed-label-${curLayerIndex}`)
@@ -653,7 +651,7 @@
     detailview.style.position = 'absolute';
 
     // Hide all edges
-    let unimportantEdges = svg_rnn.select('g.edge-group')
+    let unimportantEdges = svg.select('g.edge-group')
       .selectAll('.edge')
       .filter(d => {
         return d.targetLayerIndex !== curLayerIndex;
@@ -664,15 +662,15 @@
     disableControl = true;
     
     // Hide input annotaitons
-    svg_rnn.select('.input-annotation')
+    svg.select('.input-annotation')
       .classed('hidden', true);
 
     // Hide legends
-    svg_rnn.selectAll(`.${selectedScaleLevel}-legend`)
+    svg.selectAll(`.${selectedScaleLevel}-legend`)
       .classed('hidden', true);
-    svg_rnn.selectAll('.input-legend').classed('hidden', true);
-    svg_rnn.selectAll('.output-legend').classed('hidden', true);
-    svg_rnn.select(`#${layerLegendDict[curLayerIndex][selectedScaleLevel]}`)
+    svg.selectAll('.input-legend').classed('hidden', true);
+    svg.selectAll('.output-legend').classed('hidden', true);
+    svg.select(`#${layerLegendDict[curLayerIndex][selectedScaleLevel]}`)
       .classed('hidden', false);
 
     // Add overlay rects
@@ -719,11 +717,11 @@
       nodeCoordinate[0][0].x - overlayRectOffset / 2,
       0, leftWidth, height + svgPaddings.top);
 
-    svg_rnn.selectAll('rect.overlay')
+    svg.selectAll('rect.overlay')
       .on('click', emptySpaceClicked);
     
     // Add underneath rectangles
-    let underGroup = svg_rnn.select('g.underneath');
+    let underGroup = svg.select('g.underneath');
     let padding = 1;
     for (let n = 0; n < rnn[curLayerIndex - 1].length; n++) {
       underGroup.append('rect')
@@ -738,7 +736,7 @@
         .style('opacity', 0);
       
       // Update the event functions for these two layers
-      svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${n}`)
+      svg.select(`g#layer-${curLayerIndex - 1}-node-${n}`)
         .style('pointer-events', 'all')
         .style('cursor', 'pointer')
         .on('mouseover', actPoolDetailViewPreNodeMouseOverHandler)
@@ -756,7 +754,7 @@
     // Highlight the edges
     let layerIndex = layerIndexDict[d.layerName];
     let nodeIndex = d.index;
-    let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+    let edgeGroup = svg.select('g.rnn-group').select('g.edge-group');
     
     edgeGroup.selectAll(`path.edge-${actPoolDetailViewLayerIndex}-${nodeIndex}`)
       .raise()
@@ -777,7 +775,7 @@
       associatedLayerIndex = layerIndex + 1;
     }
 
-    svg_rnn.select(`g#layer-${associatedLayerIndex}-node-${nodeIndex}`)
+    svg.select(`g#layer-${associatedLayerIndex}-node-${nodeIndex}`)
       .select('rect.bounding')
       .classed('hidden', false);
   }
@@ -786,7 +784,7 @@
     // De-highlight the edges
     let layerIndex = layerIndexDict[d.layerName];
     let nodeIndex = d.index;
-    let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+    let edgeGroup = svg.select('g.rnn-group').select('g.edge-group');
 
     edgeGroup.selectAll(`path.edge-${actPoolDetailViewLayerIndex}-${nodeIndex}`)
       .transition()
@@ -806,7 +804,7 @@
       associatedLayerIndex = layerIndex + 1;
     }
 
-    svg_rnn.select(`g#layer-${associatedLayerIndex}-node-${nodeIndex}`)
+    svg.select(`g#layer-${associatedLayerIndex}-node-${nodeIndex}`)
       .select('rect.bounding')
       .classed('hidden', true);
   }
@@ -817,21 +815,21 @@
 
     // Click the pre-layer node in detail view has the same effect as clicking
     // the cur-layer node, which is to open a new detail view window
-    svg_rnn.select(`g#layer-${layerIndex + 1}-node-${nodeIndex}`)
+    svg.select(`g#layer-${layerIndex + 1}-node-${nodeIndex}`)
       .node()
       .dispatchEvent(new Event('click'));
   }
 
   const intermediateNodeMouseOverHandler = (d, i, g) => {
     if (detailedViewNum !== undefined) { return; }
-    svg_rnn.select(`rect#underneath-gateway-${d.index}`)
+    svg.select(`rect#underneath-gateway-${d.index}`)
       .style('opacity', 1);
   }
 
   const intermediateNodeMouseLeaveHandler = (d, i, g) => {
     // return;
     if (detailedViewNum !== undefined) { return; }
-    svg_rnn.select(`rect#underneath-gateway-${d.index}`)
+    svg.select(`rect#underneath-gateway-${d.index}`)
       .style('opacity', 0);
   }
 
@@ -844,7 +842,7 @@
       selectedNodeIndex = -1; 
       // User clicks this node again -> rewind
       detailedViewNum = undefined;
-      svg_rnn.select(`rect#underneath-gateway-${d.index}`)
+      svg.select(`rect#underneath-gateway-${d.index}`)
         .style('opacity', 0);
     } 
     // We need to show a new detailed view (two cases: if we need to close the
@@ -865,9 +863,9 @@
       // User triggers a different detailed view
       if (detailedViewNum !== undefined) {
         // Change the underneath highlight
-        svg_rnn.select(`rect#underneath-gateway-${detailedViewNum}`)
+        svg.select(`rect#underneath-gateway-${detailedViewNum}`)
           .style('opacity', 0);
-        svg_rnn.select(`rect#underneath-gateway-${d.index}`)
+        svg.select(`rect#underneath-gateway-${d.index}`)
           .style('opacity', 1);
       }
       
@@ -943,15 +941,15 @@
           // Switch the detail view input to the new clicked pair
 
           // Remove the previous selection effect
-          svg_rnn.select(`g#layer-${curLayerIndex}-node-${actPoolDetailViewNodeIndex}`)
+          svg.select(`g#layer-${curLayerIndex}-node-${actPoolDetailViewNodeIndex}`)
             .select('rect.bounding')
             .classed('hidden', true);
 
-          svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${actPoolDetailViewNodeIndex}`)
+          svg.select(`g#layer-${curLayerIndex - 1}-node-${actPoolDetailViewNodeIndex}`)
             .select('rect.bounding')
             .classed('hidden', true);
           
-          let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+          let edgeGroup = svg.select('g.rnn-group').select('g.edge-group');
       
           edgeGroup.selectAll(`path.edge-${curLayerIndex}-${actPoolDetailViewNodeIndex}`)
             .transition()
@@ -961,16 +959,16 @@
             .style('stroke-width', edgeStrokeWidth)
             .style('opacity', edgeOpacity);
           
-          let underGroup = svg_rnn.select('g.underneath');
+          let underGroup = svg.select('g.underneath');
           underGroup.select(`#underneath-gateway-${actPoolDetailViewNodeIndex}`)
             .style('opacity', 0);
         
           // Add selection effect on the new selected pair
-          svg_rnn.select(`g#layer-${curLayerIndex}-node-${nodeIndex}`)
+          svg.select(`g#layer-${curLayerIndex}-node-${nodeIndex}`)
             .select('rect.bounding')
             .classed('hidden', false);
 
-          svg_rnn.select(`g#layer-${curLayerIndex - 1}-node-${nodeIndex}`)
+          svg.select(`g#layer-${curLayerIndex - 1}-node-${nodeIndex}`)
             .select('rect.bounding')
             .classed('hidden', false);
 
@@ -1001,7 +999,7 @@
           intermediateNodeClicked);
       }
       else if (d.layerName === 'lstm_LSTM1'){
-        // todo:
+        // todo: expand the view on time scale
         drawLstm(curLayerIndex, d, nodeIndex, width, height,
           intermediateNodeMouseOverHandler, intermediateNodeMouseLeaveHandler,
           intermediateNodeClicked);
@@ -1020,7 +1018,7 @@
     // Highlight the edgesr
     let layerIndex = layerIndexDict[d.layerName];
     let nodeIndex = d.index;
-    let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+    let edgeGroup = svg.select('g.rnn-group').select('g.edge-group');
     
     edgeGroup.selectAll(`path.edge-${layerIndex}-${nodeIndex}`)
       .raise()
@@ -1040,11 +1038,11 @@
       let link = d.inputLinks[0];
       let layerIndex = layerIndexDict[link.source.layerName];
       let nodeIndex = link.source.index;
-      svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+      svg.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
         .select('rect.bounding')
         .classed('hidden', false);
     } else {
-      svg_rnn.select(`g#rnn-layer-group-${layerIndex - 1}`)
+      svg.select(`g#rnn-layer-group-${layerIndex - 1}`)
         .selectAll('g.node-group')
         .selectAll('rect.bounding')
         .classed('hidden', false);
@@ -1062,7 +1060,7 @@
     d.inputLinks.forEach(link => {
       let layerIndex = layerIndexDict[link.source.layerName];
       let nodeIndex = link.source.index;
-      svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+      svg.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
         .select('rect.bounding')
         .classed('hidden', false);
     });
@@ -1081,7 +1079,7 @@
       d.index !== selectedNode.index)){
       let layerIndex = layerIndexDict[d.layerName];
       let nodeIndex = d.index;
-      let edgeGroup = svg_rnn.select('g.rnn-group').select('g.edge-group');
+      let edgeGroup = svg.select('g.rnn-group').select('g.edge-group');
       
       edgeGroup.selectAll(`path.edge-${layerIndex}-${nodeIndex}`)
         .transition()
@@ -1099,11 +1097,11 @@
         let link = d.inputLinks[0];
         let layerIndex = layerIndexDict[link.source.layerName];
         let nodeIndex = link.source.index;
-        svg_rnn.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
+        svg.select(`g#layer-${layerIndex}-node-${nodeIndex}`)
           .select('rect.bounding')
           .classed('hidden', true);
       } else {
-        svg_rnn.select(`g#rnn-layer-group-${layerIndex - 1}`)
+        svg.select(`g#rnn-layer-group-${layerIndex - 1}`)
           .selectAll('g.node-group')
           .selectAll('rect.bounding')
           .classed('hidden', d => d.layerName !== selectedNode.layerName ||
@@ -1156,21 +1154,21 @@
 
       wholeSvg_rnn = d3.select(rnnOverviewComponent)
         .select('#rnn-svg');
-      svg_rnn = wholeSvg_rnn.append('g')
+      svg = wholeSvg_rnn.append('g')
         .attr('class','main-svg')
         .attr('transform',`translate(${svgPaddings.left}, 0)`);
 
-      svgStore_rnn.set(svg_rnn);
+      svgStore_rnn.set(svg);
 
       // width = Number(wholeSvg_rnn.style('width').replace('px', '')) -
       //   svgPaddings.left - svgPaddings.right;
       height = Number(wholeSvg_rnn.style('height').replace('px', '')) -
         svgPaddings.top - svgPaddings.bottom;
 
-      let rnnGroup = svg_rnn.append('g')
+      let rnnGroup = svg.append('g')
         .attr('class','rnn-group');
       
-      let underGroup_rnn = svg_rnn.append('g')
+      let underGroup_rnn = svg.append('g')
         .attr('class', 'underneath');
 
       let svgYMid_rnn = +wholeSvg_rnn.style('height').replace('px','') / 2;
@@ -1189,7 +1187,7 @@
       }
 
       // Define global arrow marker end
-      svg_rnn.append("defs")
+      svg.append("defs")
         .append("marker")
         .attr("id", 'marker')
         .attr("viewBox", "0 -5 10 10")
@@ -1205,7 +1203,7 @@
         .attr("d", "M0,-5L10,0L0,5");
 
       // Alternative arrow head style for non-interactive annotation
-      svg_rnn.append("defs")
+      svg.append("defs")
         .append("marker")
         .attr("id", 'marker-alt')
         .attr("viewBox", "0 -5 10 10")
