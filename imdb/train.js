@@ -157,7 +157,7 @@ function parseArguments() {
   });
   parser.addArgument('--embeddingFilesPrefix', {
     type: 'string',
-    defaultValue: '',
+    defaultValue: 'imdb/tmp/embed',
     help: 'Optional path prefix for saving embedding files that ' +
     'can be loaded in the Embedding Projector ' +
     '(https://projector.tensorflow.org/). For example, if this flag '  +
@@ -167,6 +167,7 @@ function parseArguments() {
   });
   parser.addArgument('--logDir', {
     type: 'string',
+    defaultValue:'imdb/tmp/log',
     help: 'Optional tensorboard log directory, to which the loss and ' +
     'accuracy will be logged during model training.'
   });
