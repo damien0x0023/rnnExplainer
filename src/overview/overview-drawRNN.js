@@ -8,6 +8,7 @@ import {
 import {
   getExtent, getLinkDataRNN
 } from './drawRNN-utils.js';
+import {drawArrow} from './intermediateRNN-utils.js';
 import { rnnOverviewConfig } from '../config.js';
 
 // Configs
@@ -17,6 +18,7 @@ const nodeHeight = rnnOverviewConfig.nodeHeight;
 const embeddingLen = rnnOverviewConfig.embedddingLength;
 const inputNodeHeight = rnnOverviewConfig.inputNodeHeight;
 const numLayers = rnnOverviewConfig.numLayers;
+const intermediateColor = rnnOverviewConfig.intermediateColor;
 const edgeOpacity = rnnOverviewConfig.edgeOpacity;
 const edgeInitColor = rnnOverviewConfig.edgeInitColor;
 const edgeStrokeWidth = rnnOverviewConfig.edgeStrokeWidth;
@@ -29,8 +31,8 @@ const formater = d3.format('.4f');
 
 // Shared variables
 //for rnn
-let svg_rnn = undefined;
-svgStore_rnn.subscribe( value => {svg_rnn = value;} )
+let svg = undefined;
+svgStore_rnn.subscribe( value => {svg = value;} )
 
 let vSpaceAroundGap = undefined;
 vSpaceAroundGapStore_rnn.subscribe( value => {vSpaceAroundGap = value;} )
@@ -151,7 +153,7 @@ export const drawOutputRNN = (d, i, g, range) => {
     if (d.type === 'input'){
       color = d3.rgb(colorScale(0.1 +d.output/range));
     } else if (d.type.includes('lstm')) {
-      color = d3.rgb(colorScale((d.output+range/2)/range));
+      color = d3.rgb(colorScale((d.output[j]+range/2)/range));
     } else if (d.type.includes('embedding')){
       color = d3.rgb(colorScale((d.output[j] + range/2)/range));
     }
@@ -258,7 +260,7 @@ const legendUpdate = (range, domain, levelName, layerIndex=-1,legendIndex=-1) =>
       selector = `g#global-legend`;
     }    
 
-    svg_rnn.select(selector).select('g').call(curLegendAxis);
+    svg.select(selector).select('g').call(curLegendAxis);
   }
 
 
@@ -436,7 +438,7 @@ const addLabels = ()=> {
   let svgHeight = Number(d3.select('#rnn-svg').style('height').replace('px', '')) + 150;
   let scroll = new SmoothScroll('a[href*="#"]', {offset: -svgHeight});
   
-  let detailedLabels = svg_rnn.selectAll('g.layer-detailed-label')
+  let detailedLabels = svg.selectAll('g.layer-detailed-label')
     .data(layerNames)
     .enter()
     .append('g')
@@ -481,7 +483,7 @@ const addLabels = ()=> {
     .attr('dy', '1.5em')
     .text(d => d.dimension);
   
-  let labels = svg_rnn.selectAll('g.layer-label')
+  let labels = svg.selectAll('g.layer-label')
     .data(layerNames)
     .enter()
     .append('g')
@@ -532,10 +534,10 @@ const addLabels = ()=> {
  * add legends for layers with image nodes
  */
 const addLegends = () => {
-  getLegendGradient(svg_rnn, layerColorScales.embedding, 'embeddingGradient');
-  getLegendGradient(svg_rnn, layerColorScales.lstm, 'lstmGradient');
-  getLegendGradient(svg_rnn, layerColorScales.input, 'inputGradient');
-  // getLegendGradient(svg_rnn, layerColorScales.dense, 'denseGradient');
+  getLegendGradient(svg, layerColorScales.embedding, 'embeddingGradient');
+  getLegendGradient(svg, layerColorScales.lstm, 'lstmGradient');
+  getLegendGradient(svg, layerColorScales.input, 'inputGradient');
+  // getLegendGradient(svg, layerColorScales.dense, 'denseGradient');
 
   // same as input nodes
   let legendHeight = inputNodeHeight;
@@ -544,7 +546,7 @@ const addLegends = () => {
        * (rnn[rnn.length-1].length+1) + 3 * legendHeight;
 
   // y is based on the last one of vSpaceAroundGap
-  let legends = svg_rnn.append('g')
+  let legends = svg.append('g')
       .attr('class', 'color-legend')
       .attr('transform', `translate(${0}, ${legendY})`);
   
@@ -623,7 +625,7 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
 
   nodeGroups.append('text')
     .attr('class', 'input-text-index')
-    .attr('x', left - 20)
+    .attr('x', left - 30)
     .attr('y', (d, i) => nodeCoordinate[l][i].y+inputNodeHeight/2)
     .style('dominant-baseline', 'middle')
     .style('font-size', '6px')
@@ -631,16 +633,16 @@ const initInputLayer = (nodeGroups, left, l, curLayer) => {
     .style('opacity', 0.8)
     .text((d, i) => `#${i+1}`);
 
-  nodeGroups.append('text')
-    .attr('class','input-annotation')
-    .attr('x', left + nodeLength/2)
-    .attr('y', (d, i) => nodeCoordinate[l][i].y+inputNodeHeight/2)
-    .style('dominant-baseline', 'middle')
-    .style('font-size', '6px')
-    .style('fill', 'rgb(255,165,42)')
-    .style('opacity', 0.8)
-    // .text((d,i) => d.output);
-    .text((d,i)=>d.output[0]);
+  // nodeGroups.append('text')
+  //   .attr('class','input-annotation')
+  //   .attr('x', left + nodeLength/2)
+  //   .attr('y', (d, i) => nodeCoordinate[l][i].y+inputNodeHeight/2)
+  //   .style('dominant-baseline', 'middle')
+  //   .style('font-size', '6px')
+  //   .style('fill', 'rgb(255,165,42)')
+  //   .style('opacity', 0.8)
+  //   // .text((d,i) => d.output);
+  //   .text((d,i)=>d.output[0]);
 }
 
 /**
@@ -710,9 +712,50 @@ const drawOutPutLayer = () => {
         .domain([rnnLayerMinMax[rnn.length-1].min, rnnLayerMinMax[rnn.length-1].max])
         .range([0, nodeLength]);
 
-  svg_rnn.selectAll('g.node-output').each(
+  svg.selectAll('g.node-output').each(
     (d, i, g) => drawOutputScore(d, i, g, outputRectScale)
   );    
+}
+
+const initLstmAnnotations = (nodeGroups, left, l)  => {
+  let textX = left + nodeLength/2;
+        let textY = nodeCoordinate[l][0].y - nodeLength;
+        let lstmAnnotation = nodeGroups.append('g')
+                          .attr('class', 'lstm-annotation')
+                          .classed('hidden',false);
+        
+        let lstmText = lstmAnnotation.append('text')
+                          .attr('x', textX)
+                          .attr('y', textY)
+                          .attr('class', 'annotation-text')
+                          .style('dominant-baseline', 'hanging')
+                          .style('text-anchor', 'middle')
+                          .append('tspan')
+                          .style('dominant-baseline', 'hanging')
+                          .text('The long and short-term memory will go back');
+        lstmText.append('tspan')
+                .attr('x', textX)
+                .attr('dy', '1em')
+                .style('dominant-baseline', 'hanging')
+                .text('into the LSTM for computation at next')
+        lstmText.append('tspan')
+                .attr('x', textX)
+                .attr('dy', '1em')
+                .style('dominant-baseline', 'hanging')
+                .text(`time step. This loop repeat for ${nodeCoordinate[l-1].length-1} times`)
+        
+        drawArrow({
+          group: lstmAnnotation,
+          sx: left+nodeLength,
+          sy: nodeCoordinate[l][0].y+nodeHeight/2,
+          tx: left,
+          ty: nodeCoordinate[l][0].y-2,
+          dr: nodeLength/3,
+          hFlip: true,
+          marker: 'marker-alt'
+        });
+
+        console.log('node-lstm is: ',lstmAnnotation);
 }
 
 /**
@@ -723,25 +766,25 @@ const drawOutPutLayer = () => {
  * @param {number} l index of current layer
  */
 const initMiddleLayer = (nodeGroups, left, l) => {
-   // Embed raster image in these groups
-   nodeGroups.append('image')
-   .attr('class', 'node-image')
-   .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
-   .attr('height', (d, i) => d.type!=='embedding'? nodeHeight:inputNodeHeight)
-   .attr('x', left)
-   .attr('y', (d, i) => nodeCoordinate[l][i].y);
+  // Embed raster image in these groups
+  nodeGroups.append('image')
+  .attr('class', 'node-image')
+  .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
+  .attr('height', (d, i) => d.type!=='embedding'? nodeHeight:inputNodeHeight)
+  .attr('x', left)
+  .attr('y', (d, i) => nodeCoordinate[l][i].y);
 
-   // Add a rectangle to show the border
-   nodeGroups.append('rect')
-     .attr('class', 'bounding')
-     .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
-     .attr('height', (d, i) => d.type!=='embedding'? nodeHeight:inputNodeHeight)
-     .attr('x', left)
-     .attr('y', (d, i) => nodeCoordinate[l][i].y)
-     .style('fill', 'none')
-     .style('stroke', 'gray')
-     .style('stroke-width', 1)
-     .classed('hidden', true);  
+  // Add a rectangle to show the border
+  nodeGroups.append('rect')
+    .attr('class', 'bounding')
+    .attr('width', (d, i) => d.type!=='embedding'? nodeLength:embeddingLen)
+    .attr('height', (d, i) => d.type!=='embedding'? nodeHeight:inputNodeHeight)
+    .attr('x', left)
+    .attr('y', (d, i) => nodeCoordinate[l][i].y)
+    .style('fill', 'none')
+    .style('stroke', 'gray')
+    .style('stroke-width', 1)
+    .classed('hidden', true);  
 }
 
 /**
@@ -752,7 +795,7 @@ const initMiddleLayer = (nodeGroups, left, l) => {
 const drawImageNodes = (l) => {
     let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
 
-    svg_rnn.select(`g#rnn-layer-group-${l}`)
+    svg.select(`g#rnn-layer-group-${l}`)
       .selectAll('image.node-image')
       .each((d, i, g) => drawOutputRNN(d, i, g, range));
 }
@@ -879,8 +922,12 @@ export const drawRNN = (width, height, rnnGroup, nodeMouseOverHandler,
       } else if (curLayer[0].layerName.includes('dense')){ 
         initOutputLayer(nodeGroups, left, l);
         drawOutPutLayer();
-      } else {
+      } else if (curLayer[0].layerName.includes('embedding')){
         initMiddleLayer(nodeGroups, left, l);
+        drawImageNodes(l);
+      } else if (curLayer[0].layerName.includes('lstm')){
+        initMiddleLayer(nodeGroups, left, l);
+        initLstmAnnotations(nodeGroups, left, l);
         drawImageNodes(l);
       }
     // add the length of node
@@ -916,7 +963,7 @@ export const updateRNN = () => {
   for (let l = 0; l < rnn.length; l++) {
     let curLayer = rnn[l];
     let range = rnnLayerRanges[selectedScaleLevel_rnn][l];
-    let layerGroup = svg_rnn.select(`g#rnn-layer-group-${l}`);
+    let layerGroup = svg.select(`g#rnn-layer-group-${l}`);
 
     let nodeGroups = layerGroup.selectAll('g.node-group')
       .data(curLayer);

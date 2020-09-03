@@ -3,9 +3,6 @@
 import {OOV_INDEX, padSequences} from '../../imdb/sequence_utils';
 import {Node, Link} from './class';
 
-// Network input image size
-const networkInputSize = 64;
-
 // Enum of node types
 const nodeType = {
   INPUT: 'input',
@@ -202,6 +199,8 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
   // Add the first layer (input layer)
   let inputLayer = [];
   let nonPadInputLayer = [];
+  let lstmAtEnd = [];
+  let lstmLayerOnTime = [];
   let inputShape = model.layers[0].batchInputShape.slice(1);
   let inputTextArray = inputTextTensor.transpose([1,0]).arraySync();
 
@@ -248,7 +247,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
     } else if (layer.name.includes('lstm')) {
       curLayerType = nodeType.LSTM;
     } else if (layer.name.includes('dense')) {
-      curLayerType = nodeType.DENSE;
+      curLayerType = nodeType.DENSE; // or FC(fullyConnect)
     } else {
       console.log('Find unknown type');
     }
@@ -371,7 +370,7 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
       }
       case nodeType.EMBEDDING: {
         let bias = 0;
-
+        // [10000,64]
         let weights = layer.embeddings.val.arraySync();
        
         // // The new order is [output_dim, input_dim]
@@ -403,24 +402,126 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
         break;
       }
       case nodeType.LSTM: {
-        let biases = layer.cell.bias.val.arraySync();
-        // New order is [output_depth, input_depth]
-        let weights = layer.cell.kernel.val.transpose([1, 0]).arraySync();
-        
-        //add nodes into this layer
-        for (let i=0; i < outputs.length; i++){
-          let node = new Node(layer.name, i, curLayerType, 
-            biases[i], outputs[i]);
+        /**
+        * Long-Short Term Memory layer - Hochreiter 1997.
+        * This is an `RNN` layer consisting of one `LSTMCell`. It operates on a 
+        * sequence of inputs. The shape of the input (not including the first,
+        * batch dimension) needs to be at least 2-D, with the first dimension being
+        * time steps. For example:
+        *
+        * ```js
+        * const lstm = tf.layers.lstm({units: 8, returnSequences: true});
+        *
+        * // Create an input with 10 time steps.
+        * const input = tf.input({shape: [10, 20]});
+        * const output = lstm.apply(input);
+        *
+        * console.log(JSON.stringify(output.shape));
+        * // [null, 10, 8]: 1st dimension is unknown batch size; 2nd dimension is the
+        * // same as the sequence length of `input`, due to `returnSequences`: `true`;
+        * // 3rd dimension is the `LSTMCell`'s number of units. 
+        * 
+        *    tf.layers.lstm({units: 32})
+        * In our project , the input size is [100, 64], so the time steps are 100 as
+        * there are 100 words in a review and 64 dimensions of each word,
+        * but the setting for units is 32 without returnSequences, so it only returns 
+        * the output of last time step. [null,null,32] => 32. 
+        *   kernel: (input_dim, unit * 4) => (64, 128)
+        *   recurrent_kernel: (unit, unit * 4) => (32,128)
+        *   bias: (unit * 4) (128)
+        * In the cell of lstm, the hidden size (unit) is 32 and the input_dim is 64, 
+        * the magic number 4 is due to  forget, input, candidate and output gates.
+        * There will be 64 * 32 * 4 +32 * 32 * 4+ 32 * 4 hyperparameters. 
+        * 
+        * According code review of keras.layers.recurrent.py
+        * https://github.com/tensorflow/tensorflow/blob/c7933ce9f3f25e592bef5f9a243ac72c5fd76cd1/tensorflow/python/keras/layers/recurrent.py#L1583
+        * the first [0: 1* self.units(32)] elements in recurrent_kernel are weights for input gate,
+        * the second [32:64] are weights for forget gate,
+        * [64:96] for candidate gate and [96:128] for output gate.
+        * The biases and weights in kernel follow the same order.
+        * The recurrent_kernel provides weights to calculate and deliver the long term 
+        * memory (c) and short term memory(h or o). The kernel keep the weights for the 
+        * calculation with new input.
+        */
 
-          // Connect this node to all previous nodes (create links)
-          // LSTM layers have weights in links. Links are one-to-multiple.
-          for (let j=0; j < rnn[curLayerIndex -1].length; j++) {
-              let preNode = rnn[curLayerIndex-1][j];
-              let curLink = new Link(preNode, node, weights[i][j]);
-              preNode.outputLinks.push(curLink);
-              node.inputLinks.push(curLink);
-            }
-          curLayerNodes.push(node);
+        // 
+        let bias = 0;
+        // [128]
+        let kernelBiases = layer.cell.bias.val.arraySync();
+        // let splitedBiases = tf.split(biases,4)
+        // New order is [units*4, input_dim]
+        // [64, 128] => [128,64]
+        let kernelWeights = layer.cell.kernel.val.transpose([1, 0]).arraySync();
+        // [32, 128] => [128.32]
+        let recurrent_kernel_weights = layer.cell.recurrentKernel.val.transpose([1,0]).arraySync();
+        // There is only one node here and the output is just for the last time step, 
+        // so we cannot use outputs for nodes at different time step directly.
+        let node = new Node(layer.name, 0, curLayerType, bias, outputs);
+        for (let j=0; j<rnn[curLayerIndex-1].length; j++) {
+          let preNode =rnn[curLayerIndex-1][j];
+          // according to code review: 
+          // h_tm1 = states[0]  # previous memory state
+          // c_tm1 = states[1]  # previous carry state
+          // ...
+          //   k_i, k_f, k_c, k_o = array_ops.split(
+          //     self.kernel, num_or_size_splits=4, axis=1)
+          //   x_i = K.dot(inputs_i, k_i)
+          //   x_f = K.dot(inputs_f, k_f)
+          //   x_c = K.dot(inputs_c, k_c)
+          //   x_o = K.dot(inputs_o, k_o)
+          // the kernelweights are for the inputs from embbeding layer
+          // ...
+          //   i = self.recurrent_activation(
+          //     x_i + K.dot(h_tm1_i, self.recurrent_kernel[:, :self.units]))
+          //   f = self.recurrent_activation(x_f + K.dot(
+          //     h_tm1_f, self.recurrent_kernel[:, self.units:self.units * 2]))
+          //   c = f * c_tm1 + i * self.activation(x_c + K.dot(
+          //     h_tm1_c, self.recurrent_kernel[:, self.units * 2:self.units * 3]))
+          //   o = self.recurrent_activation(
+          //     x_o + K.dot(h_tm1_o, self.recurrent_kernel[:, self.units * 3:]))
+          //   let curLink = new Link(preNode, node , kernelWeights)
+          // the recurrentKernelWeights are for the previous memory state
+          let curLink = new Link(preNode, node, kernelWeights);
+          node.inputLinks.push(curLink);
+        }
+        curLayerNodes.push(node);
+
+        // add output of lstm at the final time step to array
+        for (let i =0; i < outputs.length; i++){
+          let finalOutput = new Node(layer.name, i, curLayerType, 0, outputs[i]);
+          lstmAtEnd.push(finalOutput);
+        }
+        
+        //add the first node on time steps into a special layer
+        let ct, outputOnTime;
+        let nodeOnTime = new Node(layer.name, 0, curLayerType, kernelBiases, outputOnTime)
+        let preNode = rnn[curLayerIndex - 1][0];
+        let curLink = new Link(preNode, nodeOnTime, kernelWeights);
+        nodeOnTime.inputLinks.push(curLink);
+        lstmLayerOnTime.push(nodeOnTime);
+        // the left time steps
+        for (let i=1; i < rnn[curLayerIndex-1].length; i++){
+          nodeOnTime = new Node(layer.name, i, curLayerType, 
+            kernelBiases, outputOnTime);
+          preNode = rnn[curLayerIndex-1][i];
+
+          let nodeOnTM1 = lstmLayerOnTime[i-1];
+          let preLink = new Link (nodeOnTM1, nodeOnTime, kernelWeights)
+          nodeOnTime.inputLinks.push(preLink);
+          nodeOnTM1.outputLinks.push(preLink);
+
+          curLink = new Link(preNode, nodeOnTime, kernelWeights)
+          nodeOnTime.inputLinks.push(curLink);
+
+          // // Connect this node to all previous nodes (create links)
+          // // LSTM layers have weights in links. Links are one-to-multiple.
+          // for (let j=0; j < rnn[curLayerIndex -1].length; j++) {
+          //     let preNode = rnn[curLayerIndex-1][j];
+          //     let curLink = new Link(preNode, node, weights[i][j]);
+          //     preNode.outputLinks.push(curLink);
+          //     node.inputLinks.push(curLink);
+          //   }
+          lstmLayerOnTime.push(nodeOnTime);
         }
         break;
       }
@@ -432,26 +533,43 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
         for (let i =0; i < outputs.length; i++) {
           let node = new Node(layer.name, i, curLayerType,
             biases[i], outputs[i]);
-
-          // Connect this node to all previous nodes (create links)
-          // FC layers have weights in links. Links are one-to-multiple.
-
+          
+          // only the output of LSTM at the last time step exists
           // Since we are visualizing the logit values, we need to track
           // the raw value before ...
           let curLogit = 0;
           for (let j = 0; j < rnn[curLayerIndex - 1].length; j++) {
             let preNode = rnn[curLayerIndex - 1][j];
-            let curLink = new Link(preNode, node, weights[i][j]);
+            let curLink = new Link(preNode, node, weights[i]);
+
             preNode.outputLinks.push(curLink);
             node.inputLinks.push(curLink);
-            curLogit += preNode.output * weights[i][j];              
+            for (let k = 0; k<preNode.output.length; k++)
+            curLogit += preNode.output[k] * weights[j][k];              
             }
           curLogit += biases[i];
           node.logit = curLogit;
           curLayerNodes.push(node);
-        }
 
-        // Sort flatten layer based on the node TF index
+          // add outputlink to the last node of lstmLayerOnTime
+          if( lstmLayerOnTime && lstmLayerOnTime.length > 0){
+            let preNodeOnTime = lstmLayerOnTime[lstmLayerOnTime.length-1]
+            let link = new Link(preNodeOnTime,node, weights[i]);
+            preNodeOnTime.outputLinks.push(link);
+          }
+
+          // add outputlink to the final outputs of lstm at the last time step
+
+          for (let j = 0; j<lstmAtEnd.length;j++){
+            let preOutput = lstmAtEnd[j];
+            let link = new Link(preOutput, node, weights[i][j]);
+
+            preOutput.outputLinks.push(link);
+          }
+
+        }    
+
+        // Sort layer based on the node TF index
         rnn[curLayerIndex - 1].sort((a, b) => a.realIndex - b.realIndex);
 
         break;
@@ -465,7 +583,8 @@ const constructRNNFromOutputs = (allOutputs, model, inputTextTensor) => {
     rnn.push(curLayerNodes);
     curLayerIndex++;
   }
-
+  rnn.lstmAtEnd = lstmAtEnd;
+  rnn.lstmLayerOnTime = lstmLayerOnTime;
   rnn.nonPadInput = nonPadInputLayer;
   return rnn;
 }

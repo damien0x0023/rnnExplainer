@@ -8,7 +8,7 @@ const embeddingLen = rnnOverviewConfig.embedddingLength;
 
 /**
  * Compute the [minimum, maximum] of a 1D or 2D array.
- * @param {[number]} array 
+ * @param {[number] or number} array or number
  */
 export  const getExtent = (array) => {
   let min = Infinity;
@@ -106,8 +106,7 @@ export const getLinkDataRNN = (nodeCoordinate, rnn) => {
     for (let n = 0; n < rnn[l].length; n++) {
       let isOutput = rnn[l][n].layerName === 'output';
       // for calibration of the position of y in dense layer is nodeHeight /2, 
-      // let deltaY = l !== rnn.length -1? nodeHeight/2 : nodeLength /10;
-      let targetDeltaY = nodeHeight /2;
+      let targetDeltaY = l ===1 ? inputNodeHeight/2 : nodeHeight /2;
       let curTarget = getInputKnotRNN(nodeCoordinate[l][n],targetDeltaY);
       for (let p = 0; p < rnn[l][n].inputLinks.length; p++) {
         // Specially handle output layer (since we are ignoring the flatten)
