@@ -125,9 +125,9 @@ arXiv preprint 2020. arXiv:2004.15004.
 
 
 ## License
-The software is available under the [MIT License](https://github.com/damien0x0023/cnnExplainer/blob/master/LICENSE).
+The software is available under the [MIT License](https://github.com/damien0x0023/rnnExplainer/blob/master/LICENSE).
 
 ## Contact
-I am full of ears if you have any questions, comments or suggestions. Feel free to open an [issue](https://github.com/damien0x0023/cnnExplainer/issues/new/choose)  or [contac me](jyh91517@gmail.com).
+I am full of ears if you have any questions, comments or suggestions. Feel free to open an [issue](https://github.com/damien0x0023/rnnExplainer/issues/new/choose)  or [contac me](jyh91517@gmail.com).
 
 
