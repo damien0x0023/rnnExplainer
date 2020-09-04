@@ -7,7 +7,7 @@
   import DataviewRNN from './DataviewRNN.svelte';
 
   export let image;
-  export let kernel;
+  // export let kernel;
   export let output;
   export let isPaused;
   export let dataRange;
