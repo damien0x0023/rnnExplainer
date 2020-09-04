@@ -732,17 +732,22 @@ const initLstmAnnotations = (nodeGroups, left, l)  => {
                           .style('text-anchor', 'middle')
                           .append('tspan')
                           .style('dominant-baseline', 'hanging')
-                          .text('The long and short-term memory will go back');
+                          .text('The carry state (long-term) and momery ');
         lstmText.append('tspan')
                 .attr('x', textX)
                 .attr('dy', '1em')
                 .style('dominant-baseline', 'hanging')
-                .text('into the LSTM for computation at next')
+                .text('state (short-tem) will go back into the')
         lstmText.append('tspan')
                 .attr('x', textX)
                 .attr('dy', '1em')
                 .style('dominant-baseline', 'hanging')
-                .text(`time step. This loop repeat for ${nodeCoordinate[l-1].length-1} times`)
+                .text('LSTM for computation at next time step.')
+        lstmText.append('tspan')
+                .attr('x', textX)
+                .attr('dy', '1em')
+                .style('dominant-baseline', 'hanging')
+                .text(`This loop repeat for ${nodeCoordinate[l-1].length-1} times`)
         
         drawArrow({
           group: lstmAnnotation,
