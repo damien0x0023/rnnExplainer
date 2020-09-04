@@ -1,22 +1,12 @@
 # RNN Explainer
 
-An interactive visualization application designed to help non-experts learn about Recurrent Neural Networks (RNNs). This version is editted by CNN Explainer from Poloclub. The following is the sources:
+An interactive visualization application designed to help non-experts learn about Recurrent Neural Networks (RNNs). 
 
-[![Build Status](https://travis-ci.com/poloclub/cnn-explainer.svg?branch=master)](https://travis-ci.com/poloclub/cnn-explainer)
-[![arxiv badge](https://img.shields.io/badge/arXiv-2004.15004-red)](http://arxiv.org/abs/2004.15004)
-
-<!-- <a href="https://youtu.be/HnWIHWFbuUQ" target="_blank"><img src="https://i.imgur.com/TIKlgt6.png" style="max-width:100%;"></a> -->
-
-For more information, check out their manuscript:
-
-[**CNN Explainer: Learning Convolutional Neural Networks with Interactive Visualization**](https://arxiv.org/abs/2004.15004).
-Wang, Zijie J., Robert Turko, Omar Shaikh, Haekyu Park, Nilaksh Das, Fred Hohman, Minsuk Kahng, and Duen Horng Chau.
-arXiv preprint 2020. arXiv:2004.15004.
-
+[![Build Status](https://travis-ci.org/damien0x0023/rnnExplainer.svg?branch=master)](https://travis-ci.org/damien0x0023/rnnExplainer)
 
 ## Live Demo
 
-For a live demo of their App, visit: http://poloclub.github.io/cnn-explainer/
+For a live demo of this App, visit: https://damien0x0023.github.io/rnnExplainer/
 
 ## Running Locally
 
@@ -51,10 +41,10 @@ yarn dev
 
 Navigate to [localhost:5000](https://localhost:5000). You should see the Explainer running in your broswer.
 
-To see how we trained the CNN or RNN, visit the directory [`./tiny-vgg/`](tiny-vgg) or [`./imdb/`](imdb).
+To see how train to train the CNN, visit the directory [`./tiny-vgg/`](tiny-vgg). To see how to train RNN , visit the directory [`./imdb/`](imdb).
 
 
-## Training your own model in tfjs-node
+## Training your own sentiment analysis model in tfjs-node
 
 To train the model using tfjs-node, do
 
@@ -127,8 +117,17 @@ Other arguments of the `yarn train` command include:
 
 ## Credits
 
+This version is modified from CNN Explainer by Poloclub. CNN Explainer was created by Jay Wang, Robert Turko, Omar Shaikh, Haekyu Park, Nilaksh Das, Fred Hohman, Minsuk Kahng, and Polo Chau, which was the result of a research collaboration between Georgia Tech and Oregon State. For more information, check out their manuscript:
+
+[**CNN Explainer: Learning Convolutional Neural Networks with Interactive Visualization**](https://arxiv.org/abs/2004.15004).
+Wang, Zijie J., Robert Turko, Omar Shaikh, Haekyu Park, Nilaksh Das, Fred Hohman, Minsuk Kahng, and Duen Horng Chau.
+arXiv preprint 2020. arXiv:2004.15004.
+
 
 ## License
-The software is available under the [MIT License](https://github.com/poloclub/cnn-explainer/blob/master/LICENSE).
+The software is available under the [MIT License](https://github.com/damien0x0023/cnnExplainer/blob/master/LICENSE).
+
+## Contact
+I am full of ears if you have any questions, comments or suggestions. Feel free to open an [issue](https://github.com/damien0x0023/cnnExplainer/issues/new/choose)  or [contac me](jyh91517@gmail.com).
 
 
