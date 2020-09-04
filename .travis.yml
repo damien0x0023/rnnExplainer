@@ -2,6 +2,6 @@ language: node_js
 node_js:
   - lts/*
 install:
-  - npm install
+  - yarn
 script:
-  - npm run build
+  - yarn build
