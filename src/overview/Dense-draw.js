@@ -1163,16 +1163,16 @@ export const drawDense = (curLayerIndex, d, i, width, height) => {
     // Screenshot
     // Update the hover info UI
     if (d.weight === undefined) {
-      // let formattedOutput = rnn.lstm[index].output.map(d3.format('.2f'));
+      let formattedOutput = rnn.lstm[index].output.map(d3.format('.2f'));
       hoverInfo = {
         show: true,
-        text: `lstm output: ${formater(rnn.lstm[index].output)}`
+        text: `lstm output: ${formattedOutput}`
       };
     } else {
-      // let formattedWeights = d.weight.map(d3.format('.2f'));
+      let formattedWeights = d.weight.map(d3.format('.2f'));
       hoverInfo = {
         show: true,
-        text: `Weight: ${formater(d.weight)}`
+        text: `Weight: ${formattedWeights}`
       };
     }
     hoverInfoStore_rnn.set(hoverInfo);

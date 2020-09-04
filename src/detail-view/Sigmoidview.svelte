@@ -4,7 +4,7 @@
   export let logitColors;
   export let selectedI;
   export let highlightI = -1;
-  export let outputName;
+  // export let outputName;
   export let outputValue;
   export let startAnimation;
 

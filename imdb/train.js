@@ -167,7 +167,11 @@ function parseArguments() {
   });
   parser.addArgument('--logDir', {
     type: 'string',
+<<<<<<< HEAD
     defaultValue:'imdb/tmp/log',
+=======
+    defaultValue:'imdb/tmp',
+>>>>>>> dev
     help: 'Optional tensorboard log directory, to which the loss and ' +
     'accuracy will be logged during model training.'
   });

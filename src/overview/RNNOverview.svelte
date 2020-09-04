@@ -16,13 +16,6 @@
   import SigmoidView from '../detail-view/Sigmoidview.svelte';
   import EmbeddingView from '../detail-view/Embeddingview.svelte';
 
-  const HOSTED_URLS = {
-    model:
-        'https://storage.googleapis.com/tfjs-models/tfjs/sentiment_cnn_v1/model.json',
-    metadata:
-        'https://storage.googleapis.com/tfjs-models/tfjs/sentiment_cnn_v1/metadata.json'
-  };
-
   const LOCAL_URLS = {
     model: 'PUBLIC_URL/resources/model.json',
     metadata: 'PUBLIC_URL/resources/metadata.json'
