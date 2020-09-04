@@ -6,7 +6,7 @@ An interactive visualization application designed to help non-experts learn abou
 
 ## Live Demo
 
-For a live demo of this App, visit: https://damien0x0023.github.io/rnnExplainer/
+For a live demo of this App, visit: https://damien0x0023.github.io/rnnExplainer/. I will appreciate if you can answer some [questions](https://forms.gle/c8kV8tHmsrPLTsx27) for me after the tour.
 
 ## Running Locally
 
