@@ -2,6 +2,8 @@
 
 An interactive visualization application designed to help non-experts learn about Recurrent Neural Networks (RNNs). 
 
+<a href="https://damien0x0023.github.io/rnnExplainer/" target="_blank"><img src="https://imgur.com/mB6Sg8L.png" style="max-width:100%;"></a>
+
 [![Build Status](https://travis-ci.org/damien0x0023/rnnExplainer.svg?branch=master)](https://travis-ci.org/damien0x0023/rnnExplainer)
 
 ## Live Demo
